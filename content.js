@@ -29,10 +29,35 @@
 
     function applyTheme() {
         currentTheme = state.customTheme;
-        SR.applyThemeStyles(host, currentTheme);
+        // ONLY blend if autohide is enabled (user request)
+        const baseColor = autoHideEnabled ? getPageDominantColor() : null;
+        SR.applyThemeStyles(host, currentTheme, baseColor);
         if (currentTheme?.accentColor && autoHide) {
             autoHide.updateAccentColor(currentTheme.accentColor);
         }
+    }
+
+    function getPageDominantColor() {
+        try {
+            let el = document.body;
+            if (!el) return { r: 255, g: 255, b: 255 };
+            let bg = window.getComputedStyle(el).backgroundColor;
+
+            // Walk up to find a non-transparent background
+            let depth = 0;
+            while ((bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent' || !bg) && depth < 5) {
+                if (!el.parentElement) break;
+                el = el.parentElement;
+                bg = window.getComputedStyle(el).backgroundColor;
+                depth++;
+            }
+
+            const match = bg.match(/\d+/g);
+            if (match && match.length >= 3) {
+                return { r: parseInt(match[0]), g: parseInt(match[1]), b: parseInt(match[2]) };
+            }
+        } catch (e) { }
+        return { r: 255, g: 255, b: 255 };
     }
 
     function isSidepanelBlocked() {
@@ -40,12 +65,11 @@
         return (state.sidepanelBlocklist || []).some(d => hostname.includes(d));
     }
 
-    async function loadCSS() {
-        const response = await fetch(chrome.runtime.getURL('sidebar.css'));
-        const css = await response.text();
-        const style = document.createElement('style');
-        style.textContent = css;
-        shadow.appendChild(style);
+    function loadCSS() {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = chrome.runtime.getURL('sidebar.css');
+        shadow.appendChild(link);
     }
 
     function injectHostStyles() {
@@ -116,6 +140,10 @@
         closeBtn.className = 'edge-sidebar-header-close';
         closeBtn.innerText = "✕";
         closeBtn.onclick = () => {
+            if (!chrome.runtime?.id) {
+                console.warn('[SidebarRevived] Extension context invalidated. Please reload the page.');
+                return;
+            }
             chrome.storage.local.set({ activeSiteId: null, activeSiteOwner: null });
         };
 
@@ -221,10 +249,6 @@
                 }
             }
         });
-
-        setInterval(() => {
-            render();
-        }, 1000);
     }
 
     function updateLayout(width) {
@@ -267,6 +291,10 @@
         if (currentState === lastRenderState) return;
         lastRenderState = currentState;
 
+        if (!state.sites || state.sites.length === 0) {
+            console.warn('[SidebarRevived] No sites found in state:', state);
+        }
+
         SR.renderIconBar(iconBar, {
             sites: state.sites,
             tempSites: state.tempSites || [],
@@ -274,13 +302,16 @@
             getSites: () => state.sites,
             getTempSites: () => state.tempSites || [],
             onSiteClick: (siteId) => {
+                if (!chrome.runtime?.id) return;
                 const newActiveId = (state.activeSiteId === siteId) ? null : siteId;
                 chrome.storage.local.set({ activeSiteId: newActiveId, activeSiteOwner: newActiveId ? 'inpage' : null });
             },
             onAddSite: () => {
+                if (!chrome.runtime?.id) return;
                 chrome.runtime.sendMessage({ action: 'add_current_tab' });
             },
             onSettingsClick: () => {
+                if (!chrome.runtime?.id) return;
                 chrome.storage.local.set({ isSettingsOpen: true });
                 chrome.runtime.sendMessage({ action: 'open_side_panel' });
             },
@@ -295,6 +326,7 @@
         const hostname = window.location.hostname;
         const isBlocked = state.sidepanelBlocklist.some(d => hostname.includes(d)) && !state.activeSiteId;
 
+        // Side panel open or blocklisted: always hide
         if (state.isSidePanelOpen || isBlocked) {
             ah.cleanup();
             autoHideArmed = false;
@@ -302,15 +334,16 @@
             return;
         }
 
-        // If any site is active, we stay open (ignore auto-hide trigger for visibility)
-        if (state.activeSiteId) {
+        // --- XOR gate: idle sidebar or browser sidepanel owns the screen ---
+        // NOTE: Future "sidepanelOnly" setting bypass goes here.
+        if (!state.activeSiteId || state.activeSiteOwner !== 'inpage') {
             ah.cleanup();
             autoHideArmed = false;
-            renderInternal();
+            hideSidebarCompletely();
             return;
         }
 
-        // Handle Idle Auto-Hide
+        // --- Active site: in-page sidebar is the authority ---
         if (autoHideEnabled) {
             if (ah.triggered) {
                 renderInternal();
@@ -324,6 +357,9 @@
             return;
         }
 
+        // Auto-hide OFF: constant sidebar with page offset
+        ah.cleanup();
+        autoHideArmed = false;
         renderInternal();
     }
 
@@ -357,16 +393,11 @@
             contentArea.classList.remove('active');
         }
 
-        // Overlay vs Offset logic
-        // If autohide is enabled, we never offset (always overlay).
-        if (autoHideEnabled) {
-            document.documentElement.classList.remove('revived-sidebar-active');
-            document.documentElement.style.removeProperty('--revived-sidebar-width');
-        } else {
-            document.documentElement.classList.add('revived-sidebar-active');
-            const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
-            document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
-        }
+        // Always apply offset logic (user requested "display BESIDE" regardless of autohide)
+        document.documentElement.classList.add('revived-sidebar-active');
+        const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
+        document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+        document.documentElement.style.removeProperty('margin-right');
     }
 
     if (document.readyState === 'loading') {

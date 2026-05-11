@@ -65,20 +65,37 @@
         };
     };
 
+    S.blendColors = function (hex, baseRgb, ratio = 0.5) {
+        const rgb = S.hexToRgb(hex);
+        const r = Math.round(rgb.r * (1 - ratio) + baseRgb.r * ratio);
+        const g = Math.round(rgb.g * (1 - ratio) + baseRgb.g * ratio);
+        const b = Math.round(rgb.b * (1 - ratio) + baseRgb.b * ratio);
+        return { r, g, b };
+    };
+
     // ============ THEME APPLICATION ============
 
-    S.applyThemeStyles = function (el, theme) {
+    S.applyThemeStyles = function (el, theme, baseColorRgb = null) {
         if (theme) {
             if (theme.fontColor) el.style.setProperty('--theme-font-color', theme.fontColor);
             if (theme.sidebarBackground) el.style.setProperty('--theme-sidebar-bg', theme.sidebarBackground);
             if (theme.dividerBackground) el.style.setProperty('--theme-divider-bg', theme.dividerBackground);
             if (theme.accentColor) el.style.setProperty('--theme-accent-color', theme.accentColor);
+
             if (theme.panelOpacity !== undefined) {
                 el.style.setProperty('--theme-panel-opacity', theme.panelOpacity);
                 const alpha = Math.max(0.05, theme.panelOpacity);
                 const bg = theme.sidebarBackground || '#38393c';
-                const rgb = S.hexToRgb(bg);
+                let rgb = S.hexToRgb(bg);
+
+                if (baseColorRgb) {
+                    // Blend ratio based on opacity: more transparent = more page color
+                    const blendRatio = Math.max(0, 1 - alpha);
+                    rgb = S.blendColors(bg, baseColorRgb, blendRatio);
+                }
+
                 const rgba = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+                el.style.setProperty('--theme-sidebar-bg', rgba);
                 el.style.setProperty('--theme-settings-bg', rgba);
                 el.style.setProperty('--theme-sidebar-bg-rgba', rgba);
             }

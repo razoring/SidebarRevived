@@ -9,6 +9,7 @@
     let tempSites = [];
     let isSidePanelOpen = false;
     let activeSiteId = null;
+    let activeSiteOwner = null;
     let styleElement = null;
     let scrollBlocklist = [];
     let sidepanelBlocklist = [];
@@ -49,6 +50,7 @@
             tempSites = result.tempSites || [];
             isSidePanelOpen = !!result.isSidePanelOpen;
             activeSiteId = result.activeSiteId;
+            activeSiteOwner = result.activeSiteOwner;
             scrollBlocklist = result.scrollBlocklist || [];
             sidepanelBlocklist = result.sidepanelBlocklist || [];
             if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
@@ -66,6 +68,7 @@
                 if (changes.tempSites) tempSites = changes.tempSites.newValue;
                 if (changes.isSidePanelOpen) isSidePanelOpen = changes.isSidePanelOpen.newValue;
                 if (changes.activeSiteId) activeSiteId = changes.activeSiteId.newValue;
+                if (changes.activeSiteOwner) activeSiteOwner = changes.activeSiteOwner.newValue;
                 if (changes.customTheme) {
                     currentTheme = changes.customTheme.newValue;
                     applyTheme(currentTheme);
@@ -76,17 +79,24 @@
                     autoHideEnabled = changes.autoHideEnabled.newValue;
                     if (autoHide) autoHide.cleanup();
                 }
+                if (changes.customTheme) {
+                    currentTheme = changes.customTheme.newValue;
+                    applyTheme(currentTheme);
+                    render();
+                }
                 render();
             }
         });
     }
 
     function applyTheme(theme) {
-        applyThemeStyles(host, theme);
+        // Idle sidebar never blends (user request: ONLY if autohide and in-page)
+        applyThemeStyles(host, theme, null);
         if (theme?.accentColor && autoHide) {
             autoHide.updateAccentColor(theme.accentColor);
         }
     }
+
 
     let autoHide = null;
 
@@ -94,10 +104,11 @@
         if (!autoHide) {
             autoHide = new AutoHideManager({
                 onShowBar: () => {
-                    populateIcons();
-                    host.style.display = 'block';
+                    render();
                 },
-                onHideBar: () => { host.style.display = 'none'; },
+                onHideBar: () => {
+                    render();
+                },
                 getPanelWidth: () => 48,
                 getAccentColor: () => '#b2d7ef',
                 leaveThresholdOffset: 5
@@ -114,43 +125,42 @@
             getSites: () => sites,
             getTempSites: () => tempSites,
             onSiteClick: (siteId) => {
-                chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' });
-                chrome.runtime.sendMessage({ action: 'open_side_panel' });
+                if (!chrome.runtime?.id) return;
+                chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'inpage' });
             },
             onAddSite: () => {
+                if (!chrome.runtime?.id) return;
                 chrome.runtime.sendMessage({ action: 'add_current_tab' });
             },
             onSettingsClick: () => {
+                if (!chrome.runtime?.id) return;
                 chrome.storage.local.set({ isSettingsOpen: true });
                 chrome.runtime.sendMessage({ action: 'open_side_panel' });
             }
         });
     }
 
-    function render() {
-        const ah = getAutoHide();
-        ah.cleanup();
-        const hostname = window.location.hostname;
-        const isSidepanelBlocked = sidepanelBlocklist.some(d => hostname.includes(d));
+    function hideCompletely() {
+        host.style.display = 'none';
+        document.documentElement.classList.remove('revived-sidebar-idle-active');
+        styleElement.textContent = '';
+    }
 
-        if (isSidePanelOpen || isSidepanelBlocked || activeSiteId) {
-            host.style.display = 'none';
-            document.documentElement.classList.remove('revived-sidebar-idle-active');
-            return;
-        }
+    function showAsOverlay() {
+        // Overlay mode: visible but no page offset (auto-hide / future sidepanelOnly)
+        if (currentTheme) applyTheme(currentTheme);
+        host.style.display = 'block';
+        document.documentElement.classList.remove('revived-sidebar-idle-active');
+        styleElement.textContent = '';
+        populateIcons();
+    }
 
-        if (autoHideEnabled) {
-            host.style.display = 'none';
-            document.documentElement.classList.remove('revived-sidebar-idle-active');
-            styleElement.textContent = '';
-            ah.setup();
-            return;
-        }
-
+    function showWithOffset() {
         if (currentTheme) applyTheme(currentTheme);
         host.style.display = 'block';
         document.documentElement.classList.add('revived-sidebar-idle-active');
 
+        const hostname = window.location.hostname;
         const isBlocked = scrollBlocklist.some(d => hostname.includes(d));
 
         if (isBlocked) {
@@ -194,6 +204,36 @@
         }
 
         populateIcons();
+    }
+
+    function render() {
+        const ah = getAutoHide();
+        const hostname = window.location.hostname;
+        const isSidepanelBlocked = sidepanelBlocklist.some(d => hostname.includes(d));
+
+        // --- XOR gate: in-page sidebar or browser sidepanel owns the screen ---
+        // NOTE: Future "sidepanelOnly" setting bypass goes here.
+        if ((activeSiteId && activeSiteOwner === 'inpage') || isSidePanelOpen || isSidepanelBlocked) {
+            ah.cleanup();
+            hideCompletely();
+            return;
+        }
+
+        // --- Idle state: no active site, idle sidebar is the authority ---
+        if (autoHideEnabled) {
+            if (ah.triggered) {
+                // Overlays on top of content, no page offset
+                showAsOverlay();
+            } else {
+                hideCompletely();
+                ah.setup();
+            }
+            return;
+        }
+
+        // Auto-hide OFF: constant sidebar with page offset
+        ah.cleanup();
+        showWithOffset();
     }
 
     if (document.readyState === 'loading') {
