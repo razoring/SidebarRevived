@@ -15,6 +15,9 @@ let state = {
     currentUrls: {}
 };
 
+const ADD_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M453-454H247q-10.95 0-18.98-8.04-8.02-8.03-8.02-19 0-10.96 8.02-18.96 8.03-8 18.98-8h206v-206q0-10.95 8.04-18.97 8.03-8.03 19-8.03 10.96 0 18.96 8.03 8 8.02 8 18.97v206h206q10.95 0 18.97 8.04 8.03 8.03 8.03 19 0 10.96-8.03 18.96-8.02 8-18.97 8H507v206q0 10.95-8.04 18.98-8.03 8.02-19 8.02-10.96 0-18.96-8.02-8-8.03-8-18.98v-206Z"/></svg>`;
+const TRASH_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M308-140q-36.75 0-61.37-24.63Q222-189.25 222-226v-498h-26q-10.95 0-18.98-8.04-8.02-8.03-8.02-19 0-10.96 8.02-18.96 8.03-8 18.98-8h162q0-14 10.8-25t25.2-11h174q14.4 0 25.2 10.8Q604-792.4 604-778h162q10.95 0 18.97 8.04 8.03 8.03 8.03 19 0 10.96-8.03 18.96-8.02 8-18.97 8h-26v498q0 36.75-24.62 61.37Q690.75-140 654-140H308Zm378-584H276v498q0 14 9 23t23 9h346q14 0 23-9t9-23v-498ZM427-283.02q8-8.03 8-18.98v-314q0-10.95-8.04-18.97-8.03-8.03-19-8.03-10.96 0-18.96 8.03-8 8.02-8 18.97v314q0 10.95 8.04 18.98 8.03 8.02 19 8.02 10.96 0 18.96-8.02Zm146 0q8-8.03 8-18.98v-314q0-10.95-8.04-18.97-8.03-8.03-19-8.03-10.96 0-18.96 8.03-8 8.02-8 18.97v314q0 10.95 8.04 18.98 8.03 8.02 19 8.02 10.96 0 18.96-8.02ZM276-724v530-530Z"/></svg>`;
+
 const iconBar = document.getElementById('icon-bar');
 const contentArea = document.getElementById('content-area');
 
@@ -71,7 +74,7 @@ function render() {
             const btn = document.querySelector('.edge-sidebar-add-btn');
             if (btn) {
                 btn.classList.add('trash-mode');
-                btn.innerHTML = '<span class="material-symbols-rounded">delete</span>';
+                btn.innerHTML = TRASH_ICON_SVG;
             }
         };
         icon.ondragend = () => {
@@ -79,7 +82,7 @@ function render() {
             const btn = document.querySelector('.edge-sidebar-add-btn');
             if (btn) {
                 btn.classList.remove('trash-mode');
-                btn.innerHTML = '<span class="material-symbols-rounded">add</span>';
+                btn.innerHTML = ADD_ICON_SVG;
             }
         };
         icon.ondragover = (e) => {
@@ -104,10 +107,12 @@ function render() {
         iconBar.appendChild(icon);
     });
 
-    // Final drop indicator at the bottom of the list
-    const finalDropIndicator = document.createElement('div');
-    finalDropIndicator.className = 'drop-indicator';
-    iconBar.appendChild(finalDropIndicator);
+    // Only add a drop indicator here if there are sites (to allow dropping at the very end)
+    if (state.sites.length > 0) {
+        const finalDropIndicator = document.createElement('div');
+        finalDropIndicator.className = 'drop-indicator';
+        iconBar.appendChild(finalDropIndicator);
+    }
 
     const divider = document.createElement('div');
     divider.className = 'edge-sidebar-divider';
@@ -116,7 +121,7 @@ function render() {
     const addBtn = document.createElement('div');
     addBtn.className = 'edge-sidebar-add-btn';
     addBtn.title = "Add a new site";
-    addBtn.innerHTML = '<span class="material-symbols-rounded">add</span>';
+    addBtn.innerHTML = ADD_ICON_SVG;
     addBtn.onclick = () => {
         if (addBtn.classList.contains('trash-mode')) return; // Prevent click while dragging
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {

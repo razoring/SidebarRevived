@@ -52,7 +52,8 @@ html {
     width: 32px;
     height: 32px;
     border-radius: 6px;
-    margin-bottom: 10px;
+    margin-bottom: 4px;
+    /* reduced from 10px to minimize gap */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -81,13 +82,15 @@ html {
     width: 24px;
     height: 1px;
     background: #d4d4d4;
-    margin: 10px 0;
+    margin: 4px 0;
+    /* reduced from 10px to minimize gap */
 }
 
 .edge-sidebar-add-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
+    width: 48px;
+    /* Increased to allow square to be bigger */
+    height: 48px;
+    border-radius: 8px;
     background: transparent !important;
     display: flex;
     justify-content: center;
@@ -95,13 +98,12 @@ html {
     cursor: pointer;
     font-size: 20px;
     color: white;
-    /* user request: white on all sidebars */
     position: relative;
-    transition: background-color 0.1s;
+    transition: background-color 0.1s, transform 0.1s;
+    pointer-events: auto;
 }
 
 .edge-sidebar-add-btn.trash-mode {
-    color: #e53935;
     /* slight red tint for trash, but user says white icon, let's keep white */
     color: white;
 }
@@ -115,7 +117,7 @@ html {
     /* The drop zone blue */
 }
 
-.edge-sidebar-add-btn.trash-hover>.material-symbols-rounded {
+.edge-sidebar-add-btn.trash-hover>svg {
     opacity: 0;
     transform: scale(0.5);
     transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
@@ -124,10 +126,10 @@ html {
 .edge-sidebar-add-btn.trash-hover::after {
     content: '';
     position: absolute;
-    width: 18px;
-    height: 18px;
-    border: 2px solid white;
-    border-radius: 6px;
+    width: 40px;
+    height: 40px;
+    border: 2px dashed white;
+    border-radius: 8px;
     box-sizing: border-box;
     animation: morph-to-square 0.2s cubic-bezier(0.2, 0, 0, 1) forwards;
 }
@@ -146,36 +148,47 @@ html {
     }
 }
 
-.material-symbols-rounded {
-    font-family: 'Material Symbols Rounded';
-    font-weight: 100;
-    font-style: normal;
-    font-size: 24px;
-    display: inline-block;
-    line-height: 1;
-    text-transform: none;
-    letter-spacing: normal;
-    word-wrap: normal;
-    white-space: nowrap;
-    direction: ltr;
-    font-variation-settings: 'FILL' 0, 'wght' 100, 'GRAD' 200, 'opsz' 24;
+.edge-sidebar-add-btn svg {
+    width: 24px;
+    height: 24px;
+    display: block;
     transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+    pointer-events: none;
 }
 
 .drop-indicator {
-    width: 60%;
+    width: 32px;
+    height: 16px;
+    /* Huge hitbox */
+    margin: -8px 0;
+    /* Centered between icons */
+    position: relative;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: auto;
+    z-index: 10;
+}
+
+.drop-indicator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
     height: 2px;
     background-color: #0078D7;
-    margin: 4px 0;
     border-radius: 2px;
     opacity: 0;
-    transition: opacity 0.2s, height 0.2s, margin 0.2s;
+    transition: opacity 0.2s;
+    transform: translateY(-50%);
+}
+
+.drop-indicator.active::after {
+    opacity: 1;
 }
 
 .drop-indicator.active {
     opacity: 1;
-    height: 2px;
-    margin: 8px 0;
 }
 
 @media (prefers-color-scheme: dark) {
