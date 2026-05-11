@@ -143,7 +143,7 @@ function render() {
         updateVisibility(false);
     }
 
-    function dropIntoSiteList(e, targetList, isTempList) {
+    function dropIntoSiteList(e, targetList, isTempList, isBeginning = false) {
         try {
             const data = JSON.parse(e.dataTransfer.getData('application/json'));
             if (!data.id) return;
@@ -152,7 +152,12 @@ function render() {
             const fromIndex = sourceList.findIndex(s => s.id === data.id);
             if (fromIndex === -1) return;
             const [moved] = sourceList.splice(fromIndex, 1);
-            targetArr.push(moved);
+
+            if (isBeginning) {
+                targetArr.unshift(moved);
+            } else {
+                targetArr.push(moved);
+            }
 
             if (data.isTemp !== isTempList) {
                 if (data.isTemp) {
@@ -164,6 +169,26 @@ function render() {
                 chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: targetArr });
             }
         } catch (e) { }
+    }
+
+    function setupHeaderDropHandlers(header, indicator, isTempSection) {
+        const onHeaderDrop = (e) => {
+            e.preventDefault();
+            indicator.classList.remove('active');
+            const targetList = isTempSection ? (state.tempSites || []) : state.sites;
+            dropIntoSiteList(e, targetList, isTempSection, true);
+        };
+
+        header.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            indicator.classList.add('active');
+        };
+        header.ondragleave = () => indicator.classList.remove('active');
+        header.ondrop = onHeaderDrop;
+
+        // Ensure the indicator itself also uses the same drop logic
+        indicator.ondrop = onHeaderDrop;
     }
 
     function makeEndDropZone(targetList, isTempList) {
@@ -179,8 +204,26 @@ function render() {
         return zone;
     }
 
-    function renderSiteList(siteList, isTempList) {
-        siteList.forEach(site => {
+    function renderSiteList(siteList, isTempList, headerElement = null) {
+        let firstIndicator = null;
+        siteList.forEach((site, index) => {
+            const dropIndicator = makeDropZone();
+            if (index === 0) firstIndicator = dropIndicator;
+            dropIndicator.ondragover = (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                dropIndicator.classList.add('active');
+            };
+            dropIndicator.ondragleave = () => {
+                dropIndicator.classList.remove('active');
+            };
+            dropIndicator.ondrop = (e) => {
+                e.preventDefault();
+                dropIndicator.classList.remove('active');
+                icon.ondrop(e);
+            };
+            iconBar.appendChild(dropIndicator);
+
             const icon = document.createElement('div');
             icon.className = 'edge-sidebar-icon';
             if (site.id === state.activeSiteId) {
@@ -202,9 +245,6 @@ function render() {
                 }
             };
 
-            const dropIndicator = makeDropZone();
-            iconBar.appendChild(dropIndicator);
-
             icon.draggable = true;
             icon.ondragstart = (e) => {
                 e.dataTransfer.setData('application/json', JSON.stringify({ id: site.id, isTemp: isTempList }));
@@ -215,7 +255,6 @@ function render() {
                     btn.classList.add('trash-mode');
                     btn.innerHTML = TRASH_ICON_SVG;
                 }
-                // Defer visibility change to prevent layout shift from breaking the drag start
                 setTimeout(() => onAnyDragStart(), 0);
             };
             icon.ondragend = () => {
@@ -270,13 +309,19 @@ function render() {
             iconBar.appendChild(icon);
         });
 
-        iconBar.appendChild(makeEndDropZone(siteList, isTempList));
+        const endZone = makeEndDropZone(siteList, isTempList);
+        iconBar.appendChild(endZone);
+        if (!firstIndicator) firstIndicator = endZone;
+
+        if (headerElement && firstIndicator) {
+            setupHeaderDropHandlers(headerElement, firstIndicator, isTempList);
+        }
     }
 
     // === PINNED SECTION ===
     pinnedHeader = makeSectionHeader(PIN_HEADER_SVG, true);
     iconBar.appendChild(pinnedHeader);
-    renderSiteList(state.sites, false);
+    renderSiteList(state.sites, false, pinnedHeader);
 
     pinDivider = document.createElement('div');
     pinDivider.className = 'edge-sidebar-divider';
@@ -285,7 +330,7 @@ function render() {
     // === TEMP SECTION ===
     tempHeader = makeSectionHeader(TEMP_HEADER_SVG, false);
     iconBar.appendChild(tempHeader);
-    renderSiteList(state.tempSites || [], true);
+    renderSiteList(state.tempSites || [], true, tempHeader);
 
     tempDivider = document.createElement('div');
     tempDivider.className = 'edge-sidebar-divider';

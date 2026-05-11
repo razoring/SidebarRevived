@@ -146,7 +146,7 @@
         updateVisibility(false);
     }
 
-    function dropIntoSiteList(e, targetList, isTempList) {
+    function dropIntoSiteList(e, targetList, isTempList, isBeginning = false) {
         try {
             const data = JSON.parse(e.dataTransfer.getData('application/json'));
             if (!data.id) return;
@@ -155,7 +155,12 @@
             const fromIndex = sourceList.findIndex(s => s.id === data.id);
             if (fromIndex === -1) return;
             const [moved] = sourceList.splice(fromIndex, 1);
-            targetArr.push(moved);
+
+            if (isBeginning) {
+                targetArr.unshift(moved);
+            } else {
+                targetArr.push(moved);
+            }
 
             if (data.isTemp !== isTempList) {
                 if (data.isTemp) {
@@ -167,6 +172,25 @@
                 chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: targetArr });
             }
         } catch (e) { }
+    }
+
+    function setupHeaderDropHandlers(header, indicator, isTempSection) {
+        const onHeaderDrop = (e) => {
+            e.preventDefault();
+            indicator.classList.remove('active');
+            const targetList = isTempSection ? (tempSites || []) : sites;
+            dropIntoSiteList(e, targetList, isTempSection, true);
+        };
+
+        header.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            indicator.classList.add('active');
+        };
+        header.ondragleave = () => indicator.classList.remove('active');
+        header.ondrop = onHeaderDrop;
+
+        indicator.ondrop = onHeaderDrop;
     }
 
     function makeEndDropZone(targetList, isTempList) {
@@ -182,8 +206,25 @@
         return zone;
     }
 
-    function renderSiteList(siteList, isTempList) {
-        siteList.forEach(site => {
+    function renderSiteList(siteList, isTempList, headerElement = null) {
+        let firstIndicator = null;
+        siteList.forEach((site, index) => {
+            const dropIndicator = makeDropZone();
+            if (index === 0) firstIndicator = dropIndicator;
+            dropIndicator.ondragover = (e) => {
+                e.preventDefault();
+                dropIndicator.classList.add('active');
+            };
+            dropIndicator.ondragleave = () => {
+                dropIndicator.classList.remove('active');
+            };
+            dropIndicator.ondrop = (e) => {
+                e.preventDefault();
+                dropIndicator.classList.remove('active');
+                icon.ondrop(e);
+            };
+            sidebarContainer.appendChild(dropIndicator);
+
             const icon = document.createElement('div');
             icon.className = 'edge-sidebar-icon';
             if (site.id === activeSiteId) {
@@ -201,8 +242,7 @@
                 chrome.runtime.sendMessage({ action: 'open_side_panel' });
             };
 
-            const dropIndicator = makeDropZone();
-            sidebarContainer.appendChild(dropIndicator);
+            const di = dropIndicator; // For closure
 
             icon.draggable = true;
             icon.ondragstart = (e) => {
@@ -228,12 +268,12 @@
             icon.ondragover = (e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
-                dropIndicator.classList.add('active');
+                di.classList.add('active');
             };
-            icon.ondragleave = () => { dropIndicator.classList.remove('active'); };
+            icon.ondragleave = () => { di.classList.remove('active'); };
             icon.ondrop = (e) => {
                 e.preventDefault();
-                dropIndicator.classList.remove('active');
+                di.classList.remove('active');
                 try {
                     const data = JSON.parse(e.dataTransfer.getData('application/json'));
                     if (data.id && data.id !== site.id) {
@@ -264,7 +304,13 @@
             sidebarContainer.appendChild(icon);
         });
 
-        sidebarContainer.appendChild(makeEndDropZone(siteList, isTempList));
+        const endZone = makeEndDropZone(siteList, isTempList);
+        sidebarContainer.appendChild(endZone);
+        if (!firstIndicator) firstIndicator = endZone;
+
+        if (headerElement && firstIndicator) {
+            setupHeaderDropHandlers(headerElement, firstIndicator, isTempList);
+        }
     }
 
     function populateIcons() {
@@ -273,7 +319,7 @@
         // === PINNED SECTION ===
         pinnedHeader = makeSectionHeader(PIN_HEADER_SVG, true);
         sidebarContainer.appendChild(pinnedHeader);
-        renderSiteList(sites, false);
+        renderSiteList(sites, false, pinnedHeader);
 
         pinDivider = document.createElement('div');
         pinDivider.className = 'edge-sidebar-divider';
@@ -282,7 +328,7 @@
         // === TEMP SECTION ===
         tempHeader = makeSectionHeader(TEMP_HEADER_SVG, false);
         sidebarContainer.appendChild(tempHeader);
-        renderSiteList(tempSites || [], true);
+        renderSiteList(tempSites || [], true, tempHeader);
 
         tempDivider = document.createElement('div');
         tempDivider.className = 'edge-sidebar-divider';

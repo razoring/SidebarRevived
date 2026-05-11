@@ -296,6 +296,18 @@
             };
 
             const dropIndicator = makeDropZone();
+            dropIndicator.ondragover = (e) => {
+                e.preventDefault();
+                dropIndicator.classList.add('active');
+            };
+            dropIndicator.ondragleave = () => {
+                dropIndicator.classList.remove('active');
+            };
+            dropIndicator.ondrop = (e) => {
+                e.preventDefault();
+                dropIndicator.classList.remove('active');
+                icon.ondrop(e);
+            };
             iconBar.appendChild(dropIndicator);
 
             icon.draggable = true;
