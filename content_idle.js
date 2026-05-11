@@ -133,7 +133,7 @@
         const hostname = window.location.hostname;
         const isSidepanelBlocked = sidepanelBlocklist.some(d => hostname.includes(d));
 
-        if (isSidePanelOpen || isSidepanelBlocked) {
+        if (isSidePanelOpen || isSidepanelBlocked || activeSiteId) {
             host.style.display = 'none';
             document.documentElement.classList.remove('revived-sidebar-idle-active');
             return;

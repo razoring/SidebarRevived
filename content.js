@@ -16,6 +16,7 @@
     let state = {
         sites: [],
         activeSiteId: null,
+        activeSiteOwner: null,
         sidebarWidth: 350,
         currentUrls: {},
         sidepanelBlocklist: [],
@@ -181,7 +182,7 @@
             }
         });
 
-        chrome.storage.local.get(['sites', 'activeSiteId', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen'], (result) => {
+        chrome.storage.local.get(['sites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen'], (result) => {
             if (result.sites) {
                 state = { ...state, ...result };
                 if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
@@ -199,6 +200,17 @@
                 }
                 if (changes.isSidePanelOpen !== undefined) {
                     state.isSidePanelOpen = changes.isSidePanelOpen.newValue;
+                    render();
+                }
+                if (changes.activeSiteId !== undefined) {
+                    state.activeSiteId = changes.activeSiteId.newValue;
+                    if (changes.activeSiteOwner !== undefined) {
+                        state.activeSiteOwner = changes.activeSiteOwner.newValue;
+                    }
+                    render();
+                }
+                if (changes.activeSiteOwner !== undefined && !changes.activeSiteId) {
+                    state.activeSiteOwner = changes.activeSiteOwner.newValue;
                     render();
                 }
             }
@@ -400,6 +412,13 @@
         }
 
         if (state.isSidePanelOpen) {
+            container.style.display = 'none';
+            document.documentElement.classList.remove('revived-sidebar-active');
+            document.documentElement.style.removeProperty('--revived-sidebar-width');
+            return;
+        }
+
+        if (state.activeSiteId && state.activeSiteOwner === 'sidepanel') {
             container.style.display = 'none';
             document.documentElement.classList.remove('revived-sidebar-active');
             document.documentElement.style.removeProperty('--revived-sidebar-width');
