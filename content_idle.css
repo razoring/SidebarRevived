@@ -1,51 +1,29 @@
-body,
-html {
-    margin: 0;
-    padding: 0;
-    height: 100vh;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    overflow: hidden;
-    background: white;
-}
+/* content_idle.css */
 
-#container {
-    display: flex;
-    height: 100vh;
-    width: 100vw;
-    flex-direction: row-reverse;
-}
-
-#icon-bar {
+#revived-idle-sidebar-host {
+    position: fixed;
+    top: 0;
+    right: 0;
     width: 48px;
-    flex-shrink: 0;
+    height: 100vh;
+    z-index: 2147483647;
+    pointer-events: none;
+}
+
+#revived-idle-sidebar {
+    width: 100%;
     height: 100%;
-    background: #f3f3f3;
-    border-left: 1px solid #e0e0e0;
+    background: rgba(243, 243, 243, 0.95);
+    backdrop-filter: blur(10px);
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     align-items: center;
     padding-top: 10px;
     box-sizing: border-box;
-}
-
-#content-area {
-    flex: 1;
-    display: none;
-    flex-direction: column;
-    height: 100%;
-    min-width: 0;
-}
-
-#content-area.active {
-    display: flex;
-}
-
-#app-frame {
-    flex: 1;
-    border: none;
-    width: 100%;
-    height: 100%;
-    background: white;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    pointer-events: auto;
 }
 
 .edge-sidebar-icon {
@@ -69,18 +47,10 @@ html {
     background-color: rgba(128, 128, 128, 0.3) !important;
 }
 
-.edge-sidebar-icon.active-icon {
-    background-color: rgba(128, 128, 128, 0.1) !important;
-    border: 2px solid #0078D4;
-    padding: -2px;
-    /* Visual compensation */
-    outline: none;
-}
-
 .edge-sidebar-divider {
     width: 24px;
     height: 1px;
-    background: #d4d4d4;
+    background: #ccc;
     margin: 10px 0;
 }
 
@@ -103,28 +73,12 @@ html {
 }
 
 @media (prefers-color-scheme: dark) {
-
-    body,
-    html,
-    #app-frame {
-        background: #1c1c1c;
-    }
-
-    #icon-bar {
-        background: #2b2b2b;
-        border-left: 1px solid #444;
+    #revived-idle-sidebar {
+        background: rgba(43, 43, 43, 0.95);
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .edge-sidebar-divider {
         background: #555;
-    }
-
-    .edge-sidebar-add-btn {
-        background: #3a3a3a;
-        color: #e0e0e0;
-    }
-
-    .edge-sidebar-add-btn:hover {
-        background: #4a4a4a;
     }
 }
