@@ -19,6 +19,7 @@
         sidebarWidth: 350,
         currentUrls: {},
         sidepanelBlocklist: [],
+        isSidePanelOpen: false,
         customTheme: null
     };
 
@@ -180,7 +181,7 @@
             }
         });
 
-        chrome.storage.local.get(['sites', 'activeSiteId', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme'], (result) => {
+        chrome.storage.local.get(['sites', 'activeSiteId', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen'], (result) => {
             if (result.sites) {
                 state = { ...state, ...result };
                 if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
@@ -194,6 +195,10 @@
                 if (changes.autoHideEnabled !== undefined) {
                     autoHideEnabled = changes.autoHideEnabled.newValue;
                     if (autoHide) autoHide.cleanup();
+                    render();
+                }
+                if (changes.isSidePanelOpen !== undefined) {
+                    state.isSidePanelOpen = changes.isSidePanelOpen.newValue;
                     render();
                 }
             }
@@ -391,6 +396,13 @@
             document.documentElement.classList.remove('revived-sidebar-active');
             document.documentElement.style.removeProperty('--revived-sidebar-width');
             ah.setup();
+            return;
+        }
+
+        if (state.isSidePanelOpen) {
+            container.style.display = 'none';
+            document.documentElement.classList.remove('revived-sidebar-active');
+            document.documentElement.style.removeProperty('--revived-sidebar-width');
             return;
         }
 

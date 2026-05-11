@@ -14,7 +14,7 @@
     let sidepanelBlocklist = [];
     let autoHideEnabled = false;
     let currentTheme = null;
-    const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, PIN_HEADER_SVG, TEMP_HEADER_SVG, applyThemeStyles, AutoHideManager } = __SidebarRevived;
+    const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, applyThemeStyles, AutoHideManager } = __SidebarRevived;
 
     function init() {
         host = document.createElement('div');
@@ -106,287 +106,25 @@
         return autoHide;
     }
 
-    function makeDropZone() {
-        const z = document.createElement('div');
-        z.className = 'drop-indicator';
-        return z;
-    }
-
-    function makeSectionHeader(svg, isPinned) {
-        const el = document.createElement('div');
-        el.className = isPinned ? 'pinned-header' : 'temp-header';
-        el.style.cssText = `width: 32px; height: 32px; display: none; align-items: center; justify-content: center; color: var(--theme-font-color, inherit);`;
-        const inner = document.createElement('div');
-        inner.style.cssText = isPinned ? 'transform: rotate(45deg); display: flex;' : 'display: flex;';
-        inner.innerHTML = svg;
-        el.appendChild(inner);
-        return el;
-    }
-
-    let pinnedHeader, tempHeader, pinDivider, tempDivider;
-
-    function updateVisibility(isDragging = false) {
-        const pinnedPopulated = sites && sites.length > 0;
-        const tempPopulated = tempSites && tempSites.length > 0;
-
-        // Hide headers/icons unless dragging
-        if (pinnedHeader) pinnedHeader.style.display = isDragging ? 'flex' : 'none';
-        if (tempHeader) tempHeader.style.display = isDragging ? 'flex' : 'none';
-
-        // Dividers stay if dragging OR if the section is not empty
-        if (pinDivider) pinDivider.style.display = (isDragging || pinnedPopulated) ? 'block' : 'none';
-        if (tempDivider) tempDivider.style.display = (isDragging || tempPopulated) ? 'block' : 'none';
-    }
-
-    function onAnyDragStart() {
-        updateVisibility(true);
-    }
-
-    function onAnyDragEnd() {
-        updateVisibility(false);
-    }
-
-    function dropIntoSiteList(e, targetList, isTempList, isBeginning = false) {
-        try {
-            const data = JSON.parse(e.dataTransfer.getData('application/json'));
-            if (!data.id) return;
-            const sourceList = data.isTemp ? [...tempSites] : [...sites];
-            const targetArr = [...targetList];
-            const fromIndex = sourceList.findIndex(s => s.id === data.id);
-            if (fromIndex === -1) return;
-            const [moved] = sourceList.splice(fromIndex, 1);
-
-            if (isBeginning) {
-                targetArr.unshift(moved);
-            } else {
-                targetArr.push(moved);
-            }
-
-            if (data.isTemp !== isTempList) {
-                if (data.isTemp) {
-                    chrome.storage.local.set({ tempSites: sourceList, sites: targetArr });
-                } else {
-                    chrome.storage.local.set({ sites: sourceList, tempSites: targetArr });
-                }
-            } else {
-                chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: targetArr });
-            }
-        } catch (e) { }
-    }
-
-    function setupHeaderDropHandlers(header, indicator, isTempSection) {
-        const onHeaderDrop = (e) => {
-            e.preventDefault();
-            indicator.classList.remove('active');
-            const targetList = isTempSection ? (tempSites || []) : sites;
-            dropIntoSiteList(e, targetList, isTempSection, true);
-        };
-
-        header.ondragover = (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            indicator.classList.add('active');
-        };
-        header.ondragleave = () => indicator.classList.remove('active');
-        header.ondrop = onHeaderDrop;
-
-        indicator.ondrop = onHeaderDrop;
-    }
-
-    function makeEndDropZone(targetList, isTempList) {
-        const zone = makeDropZone();
-        zone.ondragover = (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            zone.classList.add('active');
-        };
-        zone.ondragenter = (e) => { e.preventDefault(); };
-        zone.ondragleave = () => { zone.classList.remove('active'); };
-        zone.ondrop = (e) => { e.preventDefault(); zone.classList.remove('active'); dropIntoSiteList(e, targetList, isTempList); };
-        return zone;
-    }
-
-    function renderSiteList(siteList, isTempList, headerElement = null) {
-        let firstIndicator = null;
-        siteList.forEach((site, index) => {
-            const dropIndicator = makeDropZone();
-            if (index === 0) firstIndicator = dropIndicator;
-            dropIndicator.ondragover = (e) => {
-                e.preventDefault();
-                dropIndicator.classList.add('active');
-            };
-            dropIndicator.ondragleave = () => {
-                dropIndicator.classList.remove('active');
-            };
-            dropIndicator.ondrop = (e) => {
-                e.preventDefault();
-                dropIndicator.classList.remove('active');
-                icon.ondrop(e);
-            };
-            sidebarContainer.appendChild(dropIndicator);
-
-            const icon = document.createElement('div');
-            icon.className = 'edge-sidebar-icon';
-            if (site.id === activeSiteId) {
-                icon.classList.add('active');
-            }
-            if (site.faviconUrl) {
-                icon.innerHTML = `<img src="${site.faviconUrl}" style="width: 20px; height: 20px; pointer-events: none;" />`;
-            } else {
-                icon.innerText = site.initial || site.title.charAt(0);
-            }
-            icon.title = site.title;
-
-            icon.onclick = () => {
-                chrome.storage.local.set({ activeSiteId: site.id });
-                chrome.runtime.sendMessage({ action: 'open_side_panel' });
-            };
-
-            const di = dropIndicator; // For closure
-
-            icon.draggable = true;
-            icon.ondragstart = (e) => {
-                e.dataTransfer.setData('application/json', JSON.stringify({ id: site.id, isTemp: isTempList }));
-                e.dataTransfer.effectAllowed = 'move';
-                icon.style.opacity = '0.5';
-                const btn = shadow.querySelector('.edge-sidebar-add-btn');
-                if (btn) {
-                    btn.classList.add('trash-mode');
-                    btn.innerHTML = TRASH_ICON_SVG;
-                }
-                setTimeout(() => onAnyDragStart(), 0);
-            };
-            icon.ondragend = () => {
-                icon.style.opacity = '1';
-                const btn = shadow.querySelector('.edge-sidebar-add-btn');
-                if (btn) {
-                    btn.classList.remove('trash-mode');
-                    btn.innerHTML = ADD_ICON_SVG;
-                }
-                onAnyDragEnd();
-            };
-            icon.ondragover = (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                di.classList.add('active');
-            };
-            icon.ondragleave = () => { di.classList.remove('active'); };
-            icon.ondrop = (e) => {
-                e.preventDefault();
-                di.classList.remove('active');
-                try {
-                    const data = JSON.parse(e.dataTransfer.getData('application/json'));
-                    if (data.id && data.id !== site.id) {
-                        const sourceList = data.isTemp ? [...tempSites] : [...sites];
-                        const targetList = isTempList ? [...tempSites] : [...sites];
-                        const fromIndex = sourceList.findIndex(s => s.id === data.id);
-                        if (fromIndex === -1) return;
-                        const [moved] = sourceList.splice(fromIndex, 1);
-
-                        if (data.isTemp !== isTempList) {
-                            const toIndex = targetList.findIndex(s => s.id === site.id);
-                            targetList.splice(toIndex, 0, moved);
-                            if (data.isTemp) {
-                                chrome.storage.local.set({ tempSites: sourceList, sites: targetList });
-                            } else {
-                                chrome.storage.local.set({ sites: sourceList, tempSites: targetList });
-                            }
-                        } else {
-                            let toIndex = sourceList.findIndex(s => s.id === site.id);
-                            if (fromIndex < toIndex) toIndex--;
-                            sourceList.splice(toIndex, 0, moved);
-                            chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: sourceList });
-                        }
-                    }
-                } catch (e) { }
-            };
-
-            sidebarContainer.appendChild(icon);
-        });
-
-        const endZone = makeEndDropZone(siteList, isTempList);
-        sidebarContainer.appendChild(endZone);
-        if (!firstIndicator) firstIndicator = endZone;
-
-        if (headerElement && firstIndicator) {
-            setupHeaderDropHandlers(headerElement, firstIndicator, isTempList);
-        }
-    }
-
     function populateIcons() {
-        sidebarContainer.innerHTML = '';
-
-        // === PINNED SECTION ===
-        pinnedHeader = makeSectionHeader(PIN_HEADER_SVG, true);
-        sidebarContainer.appendChild(pinnedHeader);
-        renderSiteList(sites, false, pinnedHeader);
-
-        pinDivider = document.createElement('div');
-        pinDivider.className = 'edge-sidebar-divider';
-        sidebarContainer.appendChild(pinDivider);
-
-        // === TEMP SECTION ===
-        tempHeader = makeSectionHeader(TEMP_HEADER_SVG, false);
-        sidebarContainer.appendChild(tempHeader);
-        renderSiteList(tempSites || [], true, tempHeader);
-
-        tempDivider = document.createElement('div');
-        tempDivider.className = 'edge-sidebar-divider';
-        sidebarContainer.appendChild(tempDivider);
-
-        updateVisibility(false);
-
-        const addBtn = document.createElement('div');
-        addBtn.className = 'edge-sidebar-add-btn';
-        addBtn.innerHTML = ADD_ICON_SVG;
-        addBtn.title = "Pin Current Tab";
-        addBtn.onclick = () => {
-            if (addBtn.classList.contains('trash-mode')) return;
-            chrome.runtime.sendMessage({ action: 'add_current_tab' });
-        };
-
-        addBtn.ondragover = (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            if (addBtn.classList.contains('trash-mode')) {
-                addBtn.classList.add('trash-hover');
+        __SidebarRevived.renderIconBar(sidebarContainer, {
+            sites: sites,
+            tempSites: tempSites || [],
+            activeSiteId: activeSiteId,
+            getSites: () => sites,
+            getTempSites: () => tempSites,
+            onSiteClick: (siteId) => {
+                chrome.storage.local.set({ activeSiteId: siteId });
+                chrome.runtime.sendMessage({ action: 'open_side_panel' });
+            },
+            onAddSite: () => {
+                chrome.runtime.sendMessage({ action: 'add_current_tab' });
+            },
+            onSettingsClick: () => {
+                chrome.storage.local.set({ isSettingsOpen: true });
+                chrome.runtime.sendMessage({ action: 'open_side_panel' });
             }
-        };
-        addBtn.ondragenter = (e) => { e.preventDefault(); };
-        addBtn.ondragleave = () => {
-            addBtn.classList.remove('trash-hover');
-        };
-        addBtn.ondrop = (e) => {
-            e.preventDefault();
-            addBtn.classList.remove('trash-hover');
-            if (addBtn.classList.contains('trash-mode')) {
-                try {
-                    const data = JSON.parse(e.dataTransfer.getData('application/json'));
-                    if (data.id) {
-                        if (data.isTemp) {
-                            const currentSites = tempSites.filter(s => s.id !== data.id);
-                            chrome.storage.local.set({ tempSites: currentSites });
-                        } else {
-                            const currentSites = sites.filter(s => s.id !== data.id);
-                            chrome.storage.local.set({ sites: currentSites });
-                        }
-                    }
-                } catch (evt) { }
-            }
-        };
-
-        sidebarContainer.appendChild(addBtn);
-
-        const settingsBtn = document.createElement('div');
-        settingsBtn.className = 'edge-sidebar-icon edge-sidebar-add-btn';
-        settingsBtn.title = "Settings";
-        settingsBtn.style.marginTop = 'auto';
-        settingsBtn.innerHTML = SETTINGS_ICON_SVG;
-        settingsBtn.onclick = () => {
-            chrome.storage.local.set({ isSettingsOpen: true });
-            chrome.runtime.sendMessage({ action: 'open_side_panel' });
-        };
-        sidebarContainer.appendChild(settingsBtn);
+        });
     }
 
     function render() {

@@ -22,6 +22,7 @@ const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, createSiteFromTab, appl
 
 const iconBar = document.getElementById('icon-bar');
 const contentArea = document.getElementById('content-area');
+let _selfChange = false;
 
 iconBar.ondragover = (e) => {
     e.preventDefault();
@@ -44,7 +45,6 @@ chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', '
     if (result.autoHideEnabled !== undefined) state.autoHideEnabled = result.autoHideEnabled;
     applyTheme();
     render();
-    chrome.storage.local.set({ isSidePanelOpen: true });
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
@@ -90,12 +90,90 @@ function render() {
         initCollapsibleSections();
         updateSettingsUI();
         return;
-    } else {
-        iconBar.style.display = 'flex';
-        const sp = document.getElementById('settings-panel');
-        if (sp) sp.style.display = 'none';
-        contentArea.style.display = state.activeSiteId ? 'flex' : 'none';
     }
+
+    iconBar.style.display = 'flex';
+    const sp = document.getElementById('settings-panel');
+    if (sp) sp.style.display = 'none';
+
+    const wasSelfChange = _selfChange;
+    _selfChange = false;
+
+    const inPageActive = state.activeSiteId && !wasSelfChange;
+    const note = document.getElementById('inpage-sidebar-note');
+    if (note) note.style.display = inPageActive ? 'flex' : 'none';
+    contentArea.style.display = (!inPageActive && state.activeSiteId) ? 'flex' : 'none';
+
+    const iconBarOptions = {
+        sites: state.sites,
+        tempSites: state.tempSites || [],
+        activeSiteId: state.activeSiteId,
+        getSites: () => state.sites,
+        getTempSites: () => state.tempSites,
+        onSiteClick: (siteId, site) => {
+            _selfChange = true;
+            chrome.storage.local.set({ activeSiteId: (state.activeSiteId === siteId ? null : siteId) });
+            if (!state.currentUrls[siteId]) {
+                state.currentUrls[siteId] = site.url;
+                chrome.storage.local.set({ currentUrls: state.currentUrls });
+            }
+        },
+        onAddSite: () => {
+            chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+                const tab = tabs[0];
+                if (tab && tab.url && tab.url.startsWith('http')) {
+                    const newSite = createSiteFromTab(tab);
+                    chrome.storage.local.set({ sites: [...state.sites, newSite] });
+                } else {
+                    alert("Cannot pin browser internal pages. Please open a regular website.");
+                }
+            });
+        },
+        onSettingsClick: () => {
+            chrome.storage.local.set({ isSettingsOpen: true });
+        },
+        getIconOpacity: (site) => (site.id === state.activeSiteId || document.getElementById('iframe-' + site.id)) ? '1' : '0.5'
+    };
+
+    __SidebarRevived.renderIconBar(iconBar, iconBarOptions);
+
+    if (inPageActive) return;
+
+    // Content Area: Persistent Multi-Iframe state
+    if (state.activeSiteId) {
+        contentArea.classList.add('active');
+        const activeSite = state.sites.find(s => s.id === state.activeSiteId) || (state.tempSites && state.tempSites.find(s => s.id === state.activeSiteId));
+        if (activeSite) {
+            document.title = activeSite.title;
+
+            let targetIframe = document.getElementById('iframe-' + activeSite.id);
+
+            const allIframes = document.querySelectorAll('.app-frame-instance');
+            allIframes.forEach(f => f.style.display = 'none');
+
+            if (!targetIframe) {
+                targetIframe = document.createElement('iframe');
+                targetIframe.id = 'iframe-' + activeSite.id;
+                targetIframe.className = 'app-frame-instance';
+                targetIframe.style.flex = '1';
+                targetIframe.style.border = 'none';
+                targetIframe.style.width = '100%';
+                targetIframe.style.height = '100%';
+                targetIframe.allow = "camera; microphone; geolocation; clipboard-read; clipboard-write; autoplay; fullscreen";
+                targetIframe.src = activeSite.url;
+                contentArea.appendChild(targetIframe);
+            } else {
+                targetIframe.style.display = 'block';
+            }
+
+            const defaultIframe = document.getElementById('app-frame');
+            if (defaultIframe) defaultIframe.remove();
+        }
+    } else {
+        contentArea.classList.remove('active');
+        document.title = "Sidebar";
+    }
+}
 
     iconBar.innerHTML = '';
 
