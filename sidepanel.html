@@ -13,6 +13,35 @@
       <iframe id="app-frame"
         allow="camera; microphone; geolocation; clipboard-read; clipboard-write; autoplay; fullscreen"></iframe>
     </div>
+    <div id="settings-panel" style="display: none;">
+      <div class="settings-header">
+        <button id="settings-back-btn">&larr; Back</button>
+        <h2>Theme Settings</h2>
+      </div>
+      <div class="settings-form">
+        <label>
+          <span>Font Color <small id="val-font-color"></small></span>
+          <input type="color" id="theme-font-color" />
+        </label>
+        <label>
+          <span>Sidebar Background <small id="val-sidebar-bg"></small></span>
+          <input type="color" id="theme-sidebar-bg" />
+        </label>
+        <label>
+          <span>Divider Color <small id="val-divider-bg"></small></span>
+          <input type="color" id="theme-divider-bg" />
+        </label>
+        <label>
+          <span>Accent Color <small id="val-accent-color"></small></span>
+          <input type="color" id="theme-accent-color" />
+        </label>
+        <div class="settings-actions">
+          <button id="export-theme-btn">Export JSON</button>
+          <button id="import-theme-btn">Import JSON</button>
+          <input type="file" id="import-theme-file" style="display:none" accept=".json" />
+        </div>
+      </div>
+    </div>
   </div>
   <script src="sidepanel.js"></script>
 </body>

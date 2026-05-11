@@ -13,7 +13,7 @@
 #revived-idle-sidebar {
     width: 100%;
     height: 100%;
-    background: rgba(243, 243, 243, 0.95);
+    background: var(--theme-sidebar-bg, rgba(243, 243, 243, 0.95));
     backdrop-filter: blur(10px);
     border-left: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
@@ -36,29 +36,36 @@
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    color: inherit;
+    color: var(--theme-font-color, inherit);
     font-weight: 600;
     font-size: 14px;
     user-select: none;
     background-color: transparent !important;
-    transition: background-color 0.1s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .edge-sidebar-icon:hover {
     background-color: rgba(128, 128, 128, 0.3) !important;
 }
 
+.edge-sidebar-icon.active {
+    background-color: rgba(128, 128, 128, 0.1) !important;
+    outline: 2px solid var(--theme-accent-color, #0078D4);
+    outline-offset: -2px;
+    box-sizing: border-box;
+}
+
 .edge-sidebar-divider {
     width: 24px;
     height: 1px;
-    background: #ccc;
+    background: var(--theme-divider-bg, #ccc);
     margin: 4px 0;
     /* reduced */
 }
 
 .edge-sidebar-add-btn {
-    width: 48px;
-    height: 48px;
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
     background: transparent !important;
     display: flex;
@@ -66,7 +73,7 @@
     align-items: center;
     cursor: pointer;
     font-size: 20px;
-    color: white;
+    color: var(--theme-font-color, white);
     position: relative;
     transition: background-color 0.1s, transform 0.1s;
     pointer-events: auto;
@@ -81,24 +88,41 @@
 }
 
 .edge-sidebar-add-btn.trash-hover {
-    background-color: #0078D7 !important;
+    background-color: transparent !important;
 }
 
 .edge-sidebar-add-btn.trash-hover>svg {
     opacity: 0;
-    transform: scale(0.5);
-    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.edge-sidebar-add-btn.trash-hover::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    width: 48px;
+    height: 48px;
+    background-color: var(--theme-accent-color, #0078D7);
+    opacity: 0.15;
+    border-radius: 10px;
+    z-index: -1;
+    animation: morph-to-square 0.15s cubic-bezier(0.2, 0, 0, 1) forwards;
+    transition: all 0.2s ease;
 }
 
 .edge-sidebar-add-btn.trash-hover::after {
     content: '';
     position: absolute;
-    width: 40px;
-    height: 40px;
-    border: 2px dashed white;
+    top: -6px;
+    left: -6px;
+    width: 44px;
+    height: 44px;
+    border: 2px dashed var(--theme-accent-color, #0078D7);
     border-radius: 8px;
     box-sizing: border-box;
-    animation: morph-to-square 0.2s cubic-bezier(0.2, 0, 0, 1) forwards;
+    pointer-events: none;
+    z-index: 1;
+    transition: all 0.2s ease;
 }
 
 @keyframes morph-to-square {
@@ -141,7 +165,7 @@
     left: 0;
     width: 100%;
     height: 2px;
-    background-color: #0078D7;
+    background-color: var(--theme-accent-color, #0078D7);
     border-radius: 2px;
     opacity: 0;
     transition: opacity 0.2s;
@@ -158,11 +182,11 @@
 
 @media (prefers-color-scheme: dark) {
     #revived-idle-sidebar {
-        background: rgba(43, 43, 43, 0.95);
+        background: var(--theme-sidebar-bg, rgba(43, 43, 43, 0.95));
         border-left: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .edge-sidebar-divider {
-        background: #555;
+        background: var(--theme-divider-bg, #555);
     }
 }

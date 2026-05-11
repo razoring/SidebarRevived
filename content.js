@@ -35,13 +35,16 @@
         --revived-sidebar-width: 48px;
         margin-right: var(--revived-sidebar-width, 48px) !important;
         width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
-        box-sizing: border-box !important;
-        transition: margin-right 0.1s ease, width 0.1s ease;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
       }
-      #masthead-container, ytd-app, header, .fixed, [style*="position: fixed"] {
-        right: var(--revived-sidebar-width) !important;
-        left: 0 !important;
-        width: auto !important;
+      body {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+      body > * {
+        max-width: 100% !important;
+        min-width: 0 !important;
       }
     `;
         document.documentElement.appendChild(style);
@@ -182,9 +185,7 @@
         state.sites.forEach(site => {
             const icon = document.createElement('div');
             icon.className = 'edge-sidebar-icon';
-            if (site.id === state.activeSiteId) {
-                icon.classList.add('active-icon');
-            }
+
             icon.style.backgroundColor = site.color || '#333';
             icon.innerText = site.initial || site.title.charAt(0);
             icon.title = site.title;
