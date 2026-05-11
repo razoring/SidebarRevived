@@ -35,15 +35,16 @@
         styleElement = document.createElement('style');
         styleElement.textContent = `
       html.revived-sidebar-idle-active {
-        margin-right: 48px !important;
-        overflow-x: hidden !important;
-        box-sizing: border-box !important;
+        margin-right: 0 !important;
+        overflow: hidden !important;
       }
       html.revived-sidebar-idle-active body {
         width: 100vw !important;
         max-width: calc(100vw - 48px) !important;
+        height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
         transform: translateX(0) !important; /* CRITICAL for position:fixed inside body */
-        min-height: 100vh !important;
         box-sizing: border-box !important;
       }
       #revived-idle-sidebar-host {
