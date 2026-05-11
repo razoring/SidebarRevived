@@ -75,7 +75,7 @@
             if (theme.accentColor) el.style.setProperty('--theme-accent-color', theme.accentColor);
             if (theme.panelOpacity !== undefined) {
                 el.style.setProperty('--theme-panel-opacity', theme.panelOpacity);
-                const alpha = 0.1 + theme.panelOpacity * 0.75;
+                const alpha = Math.max(0.05, theme.panelOpacity);
                 const bg = theme.sidebarBackground || '#38393c';
                 const rgb = S.hexToRgb(bg);
                 const rgba = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
@@ -167,8 +167,8 @@
                     if (edgeDist > panelWidth + this.leaveThresholdOffset) {
                         if (!this.leaveTimer) {
                             this.leaveTimer = setTimeout(() => {
-                                this.onHideBar();
                                 this.triggered = false;
+                                this.onHideBar();
                             }, 500);
                         }
                     } else {
@@ -183,8 +183,8 @@
                         if (!this.timer) {
                             this.timer = setTimeout(() => {
                                 this.hideIndicator();
-                                this.onShowBar();
                                 this.triggered = true;
+                                this.onShowBar();
                                 this.timer = null;
                             }, 1000);
                         }

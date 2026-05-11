@@ -214,6 +214,11 @@
                     state.activeSiteId = changes.activeSiteId.newValue;
                     render();
                 }
+                if (changes.customTheme !== undefined) {
+                    state.customTheme = changes.customTheme.newValue;
+                    applyTheme();
+                    render();
+                }
             }
         });
 
@@ -333,7 +338,6 @@
         if (currentTheme) SR.applyThemeStyles(host, currentTheme);
         populateIcons();
         container.style.display = '';
-        document.documentElement.classList.add('revived-sidebar-active');
 
         const isFullSidebar = state.activeSiteId && state.activeSiteOwner === 'inpage';
 
@@ -353,8 +357,16 @@
             contentArea.classList.remove('active');
         }
 
-        const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
-        document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+        // Overlay vs Offset logic
+        // If autohide is enabled, we never offset (always overlay).
+        if (autoHideEnabled) {
+            document.documentElement.classList.remove('revived-sidebar-active');
+            document.documentElement.style.removeProperty('--revived-sidebar-width');
+        } else {
+            document.documentElement.classList.add('revived-sidebar-active');
+            const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
+            document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+        }
     }
 
     if (document.readyState === 'loading') {
