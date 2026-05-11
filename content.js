@@ -12,13 +12,6 @@
     let resizer = null;
     let isResizing = false;
     let autoHideEnabled = false;
-    let autoHideTimer = null;
-    let autoHideLeaveTimer = null;
-    let autoHideMouseHandler = null;
-    let autoHideIndicator = null;
-    let autoHideTriggered = false;
-    let autoHideAccentColor = '#b2d7ef';
-    const AUTO_HIDE_TRIGGER_ZONE = 20;
 
     let state = {
         sites: [],
@@ -29,33 +22,12 @@
         customTheme: null
     };
 
+    const SR = __SidebarRevived;
+
     function applyTheme() {
-        if (state.customTheme) {
-            const theme = state.customTheme;
-            if (theme.fontColor) host.style.setProperty('--theme-font-color', theme.fontColor);
-            if (theme.sidebarBackground) host.style.setProperty('--theme-sidebar-bg', theme.sidebarBackground);
-            if (theme.dividerBackground) host.style.setProperty('--theme-divider-bg', theme.dividerBackground);
-            if (theme.accentColor) {
-                host.style.setProperty('--theme-accent-color', theme.accentColor);
-                autoHideAccentColor = theme.accentColor;
-            }
-            if (theme.panelOpacity !== undefined) {
-                const alpha = 0.1 + theme.panelOpacity * 0.75;
-                const bg = theme.sidebarBackground || '#38393c';
-                const h = bg.replace('#', '');
-                const rgb = { r: parseInt(h.substring(0, 2), 16), g: parseInt(h.substring(2, 4), 16), b: parseInt(h.substring(4, 6), 16) };
-                const rgba = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
-                host.style.setProperty('--theme-sidebar-bg-rgba', rgba);
-            }
-            if (theme.accentColor) {
-                const h2 = theme.accentColor.replace('#', '');
-                const ar = { r: parseInt(h2.substring(0, 2), 16), g: parseInt(h2.substring(2, 4), 16), b: parseInt(h2.substring(4, 6), 16) };
-                host.style.setProperty('--theme-accent-color-rgba', `rgba(${ar.r},${ar.g},${ar.b},0.5)`);
-            }
-            if (theme.panelBlur !== undefined) host.style.setProperty('--theme-panel-blur', theme.panelBlur + 'px');
-        }
-        if (autoHideIndicator && autoHideIndicator.parentElement) {
-            autoHideIndicator.style.background = `linear-gradient(to left, ${autoHideAccentColor}, transparent)`;
+        SR.applyThemeStyles(host, state.customTheme);
+        if (state.customTheme?.accentColor && autoHide) {
+            autoHide.updateAccentColor(state.customTheme.accentColor);
         }
     }
 
@@ -218,14 +190,14 @@
             if (namespace === 'local') {
                 if (changes.autoHideEnabled !== undefined) {
                     autoHideEnabled = changes.autoHideEnabled.newValue;
-                    cleanupAutoHide();
+                    if (autoHide) autoHide.cleanup();
                     render();
                 }
             }
         });
 
         setInterval(() => {
-            if (autoHideEnabled && !autoHideTriggered) return;
+            if (autoHideEnabled && autoHide && !autoHide.triggered) return;
             const blocked = isSidepanelBlocked() && !state.activeSiteId;
             const totalWidth = blocked ? 0 : (48 + (state.activeSiteId ? state.sidebarWidth : 0));
             document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
@@ -245,125 +217,37 @@
         // This is expensive if done every frame, but we do it conditionally or on interval
     }
 
-    function showAutoHideBar() {
-        populateIcons();
-        container.style.display = '';
-        if (state.activeSiteId) {
-            contentArea.classList.add('active');
-            contentArea.style.width = state.sidebarWidth + 'px';
-            const activeSite = state.sites.find(s => s.id === state.activeSiteId);
-            if (activeSite) {
-                headerTitle.innerText = activeSite.title;
-                iframe.name = 'revived-sidebar-iframe-' + activeSite.id;
-                const targetUrl = (state.currentUrls && state.currentUrls[activeSite.id]) || activeSite.url;
-                if (iframe.src !== targetUrl) {
-                    iframe.src = targetUrl;
-                }
-            }
-        } else {
-            contentArea.classList.remove('active');
-        }
-    }
+    let autoHide = null;
 
-    function hideAutoHideBar() {
-        container.style.display = 'none';
-        if (autoHideLeaveTimer) {
-            clearTimeout(autoHideLeaveTimer);
-            autoHideLeaveTimer = null;
-        }
-    }
-
-    function setupAutoHide() {
-        cleanupAutoHide();
-        autoHideTriggered = false;
-        autoHideMouseHandler = (e) => {
-            const edgeDist = window.innerWidth - e.clientX;
-            const panelWidth = 48 + (state.activeSiteId ? state.sidebarWidth : 0);
-
-            if (autoHideTriggered) {
-                if (edgeDist > panelWidth + 10) {
-                    if (!autoHideLeaveTimer) {
-                        autoHideLeaveTimer = setTimeout(() => {
-                            hideAutoHideBar();
-                            autoHideTriggered = false;
-                        }, 500);
+    function getAutoHide() {
+        if (!autoHide) {
+            autoHide = new SR.AutoHideManager({
+                onShowBar: () => {
+                    populateIcons();
+                    container.style.display = '';
+                    if (state.activeSiteId) {
+                        contentArea.classList.add('active');
+                        contentArea.style.width = state.sidebarWidth + 'px';
+                        const activeSite = state.sites.find(s => s.id === state.activeSiteId);
+                        if (activeSite) {
+                            headerTitle.innerText = activeSite.title;
+                            iframe.name = 'revived-sidebar-iframe-' + activeSite.id;
+                            const targetUrl = (state.currentUrls && state.currentUrls[activeSite.id]) || activeSite.url;
+                            if (iframe.src !== targetUrl) {
+                                iframe.src = targetUrl;
+                            }
+                        }
+                    } else {
+                        contentArea.classList.remove('active');
                     }
-                } else {
-                    if (autoHideLeaveTimer) {
-                        clearTimeout(autoHideLeaveTimer);
-                        autoHideLeaveTimer = null;
-                    }
-                }
-            } else {
-                if (edgeDist <= AUTO_HIDE_TRIGGER_ZONE) {
-                    showAutoHideIndicator();
-                    if (!autoHideTimer) {
-                        autoHideTimer = setTimeout(() => {
-                            hideAutoHideIndicator();
-                            showAutoHideBar();
-                            autoHideTriggered = true;
-                            autoHideTimer = null;
-                        }, 1000);
-                    }
-                } else {
-                    if (autoHideTimer) {
-                        clearTimeout(autoHideTimer);
-                        autoHideTimer = null;
-                        hideAutoHideIndicator();
-                    }
-                }
-            }
-        };
-        document.addEventListener('mousemove', autoHideMouseHandler);
-    }
-
-    function cleanupAutoHide() {
-        if (autoHideMouseHandler) {
-            document.removeEventListener('mousemove', autoHideMouseHandler);
-            autoHideMouseHandler = null;
+                },
+                onHideBar: () => { container.style.display = 'none'; },
+                getPanelWidth: () => 48 + (state.activeSiteId ? state.sidebarWidth : 0),
+                getAccentColor: () => '#b2d7ef',
+                leaveThresholdOffset: 10
+            });
         }
-        if (autoHideTimer) {
-            clearTimeout(autoHideTimer);
-            autoHideTimer = null;
-        }
-        if (autoHideLeaveTimer) {
-            clearTimeout(autoHideLeaveTimer);
-            autoHideLeaveTimer = null;
-        }
-        hideAutoHideIndicator();
-        autoHideTriggered = false;
-    }
-
-    function ensureIndicator() {
-        if (!autoHideIndicator || !autoHideIndicator.parentElement) {
-            autoHideIndicator = document.createElement('div');
-            autoHideIndicator.id = 'revived-auto-hide-indicator';
-            document.documentElement.appendChild(autoHideIndicator);
-        }
-        autoHideIndicator.style.cssText = `
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: 20px;
-            height: 100vh;
-            z-index: 2147483646;
-            pointer-events: none;
-            background: linear-gradient(to left, ${autoHideAccentColor}, transparent);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        `;
-        return autoHideIndicator;
-    }
-
-    function showAutoHideIndicator() {
-        const el = ensureIndicator();
-        requestAnimationFrame(() => { el.style.opacity = '0.6'; });
-    }
-
-    function hideAutoHideIndicator() {
-        if (autoHideIndicator && autoHideIndicator.parentElement) {
-            autoHideIndicator.style.opacity = '0';
-        }
+        return autoHide;
     }
 
     function populateIcons() {
@@ -440,7 +324,8 @@
     function render() {
         if (!container) return;
 
-        cleanupAutoHide();
+        const ah = getAutoHide();
+        ah.cleanup();
 
         const blocked = isSidepanelBlocked() && !state.activeSiteId;
 
@@ -451,11 +336,11 @@
             return;
         }
 
-        if (autoHideEnabled && !autoHideTriggered) {
+        if (autoHideEnabled && !ah.triggered) {
             container.style.display = 'none';
             document.documentElement.classList.remove('revived-sidebar-active');
             document.documentElement.style.removeProperty('--revived-sidebar-width');
-            setupAutoHide();
+            ah.setup();
             return;
         }
 

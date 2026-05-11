@@ -1,3 +1,5 @@
+importScripts('shared.js');
+
 let openSidePanels = 0;
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -7,14 +9,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     activeSiteId: null,
     isSidePanelOpen: false,
     autoHideEnabled: false,
-    customTheme: {
-      fontColor: '#ffffff',
-      sidebarBackground: '#38393c',
-      dividerBackground: '#555555',
-      accentColor: '#b2d7ef',
-      panelOpacity: 1,
-      panelBlur: 0
-    }
+    customTheme: __SidebarRevived.THEME_DEFAULTS
   };
 
   chrome.storage.local.get(Object.keys(defaults), (result) => {
@@ -41,7 +36,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     if (!tab.url || !tab.url.startsWith('http')) continue;
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ['content.js', 'content_idle.js']
+      files: ['shared.js', 'content.js', 'content_idle.js']
     }).catch(() => { });
 
     chrome.scripting.insertCSS({
@@ -58,16 +53,7 @@ chrome.storage.local.set({ isSidePanelOpen: false });
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "send_to_sidebar") {
     if (tab && tab.url && tab.url.startsWith('http')) {
-      const title = tab.title || new URL(tab.url).hostname.replace('www.', '');
-      const faviconUrl = tab.favIconUrl || `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(tab.url)}`;
-      const newSite = {
-        id: 'site_' + Date.now(),
-        title: title,
-        url: tab.url,
-        faviconUrl: faviconUrl,
-        color: '#f0f0f0',
-        initial: title.charAt(0).toUpperCase()
-      };
+      const newSite = __SidebarRevived.createSiteFromTab(tab);
       // Force sidepanel open first
       chrome.sidePanel.open({ windowId: tab.windowId }).then(() => {
         chrome.storage.local.get(['tempSites'], (result) => {
@@ -94,16 +80,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
       const tab = tabs[0];
       if (tab && tab.url && tab.url.startsWith('http')) {
-        const title = tab.title || new URL(tab.url).hostname.replace('www.', '');
-        const faviconUrl = tab.favIconUrl || `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(tab.url)}`;
-        const newSite = {
-          id: 'site_' + Date.now(),
-          title: title,
-          url: tab.url,
-          faviconUrl: faviconUrl,
-          color: '#f0f0f0',
-          initial: title.charAt(0).toUpperCase()
-        };
+        const newSite = __SidebarRevived.createSiteFromTab(tab);
         chrome.storage.local.get(['sites'], (result) => {
           chrome.storage.local.set({ sites: [...(result.sites || []), newSite] });
         });
