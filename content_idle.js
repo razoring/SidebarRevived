@@ -18,6 +18,7 @@
     function init() {
         host = document.createElement('div');
         host.id = 'revived-idle-sidebar-host';
+        applyThemeStyles(host, __SidebarRevived.getThemeDefaults());
         shadow = host.attachShadow({ mode: 'closed' });
 
         // Load styles into shadow DOM

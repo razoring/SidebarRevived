@@ -18,7 +18,7 @@ let state = {
     autoHideEnabled: false
 };
 
-const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, createSiteFromTab, applyThemeStyles, THEME_DEFAULTS } = __SidebarRevived;
+const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, createSiteFromTab, applyThemeStyles, getThemeDefaults } = __SidebarRevived;
 
 const iconBar = document.getElementById('icon-bar');
 const contentArea = document.getElementById('content-area');
@@ -563,6 +563,5 @@ document.getElementById('import-theme-file').addEventListener('change', (e) => {
 });
 
 document.getElementById('reset-theme-btn').addEventListener('click', () => {
-    const defaults = THEME_DEFAULTS;
-    chrome.storage.local.set({ customTheme: defaults });
+    chrome.storage.local.set({ customTheme: getThemeDefaults() });
 });

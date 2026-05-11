@@ -74,6 +74,7 @@
         // Create Shadow Host
         host = document.createElement('div');
         host.id = 'revived-edge-sidebar-host';
+        SR.applyThemeStyles(host, SR.getThemeDefaults());
         host.style.position = 'fixed';
         host.style.top = '0';
         host.style.right = '0';

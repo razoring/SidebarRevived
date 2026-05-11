@@ -11,13 +11,36 @@
 
     // ============ DEFAULT THEME ============
 
-    S.THEME_DEFAULTS = {
-        fontColor: '#ffffff',
-        sidebarBackground: '#38393c',
-        dividerBackground: '#555555',
-        accentColor: '#b2d7ef',
-        panelOpacity: 1,
-        panelBlur: 0
+    S.detectBrowserState = function () {
+        const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+        return {
+            isEdge: ua.includes('Edg'),
+            isDark: typeof matchMedia !== 'undefined'
+                ? matchMedia('(prefers-color-scheme: dark)').matches
+                : true
+        };
+    };
+
+    S.getThemeDefaults = function () {
+        const { isEdge, isDark } = S.detectBrowserState();
+        if (isEdge) {
+            return {
+                fontColor: isDark ? '#ffffff' : '#1a1a1a',
+                sidebarBackground: isDark ? '#3b3b3b' : '#dddfe2',
+                dividerBackground: isDark ? '#555555' : '#c0c0c0',
+                accentColor: isDark ? '#b2d7ef' : '#0078d7',
+                panelOpacity: 1,
+                panelBlur: 0
+            };
+        }
+        return {
+            fontColor: isDark ? '#ffffff' : '#1a1a1a',
+            sidebarBackground: isDark ? '#3c3c3c' : '#ffffff',
+            dividerBackground: isDark ? '#555555' : '#c0c0c0',
+            accentColor: isDark ? '#b2d7ef' : '#0078d7',
+            panelOpacity: 1,
+            panelBlur: 0
+        };
     };
 
     // ============ UTILITY FUNCTIONS ============

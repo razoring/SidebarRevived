@@ -9,7 +9,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     activeSiteId: null,
     isSidePanelOpen: false,
     autoHideEnabled: false,
-    customTheme: __SidebarRevived.THEME_DEFAULTS
+    customTheme: __SidebarRevived.getThemeDefaults()
   };
 
   await new Promise(resolve => {
