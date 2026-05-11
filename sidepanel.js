@@ -36,6 +36,7 @@ chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', '
     if (result.autoHideEnabled !== undefined) state.autoHideEnabled = result.autoHideEnabled;
     applyTheme();
     render();
+    chrome.storage.local.set({ isSidePanelOpen: true });
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
@@ -90,7 +91,38 @@ function render() {
 
     iconBar.innerHTML = '';
 
-    // Render site icons using helper
+    function dropIntoSiteList(e, targetList, isTempList) {
+        try {
+            const data = JSON.parse(e.dataTransfer.getData('application/json'));
+            if (!data.id) return;
+            const sourceList = data.isTemp ? [...state.tempSites] : [...state.sites];
+            const targetArr = [...targetList];
+            const fromIndex = sourceList.findIndex(s => s.id === data.id);
+            if (fromIndex === -1) return;
+            const [moved] = sourceList.splice(fromIndex, 1);
+            targetArr.push(moved);
+
+            if (data.isTemp !== isTempList) {
+                if (data.isTemp) {
+                    chrome.storage.local.set({ tempSites: sourceList, sites: targetArr });
+                } else {
+                    chrome.storage.local.set({ sites: sourceList, tempSites: targetArr });
+                }
+            } else {
+                chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: targetArr });
+            }
+        } catch (e) { }
+    }
+
+    function makeEndDropZone(targetList, isTempList) {
+        const zone = document.createElement('div');
+        zone.className = 'drop-indicator';
+        zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('active'); };
+        zone.ondragleave = () => { zone.classList.remove('active'); };
+        zone.ondrop = (e) => { e.preventDefault(); zone.classList.remove('active'); dropIntoSiteList(e, targetList, isTempList); };
+        return zone;
+    }
+
     function renderSiteList(siteList, isTempList) {
         siteList.forEach(site => {
             const icon = document.createElement('div');
@@ -177,21 +209,19 @@ function render() {
             iconBar.appendChild(icon);
         });
 
-        if (siteList.length > 0) {
-            const finalDropIndicator = document.createElement('div');
-            finalDropIndicator.className = 'drop-indicator';
-            iconBar.appendChild(finalDropIndicator);
-        }
+        iconBar.appendChild(makeEndDropZone(siteList, isTempList));
     }
 
     renderSiteList(state.sites, false);
 
-    if (state.tempSites && state.tempSites.length > 0) {
+    if (state.sites.length > 0 && state.tempSites?.length > 0) {
         const groupDivider = document.createElement('div');
         groupDivider.className = 'edge-sidebar-divider';
+        groupDivider.style.pointerEvents = 'none';
         iconBar.appendChild(groupDivider);
-        renderSiteList(state.tempSites, true);
     }
+
+    renderSiteList(state.tempSites || [], true);
 
     const divider = document.createElement('div');
     divider.className = 'edge-sidebar-divider';

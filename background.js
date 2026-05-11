@@ -12,16 +12,20 @@ chrome.runtime.onInstalled.addListener(async () => {
     customTheme: __SidebarRevived.THEME_DEFAULTS
   };
 
-  chrome.storage.local.get(Object.keys(defaults), (result) => {
-    const toSet = {};
-    for (const key in defaults) {
-      if (result[key] === undefined) {
-        toSet[key] = defaults[key];
+  await new Promise(resolve => {
+    chrome.storage.local.get(Object.keys(defaults), (result) => {
+      const toSet = {};
+      for (const key in defaults) {
+        if (result[key] === undefined) {
+          toSet[key] = defaults[key];
+        }
       }
-    }
-    if (Object.keys(toSet).length > 0) {
-      chrome.storage.local.set(toSet);
-    }
+      if (Object.keys(toSet).length > 0) {
+        chrome.storage.local.set(toSet, resolve);
+      } else {
+        resolve();
+      }
+    });
   });
 
   chrome.contextMenus.create({

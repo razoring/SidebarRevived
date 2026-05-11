@@ -12,6 +12,7 @@
     let scrollBlocklist = [];
     let sidepanelBlocklist = [];
     let autoHideEnabled = false;
+    let currentTheme = null;
     const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, applyThemeStyles, AutoHideManager } = __SidebarRevived;
 
     function init() {
@@ -44,7 +45,8 @@
             sidepanelBlocklist = result.sidepanelBlocklist || [];
             if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
             if (result.customTheme) {
-                applyTheme(result.customTheme);
+                currentTheme = result.customTheme;
+                applyTheme(currentTheme);
             }
             render();
         });
@@ -55,7 +57,10 @@
                 if (changes.sites) sites = changes.sites.newValue;
                 if (changes.isSidePanelOpen) isSidePanelOpen = changes.isSidePanelOpen.newValue;
                 if (changes.activeSiteId) activeSiteId = changes.activeSiteId.newValue;
-                if (changes.customTheme) applyTheme(changes.customTheme.newValue);
+                if (changes.customTheme) {
+                    currentTheme = changes.customTheme.newValue;
+                    applyTheme(currentTheme);
+                }
                 if (changes.scrollBlocklist) scrollBlocklist = changes.scrollBlocklist.newValue;
                 if (changes.sidepanelBlocklist) sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
                 if (changes.autoHideEnabled !== undefined) {
@@ -92,7 +97,7 @@
         return autoHide;
     }
 
-    function renderSiteList(siteList, isTempList) {
+    function renderSiteList(siteList) {
         siteList.forEach(site => {
             const icon = document.createElement('div');
             icon.className = 'edge-sidebar-icon';
@@ -114,7 +119,7 @@
 
             icon.draggable = true;
             icon.ondragstart = (e) => {
-                e.dataTransfer.setData('application/json', JSON.stringify({ id: site.id, isTemp: isTempList }));
+                e.dataTransfer.setData('application/json', JSON.stringify({ id: site.id, isTemp: false }));
                 icon.style.opacity = '0.5';
                 const btn = shadow.querySelector('.edge-sidebar-add-btn');
                 if (btn) {
@@ -138,21 +143,14 @@
             icon.ondrop = (e) => {
                 e.preventDefault();
                 dropIndicator.classList.remove('active');
-                try {
-                    const data = JSON.parse(e.dataTransfer.getData('application/json'));
-                    if (data.id && data.id !== site.id) {
-                    }
-                } catch (evt) { }
             };
 
             sidebarContainer.appendChild(icon);
         });
 
-        if (siteList.length > 0) {
-            const finalDropIndicator = document.createElement('div');
-            finalDropIndicator.className = 'drop-indicator';
-            sidebarContainer.appendChild(finalDropIndicator);
-        }
+        const finalDropIndicator = document.createElement('div');
+        finalDropIndicator.className = 'drop-indicator';
+        sidebarContainer.appendChild(finalDropIndicator);
     }
 
     function populateIcons() {
@@ -229,6 +227,7 @@
             return;
         }
 
+        if (currentTheme) applyTheme(currentTheme);
         host.style.display = 'block';
         document.documentElement.classList.add('revived-sidebar-idle-active');
 

@@ -80,7 +80,7 @@ html {
     height: 1px;
     background: var(--theme-divider-bg, #d4d4d4);
     margin: 4px 0;
-    /* reduced from 10px to minimize gap */
+    pointer-events: none;
 }
 
 .edge-sidebar-add-btn {

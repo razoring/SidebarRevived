@@ -57,7 +57,7 @@
     height: 1px;
     background: var(--theme-divider-bg, #ccc);
     margin: 4px 0;
-    /* reduced */
+    pointer-events: none;
 }
 
 .edge-sidebar-add-btn {

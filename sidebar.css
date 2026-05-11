@@ -129,6 +129,7 @@
     height: 1px;
     background: #ccc;
     margin: 10px 0;
+    pointer-events: none;
 }
 
 .edge-sidebar-add-btn {

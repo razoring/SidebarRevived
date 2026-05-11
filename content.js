@@ -23,11 +23,13 @@
     };
 
     const SR = __SidebarRevived;
+    let currentTheme = null;
 
     function applyTheme() {
-        SR.applyThemeStyles(host, state.customTheme);
-        if (state.customTheme?.accentColor && autoHide) {
-            autoHide.updateAccentColor(state.customTheme.accentColor);
+        currentTheme = state.customTheme;
+        SR.applyThemeStyles(host, currentTheme);
+        if (currentTheme?.accentColor && autoHide) {
+            autoHide.updateAccentColor(currentTheme.accentColor);
         }
     }
 
@@ -348,6 +350,7 @@
     }
 
     function renderInternal() {
+        if (currentTheme) SR.applyThemeStyles(host, currentTheme);
         populateIcons();
         container.style.display = '';
         document.documentElement.classList.add('revived-sidebar-active');
