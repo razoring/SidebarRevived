@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Sidebar Revived",
+  "version": "2.0",
+  "description": "True single-instance Edge Sidebar clone via chrome.sidePanel API for persistent VM-like state.",
+  "permissions": [
+    "storage",
+    "declarativeNetRequest",
+    "sidePanel"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content_idle.js"
+      ],
+      "css": [
+        "content_idle.css"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Click to open sidebar"
+  }
+}
