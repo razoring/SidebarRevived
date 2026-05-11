@@ -115,9 +115,14 @@
     transition: transform 0.1s, border-radius 0.1s;
 }
 
-.edge-sidebar-icon:hover {
+.edge-sidebar-icon:hover,
+.edge-sidebar-icon.active {
     border-radius: 10px;
     transform: scale(1.05);
+}
+
+.edge-sidebar-icon.active {
+    box-shadow: 0 0 0 2px var(--theme-accent-color, #0078D7);
 }
 
 .edge-sidebar-icon.drag-over {

@@ -172,6 +172,7 @@
                 if (changes.sidebarWidth) state.sidebarWidth = changes.sidebarWidth.newValue;
                 if (changes.currentUrls) state.currentUrls = changes.currentUrls.newValue;
                 if (changes.sidepanelBlocklist) state.sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
+                if (changes.activeSiteOwner) state.activeSiteOwner = changes.activeSiteOwner.newValue;
                 if (changes.customTheme) {
                     state.customTheme = changes.customTheme.newValue;
                     applyTheme();
@@ -195,36 +196,29 @@
             if (namespace === 'local') {
                 if (changes.autoHideEnabled !== undefined) {
                     autoHideEnabled = changes.autoHideEnabled.newValue;
-                    if (autoHide) autoHide.cleanup();
+                    if (autoHide) {
+                        autoHide.cleanup();
+                        autoHideArmed = false;
+                    }
                     render();
                 }
                 if (changes.isSidePanelOpen !== undefined) {
                     state.isSidePanelOpen = changes.isSidePanelOpen.newValue;
                     render();
                 }
-                if (changes.activeSiteId !== undefined) {
-                    state.activeSiteId = changes.activeSiteId.newValue;
-                    if (changes.activeSiteOwner !== undefined) {
-                        state.activeSiteOwner = changes.activeSiteOwner.newValue;
-                    }
+                if (changes.activeSiteOwner !== undefined) {
+                    state.activeSiteOwner = changes.activeSiteOwner.newValue;
                     render();
                 }
-                if (changes.activeSiteOwner !== undefined && !changes.activeSiteId) {
-                    state.activeSiteOwner = changes.activeSiteOwner.newValue;
+                if (changes.activeSiteId !== undefined) {
+                    state.activeSiteId = changes.activeSiteId.newValue;
                     render();
                 }
             }
         });
 
         setInterval(() => {
-            if (autoHideEnabled && autoHide && !autoHide.triggered) return;
-            const blocked = isSidepanelBlocked() && !state.activeSiteId;
-            const totalWidth = blocked ? 0 : (48 + (state.activeSiteId ? state.sidebarWidth : 0));
-            document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
-            if (!autoHideEnabled) {
-                if (container) container.style.display = blocked ? 'none' : '';
-                document.documentElement.classList.toggle('revived-sidebar-active', !blocked);
-            }
+            render();
         }, 1000);
     }
 
@@ -238,31 +232,18 @@
     }
 
     let autoHide = null;
+    let autoHideArmed = false;
 
     function getAutoHide() {
         if (!autoHide) {
             autoHide = new SR.AutoHideManager({
                 onShowBar: () => {
-                    populateIcons();
-                    container.style.display = '';
-                    if (state.activeSiteId) {
-                        contentArea.classList.add('active');
-                        contentArea.style.width = state.sidebarWidth + 'px';
-                        const activeSite = state.sites.find(s => s.id === state.activeSiteId);
-                        if (activeSite) {
-                            headerTitle.innerText = activeSite.title;
-                            iframe.name = 'revived-sidebar-iframe-' + activeSite.id;
-                            const targetUrl = (state.currentUrls && state.currentUrls[activeSite.id]) || activeSite.url;
-                            if (iframe.src !== targetUrl) {
-                                iframe.src = targetUrl;
-                            }
-                        }
-                    } else {
-                        contentArea.classList.remove('active');
-                    }
+                    render();
                 },
-                onHideBar: () => { container.style.display = 'none'; },
-                getPanelWidth: () => 48 + (state.activeSiteId ? state.sidebarWidth : 0),
+                onHideBar: () => {
+                    render();
+                },
+                getPanelWidth: () => 48 + (state.activeSiteId && state.activeSiteOwner === 'inpage' ? state.sidebarWidth : 0),
                 getAccentColor: () => '#b2d7ef',
                 leaveThresholdOffset: 10
             });
@@ -270,162 +251,82 @@
         return autoHide;
     }
 
-    function makeDropZone() {
-        const z = document.createElement('div');
-        z.className = 'drop-indicator';
-        return z;
-    }
-
-    function makeEndDropZone(targetList) {
-        const zone = makeDropZone();
-        zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('active'); };
-        zone.ondragleave = () => { zone.classList.remove('active'); };
-        zone.ondrop = (e) => {
-            e.preventDefault(); zone.classList.remove('active');
-            try {
-                const data = JSON.parse(e.dataTransfer.getData('application/json'));
-                if (!data.id) return;
-                const src = [...state.sites];
-                const from = src.findIndex(s => s.id === data.id);
-                if (from === -1) return;
-                const [moved] = src.splice(from, 1);
-                src.push(moved);
-                chrome.storage.local.set({ sites: src });
-            } catch (e) { }
-        };
-        return zone;
-    }
-
+    let lastRenderState = null;
     function populateIcons() {
-        iconBar.innerHTML = '';
-        state.sites.forEach(site => {
-            const icon = document.createElement('div');
-            icon.className = 'edge-sidebar-icon';
-
-            icon.style.backgroundColor = site.color || '#333';
-            icon.innerText = site.initial || site.title.charAt(0);
-            icon.title = site.title;
-
-            icon.onclick = (e) => {
-                e.stopPropagation();
-                const newActiveId = (state.activeSiteId === site.id) ? null : site.id;
-                chrome.storage.local.set({ activeSiteId: newActiveId, activeSiteOwner: newActiveId ? 'inpage' : null });
-            };
-
-            const dropIndicator = makeDropZone();
-            dropIndicator.ondragover = (e) => {
-                e.preventDefault();
-                dropIndicator.classList.add('active');
-            };
-            dropIndicator.ondragleave = () => {
-                dropIndicator.classList.remove('active');
-            };
-            dropIndicator.ondrop = (e) => {
-                e.preventDefault();
-                dropIndicator.classList.remove('active');
-                icon.ondrop(e);
-            };
-            iconBar.appendChild(dropIndicator);
-
-            icon.draggable = true;
-            icon.ondragstart = (e) => {
-                e.dataTransfer.setData('application/json', JSON.stringify({ id: site.id }));
-                icon.style.opacity = '0.5';
-            };
-            icon.ondragend = () => {
-                icon.style.opacity = '1';
-            };
-            icon.ondragover = (e) => {
-                e.preventDefault();
-                dropIndicator.classList.add('active');
-            };
-            icon.ondragleave = () => {
-                dropIndicator.classList.remove('active');
-            };
-            icon.ondrop = (e) => {
-                e.preventDefault();
-                dropIndicator.classList.remove('active');
-                try {
-                    const data = JSON.parse(e.dataTransfer.getData('application/json'));
-                    if (data.id && data.id !== site.id) {
-                        const sites = [...state.sites];
-                        const fromIndex = sites.findIndex(s => s.id === data.id);
-                        if (fromIndex === -1) return;
-                        const [moved] = sites.splice(fromIndex, 1);
-                        let toIndex = sites.findIndex(s => s.id === site.id);
-                        if (fromIndex < toIndex) toIndex--;
-                        sites.splice(toIndex, 0, moved);
-                        chrome.storage.local.set({ sites });
-                    }
-                } catch (e) { }
-            };
-
-            iconBar.appendChild(icon);
+        const currentState = JSON.stringify({
+            sites: state.sites,
+            tempSites: state.tempSites,
+            activeSiteId: state.activeSiteId,
+            owner: state.activeSiteOwner
         });
+        if (currentState === lastRenderState) return;
+        lastRenderState = currentState;
 
-        iconBar.appendChild(makeEndDropZone(state.sites));
-
-        const divider = document.createElement('div');
-        divider.className = 'edge-sidebar-divider';
-        iconBar.appendChild(divider);
-
-        const addBtn = document.createElement('div');
-        addBtn.className = 'edge-sidebar-add-btn';
-        addBtn.innerText = "+";
-        addBtn.title = "Add current site";
-        addBtn.onclick = (e) => {
-            e.stopPropagation();
-            const newSite = {
-                id: 'site_' + Date.now(),
-                title: document.title || 'New Site',
-                url: window.location.href,
-                color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
-                initial: (document.title || 'N').charAt(0)
-            };
-            const updatedSites = [...state.sites, newSite];
-            chrome.storage.local.set({ sites: updatedSites });
-        };
-        iconBar.appendChild(addBtn);
+        SR.renderIconBar(iconBar, {
+            sites: state.sites,
+            tempSites: state.tempSites || [],
+            activeSiteId: state.activeSiteId,
+            getSites: () => state.sites,
+            getTempSites: () => state.tempSites || [],
+            onSiteClick: (siteId) => {
+                const newActiveId = (state.activeSiteId === siteId) ? null : siteId;
+                chrome.storage.local.set({ activeSiteId: newActiveId, activeSiteOwner: newActiveId ? 'inpage' : null });
+            },
+            onAddSite: () => {
+                chrome.runtime.sendMessage({ action: 'add_current_tab' });
+            },
+            onSettingsClick: () => {
+                chrome.storage.local.set({ isSettingsOpen: true });
+                chrome.runtime.sendMessage({ action: 'open_side_panel' });
+            },
+            getIconOpacity: (site) => (site.id === state.activeSiteId) ? '1' : '0.8'
+        });
     }
 
     function render() {
         if (!container) return;
 
         const ah = getAutoHide();
-        ah.cleanup();
+        const hostname = window.location.hostname;
+        const isBlocked = state.sidepanelBlocklist.some(d => hostname.includes(d)) && !state.activeSiteId;
 
-        const blocked = isSidepanelBlocked() && !state.activeSiteId;
-
-        if (blocked) {
-            container.style.display = 'none';
-            document.documentElement.classList.remove('revived-sidebar-active');
-            document.documentElement.style.removeProperty('--revived-sidebar-width');
+        if (state.isSidePanelOpen || isBlocked) {
+            ah.cleanup();
+            autoHideArmed = false;
+            hideSidebarCompletely();
             return;
         }
 
-        if (autoHideEnabled && !ah.triggered) {
-            container.style.display = 'none';
-            document.documentElement.classList.remove('revived-sidebar-active');
-            document.documentElement.style.removeProperty('--revived-sidebar-width');
-            ah.setup();
+        // If any site is active, we stay open (ignore auto-hide trigger for visibility)
+        if (state.activeSiteId) {
+            ah.cleanup();
+            autoHideArmed = false;
+            renderInternal();
             return;
         }
 
-        if (state.isSidePanelOpen) {
-            container.style.display = 'none';
-            document.documentElement.classList.remove('revived-sidebar-active');
-            document.documentElement.style.removeProperty('--revived-sidebar-width');
-            return;
-        }
-
-        if (state.activeSiteId && state.activeSiteOwner === 'sidepanel') {
-            container.style.display = 'none';
-            document.documentElement.classList.remove('revived-sidebar-active');
-            document.documentElement.style.removeProperty('--revived-sidebar-width');
+        // Handle Idle Auto-Hide
+        if (autoHideEnabled) {
+            if (ah.triggered) {
+                renderInternal();
+            } else {
+                hideSidebarCompletely();
+                if (!autoHideArmed) {
+                    ah.setup();
+                    autoHideArmed = true;
+                }
+            }
             return;
         }
 
         renderInternal();
+    }
+
+    function hideSidebarCompletely() {
+        if (!container) return;
+        container.style.display = 'none';
+        document.documentElement.classList.remove('revived-sidebar-active');
+        document.documentElement.style.removeProperty('--revived-sidebar-width');
     }
 
     function renderInternal() {
@@ -434,7 +335,9 @@
         container.style.display = '';
         document.documentElement.classList.add('revived-sidebar-active');
 
-        if (state.activeSiteId) {
+        const isFullSidebar = state.activeSiteId && state.activeSiteOwner === 'inpage';
+
+        if (isFullSidebar) {
             contentArea.classList.add('active');
             contentArea.style.width = state.sidebarWidth + 'px';
             const activeSite = state.sites.find(s => s.id === state.activeSiteId);
@@ -450,7 +353,7 @@
             contentArea.classList.remove('active');
         }
 
-        const totalWidth = 48 + (state.activeSiteId ? state.sidebarWidth : 0);
+        const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
         document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
     }
 

@@ -92,6 +92,8 @@ function render() {
     if (state.isSettingsOpen) {
         iconBar.style.display = 'none';
         contentArea.style.display = 'none';
+        const note = document.getElementById('inpage-sidebar-note');
+        if (note) note.style.display = 'none';
         const sp = document.getElementById('settings-panel');
         if (sp) sp.style.display = 'flex';
         initCollapsibleSections();

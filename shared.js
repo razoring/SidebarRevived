@@ -253,23 +253,28 @@
                 const data = JSON.parse(e.dataTransfer.getData('application/json'));
                 if (!data.id) return;
                 const sourceList = data.isTemp ? [...getTempSites()] : [...getSites()];
-                const targetArr = [...targetList];
                 const fromIndex = sourceList.findIndex(s => s.id === data.id);
                 if (fromIndex === -1) return;
                 const [moved] = sourceList.splice(fromIndex, 1);
-                if (isBeginning) {
-                    targetArr.unshift(moved);
-                } else {
-                    targetArr.push(moved);
-                }
                 if (data.isTemp !== isTempList) {
+                    const targetArr = [...targetList];
+                    if (isBeginning) {
+                        targetArr.unshift(moved);
+                    } else {
+                        targetArr.push(moved);
+                    }
                     if (data.isTemp) {
                         chrome.storage.local.set({ tempSites: sourceList, sites: targetArr });
                     } else {
                         chrome.storage.local.set({ sites: sourceList, tempSites: targetArr });
                     }
                 } else {
-                    chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: targetArr });
+                    if (isBeginning) {
+                        sourceList.unshift(moved);
+                    } else {
+                        sourceList.push(moved);
+                    }
+                    chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: sourceList });
                 }
             } catch (e) { }
         }

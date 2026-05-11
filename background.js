@@ -2,7 +2,7 @@ importScripts('shared.js');
 
 let openSidePanels = 0;
 
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   const defaults = {
     sites: [],
     tempSites: [],
@@ -47,6 +47,13 @@ chrome.runtime.onInstalled.addListener(async () => {
       target: { tabId: tab.id },
       files: ['content_idle.css']
     }).catch(() => { });
+  }
+
+  if (details.reason === 'install') {
+    const windows = await chrome.windows.getAll({ populate: false });
+    if (windows.length > 0) {
+      chrome.sidePanel.open({ windowId: windows[0].id }).catch(() => {});
+    }
   }
 });
 
