@@ -120,12 +120,12 @@ html {
 .edge-sidebar-add-btn.trash-hover::before {
     content: '';
     position: absolute;
-    top: -8px;
-    left: -8px;
-    width: 48px;
-    height: 48px;
+    top: 0;
+    left: 0;
+    width: 32px;
+    height: 32px;
     background-color: var(--theme-accent-color-rgba, rgba(0, 120, 215, 0.5));
-    border-radius: 10px;
+    border-radius: 6px;
     z-index: -1;
     animation: morph-to-square 0.15s cubic-bezier(0.2, 0, 0, 1) forwards;
     transition: all 0.2s ease;
@@ -134,12 +134,12 @@ html {
 .edge-sidebar-add-btn.trash-hover::after {
     content: '';
     position: absolute;
-    top: -6px;
-    left: -6px;
-    width: 44px;
-    height: 44px;
+    top: 0;
+    left: 0;
+    width: 32px;
+    height: 32px;
     border: 2px dashed var(--theme-font-color, #555);
-    border-radius: 8px;
+    border-radius: 6px;
     box-sizing: border-box;
     pointer-events: none;
     z-index: 1;
