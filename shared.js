@@ -474,6 +474,9 @@
                         } else {
                             chrome.storage.local.set({ sites: getSites().filter(s => s.id !== data.id) });
                         }
+                        if (activeSiteId === data.id) {
+                            chrome.storage.local.set({ activeSiteId: null, activeSiteOwner: null });
+                        }
                     }
                 } catch (evt) { }
             }

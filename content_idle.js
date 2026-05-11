@@ -114,7 +114,7 @@
             getSites: () => sites,
             getTempSites: () => tempSites,
             onSiteClick: (siteId) => {
-                chrome.storage.local.set({ activeSiteId: siteId });
+                chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' });
                 chrome.runtime.sendMessage({ action: 'open_side_panel' });
             },
             onAddSite: () => {

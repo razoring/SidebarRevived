@@ -115,7 +115,7 @@
         closeBtn.className = 'edge-sidebar-header-close';
         closeBtn.innerText = "✕";
         closeBtn.onclick = () => {
-            chrome.storage.local.set({ activeSiteId: null });
+            chrome.storage.local.set({ activeSiteId: null, activeSiteOwner: null });
         };
 
         header.appendChild(headerTitle);
@@ -297,7 +297,7 @@
             icon.onclick = (e) => {
                 e.stopPropagation();
                 const newActiveId = (state.activeSiteId === site.id) ? null : site.id;
-                chrome.storage.local.set({ activeSiteId: newActiveId });
+                chrome.storage.local.set({ activeSiteId: newActiveId, activeSiteOwner: newActiveId ? 'inpage' : null });
             };
 
             const dropIndicator = makeDropZone();

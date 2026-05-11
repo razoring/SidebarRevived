@@ -63,7 +63,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         chrome.storage.local.get(['tempSites'], (result) => {
           chrome.storage.local.set({
             tempSites: [...(result.tempSites || []), newSite],
-            activeSiteId: newSite.id
+            activeSiteId: newSite.id,
+            activeSiteOwner: 'sidepanel'
           });
         });
       });
