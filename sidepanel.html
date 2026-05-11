@@ -16,29 +16,104 @@
     <div id="settings-panel" style="display: none;">
       <div class="settings-header">
         <button id="settings-back-btn">&larr; Back</button>
-        <h2>Theme Settings</h2>
+        <h2>Settings</h2>
       </div>
       <div class="settings-form">
-        <label>
-          <span>Font Color <small id="val-font-color"></small></span>
-          <input type="color" id="theme-font-color" />
-        </label>
-        <label>
-          <span>Sidebar Background <small id="val-sidebar-bg"></small></span>
-          <input type="color" id="theme-sidebar-bg" />
-        </label>
-        <label>
-          <span>Divider Color <small id="val-divider-bg"></small></span>
-          <input type="color" id="theme-divider-bg" />
-        </label>
-        <label>
-          <span>Accent Color <small id="val-accent-color"></small></span>
-          <input type="color" id="theme-accent-color" />
-        </label>
-        <div class="settings-actions">
-          <button id="export-theme-btn">Export JSON</button>
-          <button id="import-theme-btn">Import JSON</button>
-          <input type="file" id="import-theme-file" style="display:none" accept=".json" />
+        <div class="settings-category">
+          <div class="settings-category-header collapsible" data-target="theme-section">
+            <span>Theme</span>
+            <span class="collapse-arrow">&#9660;</span>
+          </div>
+          <div class="settings-category-body" id="theme-section">
+            <div class="theme-color-row">
+              <span class="theme-color-label">Contrast</span>
+              <div class="theme-color-picker-wrapper">
+                <input type="text" class="theme-hex-input" id="hex-font-color" value="#ffffff" spellcheck="false" />
+                <input type="color" id="theme-font-color" />
+              </div>
+            </div>
+            <div class="theme-color-row">
+              <span class="theme-color-label">Background</span>
+              <div class="theme-color-picker-wrapper">
+                <input type="text" class="theme-hex-input" id="hex-sidebar-bg" value="#2b2b2b" spellcheck="false" />
+                <input type="color" id="theme-sidebar-bg" />
+              </div>
+            </div>
+            <div class="theme-color-row">
+              <span class="theme-color-label">Divider</span>
+              <div class="theme-color-picker-wrapper">
+                <input type="text" class="theme-hex-input" id="hex-divider-bg" value="#555555" spellcheck="false" />
+                <input type="color" id="theme-divider-bg" />
+              </div>
+            </div>
+            <div class="theme-color-row">
+              <span class="theme-color-label">Accent</span>
+              <div class="theme-color-picker-wrapper">
+                <input type="text" class="theme-hex-input" id="hex-accent-color" value="#0078d7" spellcheck="false" />
+                <input type="color" id="theme-accent-color" />
+              </div>
+            </div>
+            <div class="theme-color-row">
+              <span class="theme-color-label">Opacity</span>
+              <div class="theme-slider-wrapper">
+                <span class="theme-slider-value" id="val-panel-opacity">100%</span>
+                <input type="range" id="theme-panel-opacity" min="0.1" max="1" step="0.05" value="1" />
+              </div>
+            </div>
+            <div class="theme-color-row">
+              <span class="theme-color-label">Blur</span>
+              <div class="theme-slider-wrapper">
+                <span class="theme-slider-value" id="val-panel-blur">0px</span>
+                <input type="range" id="theme-panel-blur" min="0" max="20" step="1" value="0" />
+              </div>
+            </div>
+            <div class="settings-actions">
+              <button id="export-theme-btn">Export JSON</button>
+              <button id="import-theme-btn">Import JSON</button>
+              <input type="file" id="import-theme-file" style="display:none" accept=".json" />
+              <button id="reset-theme-btn">Reset to Defaults</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-category">
+          <div class="settings-category-header collapsible" data-target="functionality-section">
+            <span>Functionality</span>
+            <span class="collapse-arrow">&#9660;</span>
+          </div>
+          <div class="settings-category-body" id="functionality-section">
+            <label class="toggle-row">
+              <span>Auto-Hide Sidepanel</span>
+              <div class="toggle-track">
+                <input type="checkbox" id="settings-auto-hide" />
+                <div class="toggle-thumb"></div>
+              </div>
+            </label>
+            <p class="settings-description">Hide the in-page sidebar until you hold the cursor on the right edge of the page for 2 seconds.</p>
+          </div>
+        </div>
+        <div class="settings-category">
+          <div class="settings-category-header collapsible" data-target="blocklists-section">
+            <span>Blocklists</span>
+            <span class="collapse-arrow">&#9660;</span>
+          </div>
+          <div class="settings-category-body" id="blocklists-section">
+            <div class="settings-subsection">
+              <div class="settings-subsection-title">Scrollbar Blocklist</div>
+              <p class="settings-description">Sites like YouTube need custom scrollbars, but some (e.g.
+                scrolller.com) break with aggressive fixes. Add them here to keep default right-side scrollbars.</p>
+              <button id="add-to-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
+              <textarea id="settings-scroll-blocklist" placeholder="example.com&#10;anotherdomain.org"
+                spellcheck="false"></textarea>
+            </div>
+            <div class="settings-subsection">
+              <div class="settings-subsection-title">Sidepanel Blocklist</div>
+              <p class="settings-description">Hide the in-page sidebar on certain sites. The sidebar can still be
+                activated by opening the sidepanel via the extension icon and selecting a site.</p>
+              <button id="add-to-sidepanel-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
+              <textarea id="settings-sidepanel-blocklist" placeholder="example.com&#10;anotherdomain.org"
+                spellcheck="false"></textarea>
+            </div>
+          </div>
         </div>
       </div>
     </div>

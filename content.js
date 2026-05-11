@@ -11,13 +11,58 @@
     let headerTitle = null;
     let resizer = null;
     let isResizing = false;
+    let autoHideEnabled = false;
+    let autoHideTimer = null;
+    let autoHideLeaveTimer = null;
+    let autoHideMouseHandler = null;
+    let autoHideIndicator = null;
+    let autoHideTriggered = false;
+    let autoHideAccentColor = '#b2d7ef';
+    const AUTO_HIDE_TRIGGER_ZONE = 20;
 
     let state = {
         sites: [],
         activeSiteId: null,
         sidebarWidth: 350,
-        currentUrls: {}
+        currentUrls: {},
+        sidepanelBlocklist: [],
+        customTheme: null
     };
+
+    function applyTheme() {
+        if (state.customTheme) {
+            const theme = state.customTheme;
+            if (theme.fontColor) host.style.setProperty('--theme-font-color', theme.fontColor);
+            if (theme.sidebarBackground) host.style.setProperty('--theme-sidebar-bg', theme.sidebarBackground);
+            if (theme.dividerBackground) host.style.setProperty('--theme-divider-bg', theme.dividerBackground);
+            if (theme.accentColor) {
+                host.style.setProperty('--theme-accent-color', theme.accentColor);
+                autoHideAccentColor = theme.accentColor;
+            }
+            if (theme.panelOpacity !== undefined) {
+                const alpha = 0.1 + theme.panelOpacity * 0.75;
+                const bg = theme.sidebarBackground || '#38393c';
+                const h = bg.replace('#', '');
+                const rgb = { r: parseInt(h.substring(0, 2), 16), g: parseInt(h.substring(2, 4), 16), b: parseInt(h.substring(4, 6), 16) };
+                const rgba = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+                host.style.setProperty('--theme-sidebar-bg-rgba', rgba);
+            }
+            if (theme.accentColor) {
+                const h2 = theme.accentColor.replace('#', '');
+                const ar = { r: parseInt(h2.substring(0, 2), 16), g: parseInt(h2.substring(2, 4), 16), b: parseInt(h2.substring(4, 6), 16) };
+                host.style.setProperty('--theme-accent-color-rgba', `rgba(${ar.r},${ar.g},${ar.b},0.5)`);
+            }
+            if (theme.panelBlur !== undefined) host.style.setProperty('--theme-panel-blur', theme.panelBlur + 'px');
+        }
+        if (autoHideIndicator && autoHideIndicator.parentElement) {
+            autoHideIndicator.style.background = `linear-gradient(to left, ${autoHideAccentColor}, transparent)`;
+        }
+    }
+
+    function isSidepanelBlocked() {
+        const hostname = window.location.hostname;
+        return (state.sidepanelBlocklist || []).some(d => hostname.includes(d));
+    }
 
     async function loadCSS() {
         const response = await fetch(chrome.runtime.getURL('sidebar.css'));
@@ -31,18 +76,18 @@
         const style = document.createElement('style');
         style.id = 'revived-sidebar-host-styles';
         style.textContent = `
-      html {
+      html.revived-sidebar-active {
         --revived-sidebar-width: 48px;
         margin-right: var(--revived-sidebar-width, 48px) !important;
         width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
         overflow-x: hidden !important;
         overflow-y: auto !important;
       }
-      body {
+      html.revived-sidebar-active body {
         width: 100% !important;
         min-width: 0 !important;
       }
-      body > * {
+      html.revived-sidebar-active body > * {
         max-width: 100% !important;
         min-width: 0 !important;
       }
@@ -149,24 +194,46 @@
                 if (changes.activeSiteId) state.activeSiteId = changes.activeSiteId.newValue;
                 if (changes.sidebarWidth) state.sidebarWidth = changes.sidebarWidth.newValue;
                 if (changes.currentUrls) state.currentUrls = changes.currentUrls.newValue;
+                if (changes.sidepanelBlocklist) state.sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
+                if (changes.customTheme) {
+                    state.customTheme = changes.customTheme.newValue;
+                    applyTheme();
+                }
                 render();
             } else if (msg.type === 'PING') {
                 sendResponse({ type: 'PONG' });
             }
         });
 
-        chrome.storage.local.get(['sites', 'activeSiteId', 'sidebarWidth', 'currentUrls'], (result) => {
+        chrome.storage.local.get(['sites', 'activeSiteId', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme'], (result) => {
             if (result.sites) {
                 state = { ...state, ...result };
+                if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
+                applyTheme();
                 render();
             }
         });
 
-        // Handle dynamic DOM changes (e.g. YouTube navigating internally)
+        chrome.storage.onChanged.addListener((changes, namespace) => {
+            if (namespace === 'local') {
+                if (changes.autoHideEnabled !== undefined) {
+                    autoHideEnabled = changes.autoHideEnabled.newValue;
+                    cleanupAutoHide();
+                    render();
+                }
+            }
+        });
+
         setInterval(() => {
-            const totalWidth = 48 + (state.activeSiteId ? state.sidebarWidth : 0);
+            if (autoHideEnabled && !autoHideTriggered) return;
+            const blocked = isSidepanelBlocked() && !state.activeSiteId;
+            const totalWidth = blocked ? 0 : (48 + (state.activeSiteId ? state.sidebarWidth : 0));
             document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
-        }, 2000);
+            if (!autoHideEnabled) {
+                if (container) container.style.display = blocked ? 'none' : '';
+                document.documentElement.classList.toggle('revived-sidebar-active', !blocked);
+            }
+        }, 1000);
     }
 
     function updateLayout(width) {
@@ -178,9 +245,128 @@
         // This is expensive if done every frame, but we do it conditionally or on interval
     }
 
-    function render() {
-        if (!container) return;
+    function showAutoHideBar() {
+        populateIcons();
+        container.style.display = '';
+        if (state.activeSiteId) {
+            contentArea.classList.add('active');
+            contentArea.style.width = state.sidebarWidth + 'px';
+            const activeSite = state.sites.find(s => s.id === state.activeSiteId);
+            if (activeSite) {
+                headerTitle.innerText = activeSite.title;
+                iframe.name = 'revived-sidebar-iframe-' + activeSite.id;
+                const targetUrl = (state.currentUrls && state.currentUrls[activeSite.id]) || activeSite.url;
+                if (iframe.src !== targetUrl) {
+                    iframe.src = targetUrl;
+                }
+            }
+        } else {
+            contentArea.classList.remove('active');
+        }
+    }
 
+    function hideAutoHideBar() {
+        container.style.display = 'none';
+        if (autoHideLeaveTimer) {
+            clearTimeout(autoHideLeaveTimer);
+            autoHideLeaveTimer = null;
+        }
+    }
+
+    function setupAutoHide() {
+        cleanupAutoHide();
+        autoHideTriggered = false;
+        autoHideMouseHandler = (e) => {
+            const edgeDist = window.innerWidth - e.clientX;
+            const panelWidth = 48 + (state.activeSiteId ? state.sidebarWidth : 0);
+
+            if (autoHideTriggered) {
+                if (edgeDist > panelWidth + 10) {
+                    if (!autoHideLeaveTimer) {
+                        autoHideLeaveTimer = setTimeout(() => {
+                            hideAutoHideBar();
+                            autoHideTriggered = false;
+                        }, 500);
+                    }
+                } else {
+                    if (autoHideLeaveTimer) {
+                        clearTimeout(autoHideLeaveTimer);
+                        autoHideLeaveTimer = null;
+                    }
+                }
+            } else {
+                if (edgeDist <= AUTO_HIDE_TRIGGER_ZONE) {
+                    showAutoHideIndicator();
+                    if (!autoHideTimer) {
+                        autoHideTimer = setTimeout(() => {
+                            hideAutoHideIndicator();
+                            showAutoHideBar();
+                            autoHideTriggered = true;
+                            autoHideTimer = null;
+                        }, 1000);
+                    }
+                } else {
+                    if (autoHideTimer) {
+                        clearTimeout(autoHideTimer);
+                        autoHideTimer = null;
+                        hideAutoHideIndicator();
+                    }
+                }
+            }
+        };
+        document.addEventListener('mousemove', autoHideMouseHandler);
+    }
+
+    function cleanupAutoHide() {
+        if (autoHideMouseHandler) {
+            document.removeEventListener('mousemove', autoHideMouseHandler);
+            autoHideMouseHandler = null;
+        }
+        if (autoHideTimer) {
+            clearTimeout(autoHideTimer);
+            autoHideTimer = null;
+        }
+        if (autoHideLeaveTimer) {
+            clearTimeout(autoHideLeaveTimer);
+            autoHideLeaveTimer = null;
+        }
+        hideAutoHideIndicator();
+        autoHideTriggered = false;
+    }
+
+    function ensureIndicator() {
+        if (!autoHideIndicator || !autoHideIndicator.parentElement) {
+            autoHideIndicator = document.createElement('div');
+            autoHideIndicator.id = 'revived-auto-hide-indicator';
+            document.documentElement.appendChild(autoHideIndicator);
+        }
+        autoHideIndicator.style.cssText = `
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 20px;
+            height: 100vh;
+            z-index: 2147483646;
+            pointer-events: none;
+            background: linear-gradient(to left, ${autoHideAccentColor}, transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        return autoHideIndicator;
+    }
+
+    function showAutoHideIndicator() {
+        const el = ensureIndicator();
+        requestAnimationFrame(() => { el.style.opacity = '0.6'; });
+    }
+
+    function hideAutoHideIndicator() {
+        if (autoHideIndicator && autoHideIndicator.parentElement) {
+            autoHideIndicator.style.opacity = '0';
+        }
+    }
+
+    function populateIcons() {
         iconBar.innerHTML = '';
         state.sites.forEach(site => {
             const icon = document.createElement('div');
@@ -206,14 +392,14 @@
             };
             icon.ondragover = (e) => {
                 e.preventDefault();
-                icon.style.borderTop = '2px solid #0078D7';
+                icon.classList.add('drag-over');
             };
             icon.ondragleave = () => {
-                icon.style.borderTop = '';
+                icon.classList.remove('drag-over');
             };
             icon.ondrop = (e) => {
                 e.preventDefault();
-                icon.style.borderTop = '';
+                icon.classList.remove('drag-over');
                 const draggedId = e.dataTransfer.getData('text/plain');
                 if (draggedId && draggedId !== site.id) {
                     const sites = [...state.sites];
@@ -249,6 +435,37 @@
             chrome.storage.local.set({ sites: updatedSites });
         };
         iconBar.appendChild(addBtn);
+    }
+
+    function render() {
+        if (!container) return;
+
+        cleanupAutoHide();
+
+        const blocked = isSidepanelBlocked() && !state.activeSiteId;
+
+        if (blocked) {
+            container.style.display = 'none';
+            document.documentElement.classList.remove('revived-sidebar-active');
+            document.documentElement.style.removeProperty('--revived-sidebar-width');
+            return;
+        }
+
+        if (autoHideEnabled && !autoHideTriggered) {
+            container.style.display = 'none';
+            document.documentElement.classList.remove('revived-sidebar-active');
+            document.documentElement.style.removeProperty('--revived-sidebar-width');
+            setupAutoHide();
+            return;
+        }
+
+        renderInternal();
+    }
+
+    function renderInternal() {
+        populateIcons();
+        container.style.display = '';
+        document.documentElement.classList.add('revived-sidebar-active');
 
         if (state.activeSiteId) {
             contentArea.classList.add('active');

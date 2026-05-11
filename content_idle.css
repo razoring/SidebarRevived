@@ -13,8 +13,8 @@
 #revived-idle-sidebar {
     width: 100%;
     height: 100%;
-    background: var(--theme-sidebar-bg, rgba(243, 243, 243, 0.95));
-    backdrop-filter: blur(10px);
+    background: var(--theme-sidebar-bg-rgba, var(--theme-sidebar-bg, rgba(243, 243, 243, 0.95)));
+    backdrop-filter: blur(var(--theme-panel-blur, 10px));
     border-left: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
@@ -49,10 +49,7 @@
 }
 
 .edge-sidebar-icon.active {
-    background-color: rgba(128, 128, 128, 0.1) !important;
-    outline: 2px solid var(--theme-accent-color, #0078D4);
-    outline-offset: -2px;
-    box-sizing: border-box;
+    background-color: var(--theme-accent-color-rgba, rgba(0, 120, 215, 0.5)) !important;
 }
 
 .edge-sidebar-divider {
@@ -73,7 +70,7 @@
     align-items: center;
     cursor: pointer;
     font-size: 20px;
-    color: var(--theme-font-color, white);
+    color: var(--theme-font-color, inherit);
     position: relative;
     transition: background-color 0.1s, transform 0.1s;
     pointer-events: auto;
@@ -102,8 +99,7 @@
     left: -8px;
     width: 48px;
     height: 48px;
-    background-color: var(--theme-accent-color, #0078D7);
-    opacity: 0.15;
+    background-color: var(--theme-accent-color-rgba, rgba(0, 120, 215, 0.5));
     border-radius: 10px;
     z-index: -1;
     animation: morph-to-square 0.15s cubic-bezier(0.2, 0, 0, 1) forwards;
@@ -117,7 +113,7 @@
     left: -6px;
     width: 44px;
     height: 44px;
-    border: 2px dashed var(--theme-accent-color, #0078D7);
+    border: 2px dashed var(--theme-divider-bg, #555);
     border-radius: 8px;
     box-sizing: border-box;
     pointer-events: none;

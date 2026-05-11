@@ -1,16 +1,31 @@
 let openSidePanels = 0;
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.get(['sites'], (result) => {
-    if (!result.sites) {
-      chrome.storage.local.set({
-        sites: [],
-        tempSites: [],
-        activeSiteId: null,
-        isSidePanelOpen: false
-      });
-    } else {
-      chrome.storage.local.set({ isSidePanelOpen: false });
+chrome.runtime.onInstalled.addListener(async () => {
+  const defaults = {
+    sites: [],
+    tempSites: [],
+    activeSiteId: null,
+    isSidePanelOpen: false,
+    autoHideEnabled: false,
+    customTheme: {
+      fontColor: '#ffffff',
+      sidebarBackground: '#38393c',
+      dividerBackground: '#555555',
+      accentColor: '#b2d7ef',
+      panelOpacity: 1,
+      panelBlur: 0
+    }
+  };
+
+  chrome.storage.local.get(Object.keys(defaults), (result) => {
+    const toSet = {};
+    for (const key in defaults) {
+      if (result[key] === undefined) {
+        toSet[key] = defaults[key];
+      }
+    }
+    if (Object.keys(toSet).length > 0) {
+      chrome.storage.local.set(toSet);
     }
   });
 
@@ -19,6 +34,21 @@ chrome.runtime.onInstalled.addListener(() => {
     title: "Send to Sidebar",
     contexts: ["page"]
   });
+
+  // Inject into existing tabs
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab.url || !tab.url.startsWith('http')) continue;
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content.js', 'content_idle.js']
+    }).catch(() => { });
+
+    chrome.scripting.insertCSS({
+      target: { tabId: tab.id },
+      files: ['content_idle.css']
+    }).catch(() => { });
+  }
 });
 
 // Reset state on worker startup. Since the worker is kept alive while the panel is open, 
@@ -41,7 +71,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       // Force sidepanel open first
       chrome.sidePanel.open({ windowId: tab.windowId }).then(() => {
         chrome.storage.local.get(['tempSites'], (result) => {
-          chrome.storage.local.set({ tempSites: [...(result.tempSites || []), newSite] });
+          chrome.storage.local.set({
+            tempSites: [...(result.tempSites || []), newSite],
+            activeSiteId: newSite.id
+          });
         });
       });
     }

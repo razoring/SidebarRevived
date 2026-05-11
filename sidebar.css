@@ -21,8 +21,8 @@
 .edge-sidebar-icon-bar {
     width: 48px;
     height: 100%;
-    background: rgba(243, 243, 243, 0.95);
-    backdrop-filter: blur(10px);
+    background: var(--theme-sidebar-bg-rgba, rgba(243, 243, 243, 0.95));
+    backdrop-filter: blur(var(--theme-panel-blur, 10px));
     border-left: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
@@ -120,10 +120,8 @@
     transform: scale(1.05);
 }
 
-.edge-sidebar-icon.active-icon {
-    outline: 2px solid var(--theme-accent-color, #005A9E);
-    outline-offset: -2px;
-    box-sizing: border-box;
+.edge-sidebar-icon.drag-over {
+    border-top: 2px solid var(--theme-accent-color, #005A9E);
 }
 
 .edge-sidebar-divider {
@@ -138,14 +136,14 @@
     height: 32px;
     border-radius: 16px;
     background: #f3f3f3;
-    color: #333;
+    color: var(--theme-font-color, inherit);
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
     font-size: 20px;
     line-height: 1;
-    border: 1px dashed #999;
+    border: none;
 }
 
 .edge-sidebar-add-btn:hover {
