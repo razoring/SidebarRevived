@@ -103,7 +103,7 @@
     width: 32px;
     height: 32px;
     border-radius: 6px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -149,4 +149,20 @@
 
 .edge-sidebar-add-btn:hover {
     background: #e5e5e5;
+}
+
+.drop-indicator {
+    width: 32px;
+    height: 2px;
+    margin: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: auto;
+    z-index: 10;
+    background: var(--theme-accent-color, #0078D7);
+    border-radius: 1px;
+}
+
+.drop-indicator.active {
+    opacity: 1;
 }

@@ -23,6 +23,14 @@ const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, createSiteFromTab, appl
 const iconBar = document.getElementById('icon-bar');
 const contentArea = document.getElementById('content-area');
 
+iconBar.ondragover = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+};
+iconBar.ondragenter = (e) => {
+    e.preventDefault();
+};
+
 // Initial load
 chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', 'customTheme', 'isSettingsOpen', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled'], (result) => {
     if (result.sites) state.sites = result.sites;
@@ -91,6 +99,50 @@ function render() {
 
     iconBar.innerHTML = '';
 
+    const PIN_HEADER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M616-789v299l64 62q4 4 6 8.5t2 10.17v15.66q0 10.67-8.31 19.17-8.31 8.5-19.69 8.5H507v213q0 10.95-8.04 18.98-8.03 8.02-19 8.02-10.96 0-18.96-8.02-8-8.03-8-18.98v-213H300q-11.37 0-19.69-8.5Q272-383 272-393.67v-15.66q0-5.67 2-10.17t6-8.5l64-62v-299h-26q-6.95-4-11.48-11.04-4.52-7.03-4.52-15 0-10.96 8.02-18.96 8.03-8 18.98-8h302q10.95 0 18.97 8.04 8.03 8.03 8.03 19 0 7.96-4.53 14.96-4.52 7-11.47 11h-26ZM350-420h260l-48-48v-320H398v320l-48 48Zm130 0Z"/></svg>`;
+
+    const TEMP_HEADER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M211.54-700Q201-710 201-724t10.54-24q10.53-10 24.7-10t23.47 10q9.29 10 9.29 24t-9.29 24q-9.3 10-23.47 10-14.17 0-24.7-10Zm156.48-91.31Q358-800.62 358-813.81t10.02-23.69q10.01-10.5 23-10.5Q404-848 414-837.5t10 23.69q0 13.19-10 22.5T391.02-782q-12.99 0-23-9.31Zm177.98 0q-10-9.31-10-22.5t10-23.69q10-10.5 22.98-10.5 12.99 0 23 10.5Q602-827 602-813.81q0 13.19-10.02 22.5-10.01 9.31-23 9.31-12.98 0-22.98-9.31Zm154.29 89.81Q691-711 691-725.21q0-14.2 9.29-23.5 9.3-9.29 23.5-9.29 14.21 0 23.71 9.29 9.5 9.3 9.5 23.5 0 14.21-9.5 23.71t-23.71 9.5q-14.2 0-23.5-9.5Zm90.23 155.45q-9.52-10.06-9.52-24 0-13.95 9.72-24.45 9.73-10.5 23.5-10.5Q828-605 838-594.45q10 10.56 10 24.5Q848-556 837.95-546q-10.06 10-23.99 10-13.93 0-23.44-10.05Zm.79 178.03q-9.31-10.01-9.31-23 0-12.98 9.31-22.98t22.5-10q13.19 0 23.69 10 10.5 10 10.5 22.98 0 12.99-10.5 23Q827-358 813.81-358q-13.19 0-22.5-10.02ZM700.29-212.5Q691-222 691-236.21q0-14.2 9.29-23.5 9.3-9.29 23.5-9.29 14.21 0 23.71 9.29 9.5 9.3 9.5 23.5 0 14.21-9.5 23.71t-23.71 9.5q-14.2 0-23.5-9.5ZM546-122.5q-10-10.5-10-23.69 0-13.19 10-22.5t22.98-9.31q12.99 0 23 9.31 10.02 9.31 10.02 22.5t-10.02 23.69q-10.01 10.5-23 10.5Q556-112 546-122.5Zm-177.98 0Q358-133 358-146.19q0-13.19 10.02-22.5 10.01-9.31 23-9.31 12.98 0 22.98 9.31t10 22.5q0 13.19-10 23.69-10 10.5-22.98 10.5-12.99 0-23-10.5ZM211-212q-10-10-10-23t10-24q10-11 23-11t24 11q11 11 11 24t-11 23q-11 10-24 10t-23-10Zm-65.22-146q-13.78 0-24.28-9.72-10.5-9.73-10.5-23.5Q111-405 121.55-415q10.56-10 24.49-10 13.93 0 23.44 10.05 9.52 10.06 9.52 23.99 0 13.93-9.72 23.44-9.73 9.52-23.5 9.52Zm.41-178q-13.19 0-23.69-10-10.5-10-10.5-22.98 0-12.99 10.5-23Q133-602 146.19-602q13.19 0 22.5 10.02 9.31 10.01 9.31 23 0 12.98-9.31 22.98t-22.5 10ZM507-489.91 631-366q8 8 7.5 18.5T630-329q-8 8-18.67 8-10.66 0-18.33-8L466-457q-7-6.71-10-14.07T453-487v-153q0-10.95 8.04-18.97 8.03-8.03 19-8.03 10.96 0 18.96 8.03 8 8.02 8 18.97v150.09Z"/></svg>`;
+
+    function makeDropZone() {
+        const z = document.createElement('div');
+        z.className = 'drop-indicator';
+        return z;
+    }
+
+    function makeSectionHeader(svg, isPinned) {
+        const el = document.createElement('div');
+        el.className = isPinned ? 'pinned-header' : 'temp-header';
+        el.style.cssText = `width: 32px; height: 32px; display: none; align-items: center; justify-content: center; color: var(--theme-font-color, inherit);`;
+        const inner = document.createElement('div');
+        inner.style.cssText = isPinned ? 'transform: rotate(45deg); display: flex;' : 'display: flex;';
+        inner.innerHTML = svg;
+        el.appendChild(inner);
+        return el;
+    }
+
+    let pinnedHeader, tempHeader, pinDivider, tempDivider;
+
+    function updateVisibility(isDragging = false) {
+        const pinnedPopulated = state.sites && state.sites.length > 0;
+        const tempPopulated = state.tempSites && state.tempSites.length > 0;
+
+        // Hide headers/icons unless dragging
+        if (pinnedHeader) pinnedHeader.style.display = isDragging ? 'flex' : 'none';
+        if (tempHeader) tempHeader.style.display = isDragging ? 'flex' : 'none';
+
+        // Dividers stay if dragging OR if the section is not empty
+        if (pinDivider) pinDivider.style.display = (isDragging || pinnedPopulated) ? 'block' : 'none';
+        if (tempDivider) tempDivider.style.display = (isDragging || tempPopulated) ? 'block' : 'none';
+    }
+
+    function onAnyDragStart() {
+        updateVisibility(true);
+    }
+
+    function onAnyDragEnd() {
+        updateVisibility(false);
+    }
+
     function dropIntoSiteList(e, targetList, isTempList) {
         try {
             const data = JSON.parse(e.dataTransfer.getData('application/json'));
@@ -115,9 +167,13 @@ function render() {
     }
 
     function makeEndDropZone(targetList, isTempList) {
-        const zone = document.createElement('div');
-        zone.className = 'drop-indicator';
-        zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('active'); };
+        const zone = makeDropZone();
+        zone.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            zone.classList.add('active');
+        };
+        zone.ondragenter = (e) => { e.preventDefault(); };
         zone.ondragleave = () => { zone.classList.remove('active'); };
         zone.ondrop = (e) => { e.preventDefault(); zone.classList.remove('active'); dropIntoSiteList(e, targetList, isTempList); };
         return zone;
@@ -146,19 +202,21 @@ function render() {
                 }
             };
 
-            const dropIndicator = document.createElement('div');
-            dropIndicator.className = 'drop-indicator';
+            const dropIndicator = makeDropZone();
             iconBar.appendChild(dropIndicator);
 
             icon.draggable = true;
             icon.ondragstart = (e) => {
                 e.dataTransfer.setData('application/json', JSON.stringify({ id: site.id, isTemp: isTempList }));
+                e.dataTransfer.effectAllowed = 'move';
                 icon.style.opacity = '0.5';
                 const btn = document.querySelector('.edge-sidebar-add-btn');
                 if (btn) {
                     btn.classList.add('trash-mode');
                     btn.innerHTML = TRASH_ICON_SVG;
                 }
+                // Defer visibility change to prevent layout shift from breaking the drag start
+                setTimeout(() => onAnyDragStart(), 0);
             };
             icon.ondragend = () => {
                 icon.style.opacity = '1';
@@ -167,9 +225,11 @@ function render() {
                     btn.classList.remove('trash-mode');
                     btn.innerHTML = ADD_ICON_SVG;
                 }
+                onAnyDragEnd();
             };
             icon.ondragover = (e) => {
                 e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
                 dropIndicator.classList.add('active');
                 icon.style.borderTop = '2px solid var(--theme-accent-color, #0078D7)';
             };
@@ -199,7 +259,8 @@ function render() {
                                 chrome.storage.local.set({ sites: sourceList, tempSites: targetList });
                             }
                         } else {
-                            const toIndex = sourceList.findIndex(s => s.id === site.id);
+                            let toIndex = sourceList.findIndex(s => s.id === site.id);
+                            if (fromIndex < toIndex) toIndex--;
                             sourceList.splice(toIndex, 0, moved);
                             chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: sourceList });
                         }
@@ -212,20 +273,26 @@ function render() {
         iconBar.appendChild(makeEndDropZone(siteList, isTempList));
     }
 
+    // === PINNED SECTION ===
+    pinnedHeader = makeSectionHeader(PIN_HEADER_SVG, true);
+    iconBar.appendChild(pinnedHeader);
     renderSiteList(state.sites, false);
 
-    if (state.sites.length > 0 && state.tempSites?.length > 0) {
-        const groupDivider = document.createElement('div');
-        groupDivider.className = 'edge-sidebar-divider';
-        groupDivider.style.pointerEvents = 'none';
-        iconBar.appendChild(groupDivider);
-    }
+    pinDivider = document.createElement('div');
+    pinDivider.className = 'edge-sidebar-divider';
+    iconBar.appendChild(pinDivider);
 
+    // === TEMP SECTION ===
+    tempHeader = makeSectionHeader(TEMP_HEADER_SVG, false);
+    iconBar.appendChild(tempHeader);
     renderSiteList(state.tempSites || [], true);
 
-    const divider = document.createElement('div');
-    divider.className = 'edge-sidebar-divider';
-    iconBar.appendChild(divider);
+    tempDivider = document.createElement('div');
+    tempDivider.className = 'edge-sidebar-divider';
+    iconBar.appendChild(tempDivider);
+
+    updateVisibility(false);
+
 
     const addBtn = document.createElement('div');
     addBtn.className = 'edge-sidebar-add-btn';

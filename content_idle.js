@@ -6,6 +6,7 @@
     let shadow = null;
     let sidebarContainer = null;
     let sites = [];
+    let tempSites = [];
     let isSidePanelOpen = false;
     let activeSiteId = null;
     let styleElement = null;
@@ -13,7 +14,7 @@
     let sidepanelBlocklist = [];
     let autoHideEnabled = false;
     let currentTheme = null;
-    const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, applyThemeStyles, AutoHideManager } = __SidebarRevived;
+    const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, PIN_HEADER_SVG, TEMP_HEADER_SVG, applyThemeStyles, AutoHideManager } = __SidebarRevived;
 
     function init() {
         host = document.createElement('div');
@@ -29,6 +30,11 @@
 
         sidebarContainer = document.createElement('div');
         sidebarContainer.id = 'revived-idle-sidebar';
+        sidebarContainer.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        };
+        sidebarContainer.ondragenter = (e) => { e.preventDefault(); };
         shadow.appendChild(sidebarContainer);
 
         document.documentElement.appendChild(host);
@@ -38,8 +44,9 @@
         document.documentElement.appendChild(styleElement);
 
         // Initial State Fetch
-        chrome.storage.local.get(['sites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled'], (result) => {
+        chrome.storage.local.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled'], (result) => {
             sites = result.sites || [];
+            tempSites = result.tempSites || [];
             isSidePanelOpen = !!result.isSidePanelOpen;
             activeSiteId = result.activeSiteId;
             scrollBlocklist = result.scrollBlocklist || [];
@@ -56,6 +63,7 @@
         chrome.storage.onChanged.addListener((changes, namespace) => {
             if (namespace === 'local') {
                 if (changes.sites) sites = changes.sites.newValue;
+                if (changes.tempSites) tempSites = changes.tempSites.newValue;
                 if (changes.isSidePanelOpen) isSidePanelOpen = changes.isSidePanelOpen.newValue;
                 if (changes.activeSiteId) activeSiteId = changes.activeSiteId.newValue;
                 if (changes.customTheme) {
@@ -98,10 +106,89 @@
         return autoHide;
     }
 
-    function renderSiteList(siteList) {
+    function makeDropZone() {
+        const z = document.createElement('div');
+        z.className = 'drop-indicator';
+        return z;
+    }
+
+    function makeSectionHeader(svg, isPinned) {
+        const el = document.createElement('div');
+        el.className = isPinned ? 'pinned-header' : 'temp-header';
+        el.style.cssText = `width: 32px; height: 32px; display: none; align-items: center; justify-content: center; color: var(--theme-font-color, inherit);`;
+        const inner = document.createElement('div');
+        inner.style.cssText = isPinned ? 'transform: rotate(45deg); display: flex;' : 'display: flex;';
+        inner.innerHTML = svg;
+        el.appendChild(inner);
+        return el;
+    }
+
+    let pinnedHeader, tempHeader, pinDivider, tempDivider;
+
+    function updateVisibility(isDragging = false) {
+        const pinnedPopulated = sites && sites.length > 0;
+        const tempPopulated = tempSites && tempSites.length > 0;
+
+        // Hide headers/icons unless dragging
+        if (pinnedHeader) pinnedHeader.style.display = isDragging ? 'flex' : 'none';
+        if (tempHeader) tempHeader.style.display = isDragging ? 'flex' : 'none';
+
+        // Dividers stay if dragging OR if the section is not empty
+        if (pinDivider) pinDivider.style.display = (isDragging || pinnedPopulated) ? 'block' : 'none';
+        if (tempDivider) tempDivider.style.display = (isDragging || tempPopulated) ? 'block' : 'none';
+    }
+
+    function onAnyDragStart() {
+        updateVisibility(true);
+    }
+
+    function onAnyDragEnd() {
+        updateVisibility(false);
+    }
+
+    function dropIntoSiteList(e, targetList, isTempList) {
+        try {
+            const data = JSON.parse(e.dataTransfer.getData('application/json'));
+            if (!data.id) return;
+            const sourceList = data.isTemp ? [...tempSites] : [...sites];
+            const targetArr = [...targetList];
+            const fromIndex = sourceList.findIndex(s => s.id === data.id);
+            if (fromIndex === -1) return;
+            const [moved] = sourceList.splice(fromIndex, 1);
+            targetArr.push(moved);
+
+            if (data.isTemp !== isTempList) {
+                if (data.isTemp) {
+                    chrome.storage.local.set({ tempSites: sourceList, sites: targetArr });
+                } else {
+                    chrome.storage.local.set({ sites: sourceList, tempSites: targetArr });
+                }
+            } else {
+                chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: targetArr });
+            }
+        } catch (e) { }
+    }
+
+    function makeEndDropZone(targetList, isTempList) {
+        const zone = makeDropZone();
+        zone.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            zone.classList.add('active');
+        };
+        zone.ondragenter = (e) => { e.preventDefault(); };
+        zone.ondragleave = () => { zone.classList.remove('active'); };
+        zone.ondrop = (e) => { e.preventDefault(); zone.classList.remove('active'); dropIntoSiteList(e, targetList, isTempList); };
+        return zone;
+    }
+
+    function renderSiteList(siteList, isTempList) {
         siteList.forEach(site => {
             const icon = document.createElement('div');
             icon.className = 'edge-sidebar-icon';
+            if (site.id === activeSiteId) {
+                icon.classList.add('active');
+            }
             if (site.faviconUrl) {
                 icon.innerHTML = `<img src="${site.faviconUrl}" style="width: 20px; height: 20px; pointer-events: none;" />`;
             } else {
@@ -114,19 +201,20 @@
                 chrome.runtime.sendMessage({ action: 'open_side_panel' });
             };
 
-            const dropIndicator = document.createElement('div');
-            dropIndicator.className = 'drop-indicator';
+            const dropIndicator = makeDropZone();
             sidebarContainer.appendChild(dropIndicator);
 
             icon.draggable = true;
             icon.ondragstart = (e) => {
-                e.dataTransfer.setData('application/json', JSON.stringify({ id: site.id, isTemp: false }));
+                e.dataTransfer.setData('application/json', JSON.stringify({ id: site.id, isTemp: isTempList }));
+                e.dataTransfer.effectAllowed = 'move';
                 icon.style.opacity = '0.5';
                 const btn = shadow.querySelector('.edge-sidebar-add-btn');
                 if (btn) {
                     btn.classList.add('trash-mode');
                     btn.innerHTML = TRASH_ICON_SVG;
                 }
+                setTimeout(() => onAnyDragStart(), 0);
             };
             icon.ondragend = () => {
                 icon.style.opacity = '1';
@@ -135,32 +223,72 @@
                     btn.classList.remove('trash-mode');
                     btn.innerHTML = ADD_ICON_SVG;
                 }
+                onAnyDragEnd();
             };
             icon.ondragover = (e) => {
                 e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
                 dropIndicator.classList.add('active');
             };
             icon.ondragleave = () => { dropIndicator.classList.remove('active'); };
             icon.ondrop = (e) => {
                 e.preventDefault();
                 dropIndicator.classList.remove('active');
+                try {
+                    const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                    if (data.id && data.id !== site.id) {
+                        const sourceList = data.isTemp ? [...tempSites] : [...sites];
+                        const targetList = isTempList ? [...tempSites] : [...sites];
+                        const fromIndex = sourceList.findIndex(s => s.id === data.id);
+                        if (fromIndex === -1) return;
+                        const [moved] = sourceList.splice(fromIndex, 1);
+
+                        if (data.isTemp !== isTempList) {
+                            const toIndex = targetList.findIndex(s => s.id === site.id);
+                            targetList.splice(toIndex, 0, moved);
+                            if (data.isTemp) {
+                                chrome.storage.local.set({ tempSites: sourceList, sites: targetList });
+                            } else {
+                                chrome.storage.local.set({ sites: sourceList, tempSites: targetList });
+                            }
+                        } else {
+                            let toIndex = sourceList.findIndex(s => s.id === site.id);
+                            if (fromIndex < toIndex) toIndex--;
+                            sourceList.splice(toIndex, 0, moved);
+                            chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: sourceList });
+                        }
+                    }
+                } catch (e) { }
             };
 
             sidebarContainer.appendChild(icon);
         });
 
-        const finalDropIndicator = document.createElement('div');
-        finalDropIndicator.className = 'drop-indicator';
-        sidebarContainer.appendChild(finalDropIndicator);
+        sidebarContainer.appendChild(makeEndDropZone(siteList, isTempList));
     }
 
     function populateIcons() {
         sidebarContainer.innerHTML = '';
+
+        // === PINNED SECTION ===
+        pinnedHeader = makeSectionHeader(PIN_HEADER_SVG, true);
+        sidebarContainer.appendChild(pinnedHeader);
         renderSiteList(sites, false);
 
-        const divider = document.createElement('div');
-        divider.className = 'edge-sidebar-divider';
-        sidebarContainer.appendChild(divider);
+        pinDivider = document.createElement('div');
+        pinDivider.className = 'edge-sidebar-divider';
+        sidebarContainer.appendChild(pinDivider);
+
+        // === TEMP SECTION ===
+        tempHeader = makeSectionHeader(TEMP_HEADER_SVG, false);
+        sidebarContainer.appendChild(tempHeader);
+        renderSiteList(tempSites || [], true);
+
+        tempDivider = document.createElement('div');
+        tempDivider.className = 'edge-sidebar-divider';
+        sidebarContainer.appendChild(tempDivider);
+
+        updateVisibility(false);
 
         const addBtn = document.createElement('div');
         addBtn.className = 'edge-sidebar-add-btn';
@@ -173,10 +301,12 @@
 
         addBtn.ondragover = (e) => {
             e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
             if (addBtn.classList.contains('trash-mode')) {
                 addBtn.classList.add('trash-hover');
             }
         };
+        addBtn.ondragenter = (e) => { e.preventDefault(); };
         addBtn.ondragleave = () => {
             addBtn.classList.remove('trash-hover');
         };
@@ -186,9 +316,14 @@
             if (addBtn.classList.contains('trash-mode')) {
                 try {
                     const data = JSON.parse(e.dataTransfer.getData('application/json'));
-                    if (data.id && !data.isTemp) {
-                        const currentSites = sites.filter(s => s.id !== data.id);
-                        chrome.storage.local.set({ sites: currentSites });
+                    if (data.id) {
+                        if (data.isTemp) {
+                            const currentSites = tempSites.filter(s => s.id !== data.id);
+                            chrome.storage.local.set({ tempSites: currentSites });
+                        } else {
+                            const currentSites = sites.filter(s => s.id !== data.id);
+                            chrome.storage.local.set({ sites: currentSites });
+                        }
                     }
                 } catch (evt) { }
             }

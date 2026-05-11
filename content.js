@@ -253,6 +253,32 @@
         return autoHide;
     }
 
+    function makeDropZone() {
+        const z = document.createElement('div');
+        z.className = 'drop-indicator';
+        return z;
+    }
+
+    function makeEndDropZone(targetList) {
+        const zone = makeDropZone();
+        zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('active'); };
+        zone.ondragleave = () => { zone.classList.remove('active'); };
+        zone.ondrop = (e) => {
+            e.preventDefault(); zone.classList.remove('active');
+            try {
+                const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                if (!data.id) return;
+                const src = [...state.sites];
+                const from = src.findIndex(s => s.id === data.id);
+                if (from === -1) return;
+                const [moved] = src.splice(from, 1);
+                src.push(moved);
+                chrome.storage.local.set({ sites: src });
+            } catch (e) { }
+        };
+        return zone;
+    }
+
     function populateIcons() {
         iconBar.innerHTML = '';
         state.sites.forEach(site => {
@@ -269,9 +295,12 @@
                 chrome.storage.local.set({ activeSiteId: newActiveId });
             };
 
+            const dropIndicator = makeDropZone();
+            iconBar.appendChild(dropIndicator);
+
             icon.draggable = true;
             icon.ondragstart = (e) => {
-                e.dataTransfer.setData('text/plain', site.id);
+                e.dataTransfer.setData('application/json', JSON.stringify({ id: site.id }));
                 icon.style.opacity = '0.5';
             };
             icon.ondragend = () => {
@@ -279,27 +308,33 @@
             };
             icon.ondragover = (e) => {
                 e.preventDefault();
-                icon.classList.add('drag-over');
+                dropIndicator.classList.add('active');
             };
             icon.ondragleave = () => {
-                icon.classList.remove('drag-over');
+                dropIndicator.classList.remove('active');
             };
             icon.ondrop = (e) => {
                 e.preventDefault();
-                icon.classList.remove('drag-over');
-                const draggedId = e.dataTransfer.getData('text/plain');
-                if (draggedId && draggedId !== site.id) {
-                    const sites = [...state.sites];
-                    const fromIndex = sites.findIndex(s => s.id === draggedId);
-                    const toIndex = sites.findIndex(s => s.id === site.id);
-                    const [moved] = sites.splice(fromIndex, 1);
-                    sites.splice(toIndex, 0, moved);
-                    chrome.storage.local.set({ sites });
-                }
+                dropIndicator.classList.remove('active');
+                try {
+                    const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                    if (data.id && data.id !== site.id) {
+                        const sites = [...state.sites];
+                        const fromIndex = sites.findIndex(s => s.id === data.id);
+                        if (fromIndex === -1) return;
+                        const [moved] = sites.splice(fromIndex, 1);
+                        let toIndex = sites.findIndex(s => s.id === site.id);
+                        if (fromIndex < toIndex) toIndex--;
+                        sites.splice(toIndex, 0, moved);
+                        chrome.storage.local.set({ sites });
+                    }
+                } catch (e) { }
             };
 
             iconBar.appendChild(icon);
         });
+
+        iconBar.appendChild(makeEndDropZone(state.sites));
 
         const divider = document.createElement('div');
         divider.className = 'edge-sidebar-divider';

@@ -113,7 +113,7 @@
     left: -6px;
     width: 44px;
     height: 44px;
-    border: 2px dashed var(--theme-divider-bg, #555);
+    border: 2px dashed var(--theme-font-color, #555);
     border-radius: 8px;
     box-sizing: border-box;
     pointer-events: none;
@@ -145,31 +145,24 @@
 
 .drop-indicator {
     width: 32px;
-    height: 16px;
-    margin: -8px 0;
-    position: relative;
+    height: 10px;
+    margin: -4px 0;
     opacity: 0;
     transition: opacity 0.2s;
     pointer-events: auto;
     z-index: 10;
+    position: relative;
 }
 
 .drop-indicator::after {
     content: '';
     position: absolute;
-    top: 50%;
+    top: 4px;
     left: 0;
-    width: 100%;
+    right: 0;
     height: 2px;
-    background-color: var(--theme-accent-color, #0078D7);
-    border-radius: 2px;
-    opacity: 0;
-    transition: opacity 0.2s;
-    transform: translateY(-50%);
-}
-
-.drop-indicator.active::after {
-    opacity: 1;
+    background: var(--theme-accent-color, #0078D7);
+    border-radius: 1px;
 }
 
 .drop-indicator.active {
