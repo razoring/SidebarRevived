@@ -58,21 +58,38 @@ function render() {
             chrome.storage.local.set({ activeSiteId: (state.activeSiteId === site.id ? null : site.id) });
         };
 
+        // Drop indicator above icon
+        const dropIndicator = document.createElement('div');
+        dropIndicator.className = 'drop-indicator';
+        iconBar.appendChild(dropIndicator);
+
         // Drag-and-drop sorting logic
         icon.draggable = true;
         icon.ondragstart = (e) => {
             e.dataTransfer.setData('text/plain', site.id);
             icon.style.opacity = '0.5';
+            const btn = document.querySelector('.edge-sidebar-add-btn');
+            if (btn) {
+                btn.classList.add('trash-mode');
+                btn.innerHTML = '<span class="material-symbols-rounded">delete</span>';
+            }
         };
-        icon.ondragend = () => { icon.style.opacity = '1'; };
+        icon.ondragend = () => {
+            icon.style.opacity = '1';
+            const btn = document.querySelector('.edge-sidebar-add-btn');
+            if (btn) {
+                btn.classList.remove('trash-mode');
+                btn.innerHTML = '<span class="material-symbols-rounded">add</span>';
+            }
+        };
         icon.ondragover = (e) => {
             e.preventDefault();
-            icon.style.borderTop = '2px solid #0078D7';
+            dropIndicator.classList.add('active');
         };
-        icon.ondragleave = () => { icon.style.borderTop = ''; };
+        icon.ondragleave = () => { dropIndicator.classList.remove('active'); };
         icon.ondrop = (e) => {
             e.preventDefault();
-            icon.style.borderTop = '';
+            dropIndicator.classList.remove('active');
             const draggedId = e.dataTransfer.getData('text/plain');
             if (draggedId && draggedId !== site.id) {
                 const sites = [...state.sites];
@@ -87,15 +104,21 @@ function render() {
         iconBar.appendChild(icon);
     });
 
+    // Final drop indicator at the bottom of the list
+    const finalDropIndicator = document.createElement('div');
+    finalDropIndicator.className = 'drop-indicator';
+    iconBar.appendChild(finalDropIndicator);
+
     const divider = document.createElement('div');
     divider.className = 'edge-sidebar-divider';
     iconBar.appendChild(divider);
 
     const addBtn = document.createElement('div');
     addBtn.className = 'edge-sidebar-add-btn';
-    addBtn.innerText = "+";
     addBtn.title = "Add a new site";
+    addBtn.innerHTML = '<span class="material-symbols-rounded">add</span>';
     addBtn.onclick = () => {
+        if (addBtn.classList.contains('trash-mode')) return; // Prevent click while dragging
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             const tab = tabs[0];
             if (tab && tab.url && tab.url.startsWith('http')) {
@@ -115,6 +138,32 @@ function render() {
             }
         });
     };
+
+    // Trash drop zone
+    addBtn.ondragover = (e) => {
+        e.preventDefault();
+        if (addBtn.classList.contains('trash-mode')) {
+            addBtn.classList.add('trash-hover');
+        }
+    };
+    addBtn.ondragleave = () => {
+        addBtn.classList.remove('trash-hover');
+    };
+    addBtn.ondrop = (e) => {
+        e.preventDefault();
+        addBtn.classList.remove('trash-hover');
+        if (addBtn.classList.contains('trash-mode')) {
+            const draggedId = e.dataTransfer.getData('text/plain');
+            if (draggedId) {
+                const sites = state.sites.filter(s => s.id !== draggedId);
+                chrome.storage.local.set({ sites });
+                if (state.activeSiteId === draggedId) {
+                    chrome.storage.local.set({ activeSiteId: null });
+                }
+            }
+        }
+    };
+
     iconBar.appendChild(addBtn);
 
     // Content Area: Persistent Multi-Iframe state

@@ -64,12 +64,85 @@
     align-items: center;
     cursor: pointer;
     font-size: 20px;
-    color: inherit;
+    color: white;
+    /* user request: white on all sidebars */
+    position: relative;
     transition: background-color 0.1s;
+}
+
+.edge-sidebar-add-btn.trash-mode {
+    color: white;
 }
 
 .edge-sidebar-add-btn:hover {
     background-color: rgba(128, 128, 128, 0.3) !important;
+}
+
+.edge-sidebar-add-btn.trash-hover {
+    background-color: #0078D7 !important;
+}
+
+.edge-sidebar-add-btn.trash-hover>.material-symbols-rounded {
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.edge-sidebar-add-btn.trash-hover::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border: 2px solid white;
+    border-radius: 6px;
+    box-sizing: border-box;
+    animation: morph-to-square 0.2s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+@keyframes morph-to-square {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+        border-radius: 12px;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+        border-radius: 6px;
+    }
+}
+
+.material-symbols-rounded {
+    font-family: 'Material Symbols Rounded';
+    font-weight: 100;
+    font-style: normal;
+    font-size: 24px;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+    font-variation-settings: 'FILL' 0, 'wght' 100, 'GRAD' 200, 'opsz' 24;
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.drop-indicator {
+    width: 60%;
+    height: 2px;
+    background-color: #0078D7;
+    margin: 4px 0;
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.2s, height 0.2s, margin 0.2s;
+}
+
+.drop-indicator.active {
+    opacity: 1;
+    height: 2px;
+    margin: 8px 0;
 }
 
 @media (prefers-color-scheme: dark) {
