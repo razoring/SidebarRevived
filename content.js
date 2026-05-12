@@ -1,6 +1,7 @@
 // content.js
 (() => {
     if (window !== window.top) return;
+    if (!chrome?.runtime?.id) return; // Extension context invalidated — bail out
 
     let host = null;
     let shadow = null;
@@ -29,35 +30,10 @@
 
     function applyTheme() {
         currentTheme = state.customTheme;
-        // ONLY blend if autohide is enabled (user request)
-        const baseColor = autoHideEnabled ? getPageDominantColor() : null;
-        SR.applyThemeStyles(host, currentTheme, baseColor);
+        SR.applyThemeStyles(host, currentTheme);
         if (currentTheme?.accentColor && autoHide) {
             autoHide.updateAccentColor(currentTheme.accentColor);
         }
-    }
-
-    function getPageDominantColor() {
-        try {
-            let el = document.body;
-            if (!el) return { r: 255, g: 255, b: 255 };
-            let bg = window.getComputedStyle(el).backgroundColor;
-
-            // Walk up to find a non-transparent background
-            let depth = 0;
-            while ((bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent' || !bg) && depth < 5) {
-                if (!el.parentElement) break;
-                el = el.parentElement;
-                bg = window.getComputedStyle(el).backgroundColor;
-                depth++;
-            }
-
-            const match = bg.match(/\d+/g);
-            if (match && match.length >= 3) {
-                return { r: parseInt(match[0]), g: parseInt(match[1]), b: parseInt(match[2]) };
-            }
-        } catch (e) { }
-        return { r: 255, g: 255, b: 255 };
     }
 
     function isSidepanelBlocked() {
@@ -291,10 +267,6 @@
         if (currentState === lastRenderState) return;
         lastRenderState = currentState;
 
-        if (!state.sites || state.sites.length === 0) {
-            console.warn('[SidebarRevived] No sites found in state:', state);
-        }
-
         SR.renderIconBar(iconBar, {
             sites: state.sites,
             tempSites: state.tempSites || [],
@@ -393,11 +365,16 @@
             contentArea.classList.remove('active');
         }
 
-        // Always apply offset logic (user requested "display BESIDE" regardless of autohide)
-        document.documentElement.classList.add('revived-sidebar-active');
-        const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
-        document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
-        document.documentElement.style.removeProperty('margin-right');
+        // Overlay vs Offset logic
+        // If autohide is enabled, we never offset (always overlay).
+        if (autoHideEnabled) {
+            document.documentElement.classList.remove('revived-sidebar-active');
+            document.documentElement.style.removeProperty('--revived-sidebar-width');
+        } else {
+            document.documentElement.classList.add('revived-sidebar-active');
+            const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
+            document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+        }
     }
 
     if (document.readyState === 'loading') {

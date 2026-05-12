@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Edge Extension",
+            "type": "msedge",
+            "request": "launch",
+            "runtimeArgs": [
+                "--load-extension=${workspaceFolder}",
+                "--auto-open-devtools-for-tabs"
+            ],
+            "url": "chrome://extensions",
+            "webRoot": "${workspaceFolder}"
+        }
+    ]
+}

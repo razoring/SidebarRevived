@@ -1,6 +1,7 @@
 // content_idle.js
 (() => {
     if (window !== window.top) return;
+    if (!chrome?.runtime?.id) return; // Extension context invalidated — bail out
 
     let host = null;
     let shadow = null;
@@ -90,13 +91,11 @@
     }
 
     function applyTheme(theme) {
-        // Idle sidebar never blends (user request: ONLY if autohide and in-page)
-        applyThemeStyles(host, theme, null);
+        applyThemeStyles(host, theme);
         if (theme?.accentColor && autoHide) {
             autoHide.updateAccentColor(theme.accentColor);
         }
     }
-
 
     let autoHide = null;
 
@@ -126,7 +125,8 @@
             getTempSites: () => tempSites,
             onSiteClick: (siteId) => {
                 if (!chrome.runtime?.id) return;
-                chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'inpage' });
+                chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' });
+                chrome.runtime.sendMessage({ action: 'open_side_panel' });
             },
             onAddSite: () => {
                 if (!chrome.runtime?.id) return;
