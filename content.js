@@ -41,7 +41,6 @@
         return (state.sidepanelBlocklist || []).some(d => hostname.includes(d));
     }
 
-<<<<<<< HEAD
     function loadCSS() {
         const sharedLink = document.createElement('link');
         sharedLink.rel = 'stylesheet';
@@ -52,15 +51,17 @@
         link.rel = 'stylesheet';
         link.href = chrome.runtime.getURL('sidebar.css');
         shadow.appendChild(link);
-=======
+    }
+
+    //old
+    /*
     async function loadCSS() {
         const response = await fetch(chrome.runtime.getURL('sidebar.css'));
         const css = await response.text();
         const style = document.createElement('style');
         style.textContent = css;
         shadow.appendChild(style);
->>>>>>> parent of 96f0182 (before experimental header)
-    }
+    }*/
 
     function injectHostStyles() {
         const style = document.createElement('style');
@@ -208,15 +209,16 @@
 
         chrome.storage.onChanged.addListener((changes, namespace) => {
             if (namespace === 'local') {
+                let needsRender = false;
                 if (changes.sites !== undefined) {
                     state.sites = changes.sites.newValue;
                     lastRenderState = null;
-                    render();
+                    needsRender = true;
                 }
                 if (changes.tempSites !== undefined) {
                     state.tempSites = changes.tempSites.newValue;
                     lastRenderState = null;
-                    render();
+                    needsRender = true;
                 }
                 if (changes.autoHideEnabled !== undefined) {
                     autoHideEnabled = changes.autoHideEnabled.newValue;
@@ -224,35 +226,33 @@
                         autoHide.cleanup();
                         autoHideArmed = false;
                     }
-                    render();
+                    needsRender = true;
                 }
                 if (changes.isSidePanelOpen !== undefined) {
                     state.isSidePanelOpen = changes.isSidePanelOpen.newValue;
-                    render();
+                    needsRender = true;
                 }
                 if (changes.activeSiteOwner !== undefined) {
                     state.activeSiteOwner = changes.activeSiteOwner.newValue;
-                    render();
+                    needsRender = true;
                 }
                 if (changes.activeSiteId !== undefined) {
                     state.activeSiteId = changes.activeSiteId.newValue;
-                    render();
+                    needsRender = true;
                 }
                 if (changes.sidepanelBlocklist !== undefined) {
                     state.sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
-                    render();
+                    needsRender = true;
                 }
                 if (changes.customTheme !== undefined) {
                     state.customTheme = changes.customTheme.newValue;
                     applyTheme();
-                    render();
+                    needsRender = true;
                 }
+                if (needsRender) render();
             }
         });
 
-        setInterval(() => {
-            render();
-        }, 1000);
     }
 
     function updateLayout(width) {
@@ -285,7 +285,7 @@
     }
 
     let lastRenderState = null;
-    function populateIcons() {
+    async function populateIcons() {
         const currentState = JSON.stringify({
             sites: state.sites,
             tempSites: state.tempSites,
@@ -295,7 +295,7 @@
         if (currentState === lastRenderState) return;
         lastRenderState = currentState;
 
-        SR.renderIconBar(iconBar, {
+        await SR.renderIconBar(iconBar, {
             sites: state.sites,
             tempSites: state.tempSites || [],
             activeSiteId: state.activeSiteId,
@@ -323,18 +323,20 @@
         const hostname = window.location.hostname;
         const isBlocked = state.sidepanelBlocklist.some(d => hostname.includes(d)) && !state.activeSiteId;
 
-        if (state.isSidePanelOpen || isBlocked) {
-            ah.cleanup();
-            autoHideArmed = false;
-            hideSidebarCompletely();
-            return;
-        }
-
-        // If any site is active, we stay open (ignore auto-hide trigger for visibility)
-        if (state.activeSiteId) {
+        // If any site is active and we own it, we stay open (ignore auto-hide trigger for visibility)
+        if (state.activeSiteId && state.activeSiteOwner === 'inpage') {
             ah.cleanup();
             autoHideArmed = false;
             renderInternal();
+            return;
+        }
+
+        // XOR: If sidepanel is open, blocked, OR NO SITE IS ACTIVE, we hide this instance.
+        // The idle sidebar script (content_idle.js) handles the idle icon bar.
+        if (state.isSidePanelOpen || isBlocked || !state.activeSiteId) {
+            ah.cleanup();
+            autoHideArmed = false;
+            hideSidebarCompletely();
             return;
         }
 
@@ -362,9 +364,9 @@
         document.documentElement.style.removeProperty('--revived-sidebar-width');
     }
 
-    function renderInternal() {
+    async function renderInternal() {
         if (currentTheme) SR.applyThemeStyles(host, currentTheme);
-        populateIcons();
+        await populateIcons();
         container.style.display = '';
 
         const isFullSidebar = state.activeSiteId && state.activeSiteOwner === 'inpage';

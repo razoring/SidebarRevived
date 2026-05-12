@@ -110,7 +110,7 @@ chrome.runtime.onConnect.addListener((port) => {
     port.onDisconnect.addListener(() => {
       openSidePanels--;
       if (openSidePanels <= 0) {
-        chrome.storage.local.set({ isSidePanelOpen: false, tempSites: [] });
+        chrome.storage.local.set({ isSidePanelOpen: false, tempSites: [], activeSiteId: null, activeSiteOwner: null });
       }
     });
   }

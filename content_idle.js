@@ -9,12 +9,13 @@
     let tempSites = [];
     let isSidePanelOpen = false;
     let activeSiteId = null;
+    let activeSiteOwner = null;
     let styleElement = null;
     let scrollBlocklist = [];
     let sidepanelBlocklist = [];
     let autoHideEnabled = false;
     let currentTheme = null;
-    const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, applyThemeStyles, AutoHideManager } = __SidebarRevived;
+    const { applyThemeStyles, AutoHideManager } = __SidebarRevived;
 
     function init() {
         host = document.createElement('div');
@@ -54,6 +55,7 @@
             tempSites = result.tempSites || [];
             isSidePanelOpen = !!result.isSidePanelOpen;
             activeSiteId = result.activeSiteId;
+            activeSiteOwner = result.activeSiteOwner || null;
             scrollBlocklist = result.scrollBlocklist || [];
             sidepanelBlocklist = result.sidepanelBlocklist || [];
             if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
@@ -70,7 +72,8 @@
                 if (changes.sites) sites = changes.sites.newValue;
                 if (changes.tempSites) tempSites = changes.tempSites.newValue;
                 if (changes.isSidePanelOpen) isSidePanelOpen = changes.isSidePanelOpen.newValue;
-                if (changes.activeSiteId) activeSiteId = changes.activeSiteId.newValue;
+                if (changes.activeSiteId !== undefined) activeSiteId = changes.activeSiteId.newValue;
+                if (changes.activeSiteOwner !== undefined) activeSiteOwner = changes.activeSiteOwner.newValue;
                 if (changes.customTheme) {
                     currentTheme = changes.customTheme.newValue;
                     applyTheme(currentTheme);
@@ -100,7 +103,7 @@
             autoHide = new AutoHideManager({
                 onShowBar: () => {
                     populateIcons();
-                    host.style.display = 'block';
+                    host.style.removeProperty('display');
                 },
                 onHideBar: () => { host.style.display = 'none'; },
                 getPanelWidth: () => 48,
@@ -111,8 +114,13 @@
         return autoHide;
     }
 
-    function populateIcons() {
-        __SidebarRevived.renderIconBar(sidebarContainer, {
+    let lastRenderState = null;
+    async function populateIcons() {
+        const currentState = JSON.stringify({ sites, tempSites, activeSiteId });
+        if (currentState === lastRenderState) return;
+        lastRenderState = currentState;
+
+        await __SidebarRevived.renderIconBar(sidebarContainer, {
             sites: sites,
             tempSites: tempSites || [],
             activeSiteId: activeSiteId,
@@ -132,28 +140,31 @@
         });
     }
 
-    function render() {
+    async function render() {
         const ah = getAutoHide();
-        ah.cleanup();
         const hostname = window.location.hostname;
         const isSidepanelBlocked = sidepanelBlocklist.some(d => hostname.includes(d));
 
-        if (isSidePanelOpen || isSidepanelBlocked || activeSiteId) {
+        if (isSidePanelOpen || isSidepanelBlocked || (activeSiteId && activeSiteOwner === 'inpage')) {
+            ah.cleanup();
             host.style.display = 'none';
             document.documentElement.classList.remove('revived-sidebar-idle-active');
             return;
         }
 
         if (autoHideEnabled) {
-            host.style.display = 'none';
+            if (!ah.triggered) {
+                host.style.display = 'none';
+                ah.setup();
+            }
             document.documentElement.classList.remove('revived-sidebar-idle-active');
             styleElement.textContent = '';
-            ah.setup();
+            populateIcons();
             return;
         }
 
         if (currentTheme) applyTheme(currentTheme);
-        host.style.display = 'block';
+        host.style.removeProperty('display');
         document.documentElement.classList.add('revived-sidebar-idle-active');
 
         const isBlocked = scrollBlocklist.some(d => hostname.includes(d));
@@ -198,7 +209,7 @@
             `;
         }
 
-        populateIcons();
+        await populateIcons();
     }
 
     if (document.readyState === 'loading') {

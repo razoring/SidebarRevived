@@ -19,7 +19,7 @@ let state = {
     autoHideEnabled: false
 };
 
-const { ADD_ICON_SVG, TRASH_ICON_SVG, SETTINGS_ICON_SVG, createSiteFromTab, applyThemeStyles, getThemeDefaults } = __SidebarRevived;
+const { createSiteFromTab, applyThemeStyles, getThemeDefaults } = __SidebarRevived;
 
 const iconBar = document.getElementById('icon-bar');
 const contentArea = document.getElementById('content-area');
@@ -87,7 +87,7 @@ function applyTheme() {
     applyThemeStyles(document.documentElement, state.customTheme);
 }
 
-function render() {
+async function render() {
     if (state.isSettingsOpen) {
         iconBar.style.display = 'none';
         contentArea.style.display = 'none';
@@ -140,7 +140,7 @@ function render() {
         getIconOpacity: (site) => (site.id === state.activeSiteId || document.getElementById('iframe-' + site.id)) ? '1' : '0.5'
     };
 
-    __SidebarRevived.renderIconBar(iconBar, iconBarOptions);
+    await __SidebarRevived.renderIconBar(iconBar, iconBarOptions);
 
     if (inPageActive) return;
 

@@ -39,10 +39,6 @@
     border-left: 1px solid rgba(0, 0, 0, 0.1);
     display: none;
     flex-direction: column;
-<<<<<<< HEAD
-    /* Header on top, iframe below */
-=======
->>>>>>> parent of 96f0182 (before experimental header)
     box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
     position: relative;
     color: var(--theme-font-color, #333);
@@ -68,7 +64,6 @@
 }
 
 .edge-sidebar-header {
-<<<<<<< HEAD
     width: 100%;
     height: 40px;
     display: flex;
@@ -76,12 +71,6 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-=======
-    height: 40px;
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
->>>>>>> parent of 96f0182 (before experimental header)
     background: rgba(0, 0, 0, 0.03);
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     font-weight: 600;
@@ -94,11 +83,8 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-<<<<<<< HEAD
     padding: 0;
     user-select: none;
-=======
->>>>>>> parent of 96f0182 (before experimental header)
 }
 
 .edge-sidebar-header-close {
@@ -108,11 +94,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-<<<<<<< HEAD
     flex-shrink: 0;
     margin-left: 8px;
-=======
->>>>>>> parent of 96f0182 (before experimental header)
 }
 
 .edge-sidebar-header-close:hover {
@@ -126,79 +109,5 @@
     height: 100%;
 }
 
-<<<<<<< HEAD
-/* Icon styles are managed in assets/sidebar_shared.css */
-=======
-.edge-sidebar-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    margin-bottom: 4px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    color: white;
-    font-weight: bold;
-    font-size: 14px;
-    user-select: none;
-    transition: transform 0.1s, border-radius 0.1s;
-}
 
-.edge-sidebar-icon:hover,
-.edge-sidebar-icon.active {
-    border-radius: 10px;
-    transform: scale(1.05);
-}
-
-.edge-sidebar-icon.active {
-    box-shadow: 0 0 0 2px var(--theme-accent-color, #0078D7);
-}
-
-.edge-sidebar-icon.drag-over {
-    border-top: 2px solid var(--theme-accent-color, #005A9E);
-}
-
-.edge-sidebar-divider {
-    width: 24px;
-    height: 1px;
-    background: #ccc;
-    margin: 10px 0;
-    pointer-events: none;
-}
-
-.edge-sidebar-add-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 16px;
-    background: #f3f3f3;
-    color: var(--theme-font-color, inherit);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    font-size: 20px;
-    line-height: 1;
-    border: none;
-}
-
-.edge-sidebar-add-btn:hover {
-    background: #e5e5e5;
-}
-
-.drop-indicator {
-    width: 32px;
-    height: 2px;
-    margin: 0;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: auto;
-    z-index: 10;
-    background: var(--theme-accent-color, #0078D7);
-    border-radius: 1px;
-}
-
-.drop-indicator.active {
-    opacity: 1;
-}
->>>>>>> parent of 96f0182 (before experimental header)
+/* Icon styles are now managed in assets/sidebar_shared.css */
