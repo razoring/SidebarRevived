@@ -113,19 +113,27 @@
             this.getAccentColor = opts.getAccentColor || (() => '#b2d7ef');
             this.leaveThresholdOffset = opts.leaveThresholdOffset !== undefined ? opts.leaveThresholdOffset : 10;
 
-            this.TRIGGER_ZONE = 20;
-            this.timer = null;
             this.leaveTimer = null;
             this.mouseHandler = null;
             this.indicator = null;
             this.triggered = false;
             this.accentColor = this.getAccentColor();
+            this._enterTime = 0;
+            this._rafId = 0;
+            this._latestEdgeDist = 0;
         }
 
         updateAccentColor(color) {
             this.accentColor = color;
             if (this.indicator && this.indicator.parentElement) {
-                this.indicator.style.background = `linear-gradient(to left, ${this.accentColor}, transparent)`;
+                const rgb = S.hexToRgb(color);
+                this.indicator.style.background = `linear-gradient(to left, 
+                    rgba(${rgb.r},${rgb.g},${rgb.b},1) 0%, 
+                    rgba(${rgb.r},${rgb.g},${rgb.b},0.6) 20%, 
+                    rgba(${rgb.r},${rgb.g},${rgb.b},0.3) 40%, 
+                    rgba(${rgb.r},${rgb.g},${rgb.b},0.12) 60%, 
+                    rgba(${rgb.r},${rgb.g},${rgb.b},0.04) 80%, 
+                    transparent 100%)`;
             }
         }
 
@@ -133,19 +141,42 @@
             if (!this.indicator || !this.indicator.parentElement) {
                 this.indicator = document.createElement('div');
                 this.indicator.id = 'revived-auto-hide-indicator';
+
+                // Inject animation keyframes if not present
+                if (!document.getElementById('revived-wave-anim')) {
+                    const style = document.createElement('style');
+                    style.id = 'revived-wave-anim';
+                    style.textContent = `
+                        @keyframes revived-indicator-wave {
+                            0%, 100% { transform: translateX(0) scaleX(1); }
+                            50% { transform: translateX(4px) scaleX(1.1); }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+
                 document.documentElement.appendChild(this.indicator);
             }
+            const rgb = S.hexToRgb(this.accentColor);
             this.indicator.style.cssText = `
                 position: fixed;
                 top: 0;
                 right: 0;
-                width: 20px;
+                width: ${this.getPanelWidth()}px;
                 height: 100vh;
                 z-index: 2147483646;
                 pointer-events: none;
-                background: linear-gradient(to left, ${this.accentColor}, transparent);
+                background: linear-gradient(to left,
+                    rgba(${rgb.r},${rgb.g},${rgb.b},1) 0%,
+                    rgba(${rgb.r},${rgb.g},${rgb.b},0.6) 20%,
+                    rgba(${rgb.r},${rgb.g},${rgb.b},0.3) 40%,
+                    rgba(${rgb.r},${rgb.g},${rgb.b},0.12) 60%,
+                    rgba(${rgb.r},${rgb.g},${rgb.b},0.04) 80%,
+                    transparent 100%);
                 opacity: 0;
-                transition: opacity 0.3s ease;
+                transition: opacity 0.3s ease, transform 0.3s ease;
+                animation: revived-indicator-wave 3s infinite ease-in-out;
+                transform-origin: right center;
             `;
             return this.indicator;
         }
@@ -161,6 +192,34 @@
             }
         }
 
+        _cancelHover() {
+            this._enterTime = 0;
+            if (this._rafId) {
+                cancelAnimationFrame(this._rafId);
+                this._rafId = 0;
+            }
+        }
+
+        _startHoverTick(panelWidth) {
+            if (this._rafId) return;
+            this._enterTime = performance.now();
+            const tick = () => {
+                this._rafId = 0;
+                if (this.triggered) return;
+                const progress = Math.min(1, this._latestEdgeDist / panelWidth);
+                const delay = 250 + progress * (3000 - 250);
+                if (performance.now() - this._enterTime >= delay) {
+                    this._enterTime = 0;
+                    this.hideIndicator();
+                    this.triggered = true;
+                    this.onShowBar();
+                } else {
+                    this._rafId = requestAnimationFrame(tick);
+                }
+            };
+            this._rafId = requestAnimationFrame(tick);
+        }
+
         setup() {
             this.cleanup();
             this.triggered = false;
@@ -168,6 +227,7 @@
             this.mouseHandler = (e) => {
                 const edgeDist = window.innerWidth - e.clientX;
                 const panelWidth = this.getPanelWidth();
+                this._latestEdgeDist = edgeDist;
 
                 if (this.triggered) {
                     if (edgeDist > panelWidth + this.leaveThresholdOffset) {
@@ -184,22 +244,14 @@
                         }
                     }
                 } else {
-                    if (edgeDist <= this.TRIGGER_ZONE) {
+                    if (edgeDist <= panelWidth) {
                         this.showIndicator();
-                        if (!this.timer) {
-                            this.timer = setTimeout(() => {
-                                this.hideIndicator();
-                                this.triggered = true;
-                                this.onShowBar();
-                                this.timer = null;
-                            }, 500);
+                        if (!this._enterTime) {
+                            this._startHoverTick(panelWidth);
                         }
                     } else {
-                        if (this.timer) {
-                            clearTimeout(this.timer);
-                            this.timer = null;
-                            this.hideIndicator();
-                        }
+                        this._cancelHover();
+                        this.hideIndicator();
                     }
                 }
             };
@@ -211,10 +263,7 @@
                 document.removeEventListener('mousemove', this.mouseHandler);
                 this.mouseHandler = null;
             }
-            if (this.timer) {
-                clearTimeout(this.timer);
-                this.timer = null;
-            }
+            this._cancelHover();
             if (this.leaveTimer) {
                 clearTimeout(this.leaveTimer);
                 this.leaveTimer = null;

@@ -277,7 +277,7 @@
                     render();
                 },
                 getPanelWidth: () => 48 + (state.activeSiteId && state.activeSiteOwner === 'inpage' ? state.sidebarWidth : 0),
-                getAccentColor: () => '#b2d7ef',
+                getAccentColor: () => currentTheme?.accentColor || '#b2d7ef',
                 leaveThresholdOffset: 10
             });
         }

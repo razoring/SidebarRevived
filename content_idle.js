@@ -117,7 +117,7 @@
                 },
                 onHideBar: () => { host.style.display = 'none'; },
                 getPanelWidth: () => 48,
-                getAccentColor: () => '#b2d7ef',
+                getAccentColor: () => currentTheme?.accentColor || '#b2d7ef',
                 leaveThresholdOffset: 5
             });
         }
