@@ -230,17 +230,14 @@
                 }
                 if (changes.isSidePanelOpen !== undefined) {
                     state.isSidePanelOpen = changes.isSidePanelOpen.newValue;
-                    lastRenderState = null;
                     needsRender = true;
                 }
                 if (changes.activeSiteOwner !== undefined) {
                     state.activeSiteOwner = changes.activeSiteOwner.newValue;
-                    lastRenderState = null;
                     needsRender = true;
                 }
                 if (changes.activeSiteId !== undefined) {
                     state.activeSiteId = changes.activeSiteId.newValue;
-                    lastRenderState = null;
                     needsRender = true;
                 }
                 if (changes.sidepanelBlocklist !== undefined) {
@@ -293,7 +290,7 @@
             sites: state.sites,
             tempSites: state.tempSites,
             activeSiteId: state.activeSiteId,
-            activeSiteOwner: state.activeSiteOwner
+            owner: state.activeSiteOwner
         });
         if (currentState === lastRenderState) return;
         lastRenderState = currentState;
@@ -306,14 +303,14 @@
             getTempSites: () => state.tempSites || [],
             onSiteClick: (siteId) => {
                 const newActiveId = (state.activeSiteId === siteId) ? null : siteId;
-                try { chrome.storage.local.set({ activeSiteId: newActiveId, activeSiteOwner: newActiveId ? 'inpage' : null, isSettingsOpen: false }); } catch (e) {}
+                chrome.storage.local.set({ activeSiteId: newActiveId, activeSiteOwner: newActiveId ? 'inpage' : null });
             },
             onAddSite: () => {
-                try { chrome.runtime.sendMessage({ action: 'add_current_tab' }); } catch (e) {}
+                chrome.runtime.sendMessage({ action: 'add_current_tab' });
             },
             onSettingsClick: () => {
-                try { chrome.storage.local.set({ isSettingsOpen: true }); } catch (e) {}
-                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) {}
+                chrome.storage.local.set({ isSettingsOpen: true });
+                chrome.runtime.sendMessage({ action: 'open_side_panel' });
             },
             getIconOpacity: (site) => (site.id === state.activeSiteId) ? '1' : '0.8'
         });
@@ -402,5 +399,9 @@
         }
     }
 
-    init();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();

@@ -15,7 +15,6 @@
     let sidepanelBlocklist = [];
     let autoHideEnabled = false;
     let currentTheme = null;
-    let _loaded = false;
     const { applyThemeStyles, AutoHideManager } = __SidebarRevived;
 
     function init() {
@@ -56,10 +55,12 @@
 
         document.documentElement.appendChild(host);
 
+        // Host style adjustment for idle bar
+        styleElement = document.createElement('style');
+        document.documentElement.appendChild(styleElement);
+
         // Initial State Fetch
         chrome.storage.local.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled'], (result) => {
-            if (_loaded) return;
-            _loaded = true;
             sites = result.sites || [];
             tempSites = result.tempSites || [];
             isSidePanelOpen = !!result.isSidePanelOpen;
@@ -78,11 +79,11 @@
         // Listen for storage changes
         chrome.storage.onChanged.addListener((changes, namespace) => {
             if (namespace === 'local') {
-                if (changes.isSidePanelOpen !== undefined) isSidePanelOpen = changes.isSidePanelOpen.newValue;
-                if (changes.activeSiteId !== undefined) activeSiteId = changes.activeSiteId.newValue;
-                if (changes.activeSiteOwner !== undefined) activeSiteOwner = changes.activeSiteOwner.newValue;
                 if (changes.sites) sites = changes.sites.newValue;
                 if (changes.tempSites) tempSites = changes.tempSites.newValue;
+                if (changes.isSidePanelOpen) isSidePanelOpen = changes.isSidePanelOpen.newValue;
+                if (changes.activeSiteId !== undefined) activeSiteId = changes.activeSiteId.newValue;
+                if (changes.activeSiteOwner !== undefined) activeSiteOwner = changes.activeSiteOwner.newValue;
                 if (changes.customTheme) {
                     currentTheme = changes.customTheme.newValue;
                     applyTheme(currentTheme);
@@ -125,7 +126,7 @@
 
     let lastRenderState = null;
     async function populateIcons() {
-        const currentState = JSON.stringify({ sites, tempSites, activeSiteId, activeSiteOwner });
+        const currentState = JSON.stringify({ sites, tempSites, activeSiteId });
         if (currentState === lastRenderState) return;
         lastRenderState = currentState;
 
@@ -136,51 +137,18 @@
             getSites: () => sites,
             getTempSites: () => tempSites,
             onSiteClick: (siteId) => {
-                try { chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' }); } catch (e) { }
-                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) { }
+                chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' });
+                chrome.runtime.sendMessage({ action: 'open_side_panel' });
             },
             onAddSite: () => {
-                try { chrome.runtime.sendMessage({ action: 'add_current_tab' }); } catch (e) { }
+                chrome.runtime.sendMessage({ action: 'add_current_tab' });
             },
             onSettingsClick: () => {
-                try { chrome.storage.local.set({ isSettingsOpen: true }); } catch (e) { }
-                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) { }
+                chrome.storage.local.set({ isSettingsOpen: true });
+                chrome.runtime.sendMessage({ action: 'open_side_panel' });
             }
         });
     }
-
-    function injectHostStyles() {
-        if (document.getElementById('revived-idle-style-tag')) return;
-        const style = document.createElement('style');
-        style.id = 'revived-idle-style-tag';
-        style.textContent = `
-            html.revived-sidebar-idle-active {
-                margin-right: 48px !important;
-                box-sizing: border-box !important;
-                overflow-x: hidden !important;
-            }
-
-            html.revived-sidebar-idle-active body {
-                min-height: 100vh !important;
-                position: relative !important;
-            }
-
-            html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode) body {
-                width: calc(100vw - 48px) !important;
-                max-width: calc(100vw - 48px) !important;
-            }
-        `;
-        document.documentElement.appendChild(style);
-    }
-
-    function isSafeModeSite() {
-        const hostname = window.location.hostname;
-        const safeModeSites = ['google.com', 'bing.com', 'duckduckgo.com', 'baidu.com', 'yandex.ru'];
-        return safeModeSites.some(s => hostname.includes(s));
-    }
-
-    // Immediate injection for layout stability
-    injectHostStyles();
 
     async function render() {
         const ah = getAutoHide();
@@ -191,35 +159,73 @@
 
         if (isSidePanelOpen || isSidepanelBlocked || (activeSiteId && activeSiteOwner === 'inpage')) {
             ah.cleanup();
-            if (host) host.style.display = 'none';
+            host.style.display = 'none';
             document.documentElement.classList.remove('revived-sidebar-idle-active');
-            document.documentElement.classList.remove('revived-sidebar-safe-mode');
             return;
         }
 
         if (autoHideEnabled) {
             if (!ah.triggered) {
-                if (host) host.style.display = 'none';
+                host.style.display = 'none';
                 ah.setup();
             }
             document.documentElement.classList.remove('revived-sidebar-idle-active');
-            document.documentElement.classList.remove('revived-sidebar-safe-mode');
+            styleElement.textContent = '';
             populateIcons();
             return;
         }
 
-        if (host) host.style.removeProperty('display');
+        host.style.removeProperty('display');
         document.documentElement.classList.add('revived-sidebar-idle-active');
 
-        // Apply safe mode (limit shift to html only) for search engines
-        if (isSafeModeSite()) {
-            document.documentElement.classList.add('revived-sidebar-safe-mode');
+        const isBlocked = scrollBlocklist.some(d => hostname.includes(d));
+
+        if (isBlocked) {
+            styleElement.textContent = `
+                html.revived-sidebar-idle-active {
+                    margin-right: 48px !important;
+                    overflow-x: hidden !important;
+                    box-sizing: border-box !important;
+                }
+                html.revived-sidebar-idle-active body {
+                    max-width: calc(100% - 48px) !important;
+                    padding-right: 48px !important;
+                    box-sizing: border-box !important;
+                    transform: none !important;
+                    height: auto !important;
+                    overflow: visible !important;
+                }
+                #revived-idle-sidebar-host {
+                    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+            `;
         } else {
-            document.documentElement.classList.remove('revived-sidebar-safe-mode');
+            styleElement.textContent = `
+                html.revived-sidebar-idle-active {
+                    margin-right: 0 !important;
+                    overflow: hidden !important;
+                }
+                html.revived-sidebar-idle-active body {
+                    width: 100vw !important;
+                    max-width: calc(100vw - 48px) !important;
+                    height: 100vh !important;
+                    overflow-y: auto !important;
+                    overflow-x: hidden !important;
+                    transform: translateX(0) !important;
+                    box-sizing: border-box !important;
+                }
+                #revived-idle-sidebar-host {
+                    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+            `;
         }
 
         await populateIcons();
     }
 
-    init();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
