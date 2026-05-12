@@ -165,9 +165,42 @@
                 position: relative !important;
             }
 
-            html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode) body {
+            html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode):not(.revived-sidebar-fixed-mode) body {
                 width: calc(100vw - 48px) !important;
                 max-width: calc(100vw - 48px) !important;
+            }
+
+            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode {
+                margin-right: 48px !important;
+                overflow-x: hidden !important;
+                box-sizing: border-box !important;
+            }
+
+            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body {
+                max-width: calc(100% - 48px) !important;
+                padding-right: 48px !important;
+                box-sizing: border-box !important;
+                transform: none !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+
+            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body > *:not(script):not(style):not(#revived-idle-sidebar-host):not([id*="revived"]) {
+                margin-right: -48px !important;
+            }
+
+            #revived-idle-sidebar-host {
+                position: fixed !important;
+                right: 0 !important;
+                left: auto !important;
+                transform: none !important;
+                margin-right: 0 !important;
+                z-index: 2147483647 !important;
+            }
+
+            #revived-idle-sidebar-host.revived-sidebar-fixed-mode,
+            body > #revived-idle-sidebar-host {
+                margin-right: 0 !important;
             }
         `;
         document.documentElement.appendChild(style);
@@ -177,6 +210,52 @@
         const hostname = window.location.hostname;
         const safeModeSites = ['google.com', 'bing.com', 'duckduckgo.com', 'baidu.com', 'yandex.ru'];
         return safeModeSites.some(s => hostname.includes(s));
+    }
+
+    function isFixedPositionSite() {
+        const hostname = window.location.hostname;
+        const fixedPositionSites = [
+            'youtube.com', 'youtu.be',
+            'twitch.tv', 'player.twitch.tv',
+            'vimeo.com',
+            'dailymotion.com',
+            'bilibili.com', 'bilibili.tv'
+        ];
+        return fixedPositionSites.some(s => hostname.includes(s));
+    }
+
+    function adjustFixedElements() {
+        if (!document.documentElement.classList.contains('revived-sidebar-fixed-mode')) return;
+        const fixedElements = document.querySelectorAll('*');
+        fixedElements.forEach(el => {
+            if (el.id && el.id.includes('revived')) return;
+            const style = window.getComputedStyle(el);
+            if (style.position === 'fixed' && !el.dataset.sidebarAdjusted) {
+                el.dataset.sidebarAdjusted = 'true';
+                const currentRight = parseFloat(style.right);
+                if (!isNaN(currentRight) && currentRight >= 0) {
+                    el.style.right = (currentRight + 48) + 'px';
+                }
+            }
+        });
+    }
+
+    let fixedAdjustmentInterval = null;
+
+    function startFixedAdjustmentInterval() {
+        if (fixedAdjustmentInterval) return;
+        fixedAdjustmentInterval = setInterval(adjustFixedElements, 500);
+    }
+
+    function cleanupFixedAdjustments() {
+        if (fixedAdjustmentInterval) {
+            clearInterval(fixedAdjustmentInterval);
+            fixedAdjustmentInterval = null;
+        }
+        document.querySelectorAll('[data-sidebar-adjusted="true"]').forEach(el => {
+            el.removeAttribute('data-sidebar-adjusted');
+            el.style.right = '';
+        });
     }
 
     // Immediate injection for layout stability
@@ -194,6 +273,8 @@
             if (host) host.style.display = 'none';
             document.documentElement.classList.remove('revived-sidebar-idle-active');
             document.documentElement.classList.remove('revived-sidebar-safe-mode');
+            document.documentElement.classList.remove('revived-sidebar-fixed-mode');
+            cleanupFixedAdjustments();
             return;
         }
 
@@ -204,6 +285,8 @@
             }
             document.documentElement.classList.remove('revived-sidebar-idle-active');
             document.documentElement.classList.remove('revived-sidebar-safe-mode');
+            document.documentElement.classList.remove('revived-sidebar-fixed-mode');
+            cleanupFixedAdjustments();
             populateIcons();
             return;
         }
@@ -212,10 +295,23 @@
         document.documentElement.classList.add('revived-sidebar-idle-active');
 
         // Apply safe mode (limit shift to html only) for search engines
+        // Apply fixed position mode for video sites that have fixed headers/overlays
+        const isFixedSite = isFixedPositionSite();
+        const isBlocked = scrollBlocklist.some(d => hostname.includes(d));
+
         if (isSafeModeSite()) {
             document.documentElement.classList.add('revived-sidebar-safe-mode');
+            document.documentElement.classList.remove('revived-sidebar-fixed-mode');
+            cleanupFixedAdjustments();
+        } else if (isFixedSite || isBlocked) {
+            document.documentElement.classList.remove('revived-sidebar-safe-mode');
+            document.documentElement.classList.add('revived-sidebar-fixed-mode');
+            adjustFixedElements();
+            startFixedAdjustmentInterval();
         } else {
             document.documentElement.classList.remove('revived-sidebar-safe-mode');
+            document.documentElement.classList.remove('revived-sidebar-fixed-mode');
+            cleanupFixedAdjustments();
         }
 
         await populateIcons();
