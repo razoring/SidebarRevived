@@ -20,6 +20,16 @@
     function init() {
         host = document.createElement('div');
         host.id = 'revived-idle-sidebar-host';
+        host.style.cssText = `
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 48px;
+            height: 100vh;
+            z-index: 2147483647;
+            pointer-events: none;
+            display: none;
+        `;
         applyThemeStyles(host, __SidebarRevived.getThemeDefaults());
         shadow = host.attachShadow({ mode: 'closed' });
 
@@ -145,6 +155,8 @@
         const hostname = window.location.hostname;
         const isSidepanelBlocked = sidepanelBlocklist.some(d => hostname.includes(d));
 
+        if (currentTheme) applyTheme(currentTheme);
+
         if (isSidePanelOpen || isSidepanelBlocked || (activeSiteId && activeSiteOwner === 'inpage')) {
             ah.cleanup();
             host.style.display = 'none';
@@ -163,7 +175,6 @@
             return;
         }
 
-        if (currentTheme) applyTheme(currentTheme);
         host.style.removeProperty('display');
         document.documentElement.classList.add('revived-sidebar-idle-active');
 

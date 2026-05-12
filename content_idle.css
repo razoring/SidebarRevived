@@ -1,6 +1,6 @@
 /* content_idle.css */
 
-#revived-idle-sidebar-host {
+:host {
     position: fixed;
     top: 0;
     right: 0;
@@ -28,7 +28,7 @@
 
 @media (prefers-color-scheme: dark) {
     #revived-idle-sidebar {
-        background: var(--theme-sidebar-bg, rgba(43, 43, 43, 0.95));
+        background: var(--theme-sidebar-bg-rgba, var(--theme-sidebar-bg, rgba(43, 43, 43, 0.95)));
         border-left: 1px solid rgba(255, 255, 255, 0.1);
     }
 }

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Sidebar Revived",
+  "name": "Sideboar",
   "version": "2.0",
   "description": "True single-instance Edge Sidebar clone via chrome.sidePanel API for persistent VM-like state.",
   "permissions": [
