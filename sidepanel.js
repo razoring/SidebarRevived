@@ -271,6 +271,13 @@ document.getElementById('settings-panel').addEventListener('click', (e) => {
     localStorage.setItem('collapsedSections', JSON.stringify(state.collapsedSections));
 });
 
+fetch(chrome.runtime.getURL('assets/close_icon.svg'))
+    .then(r => r.text())
+    .then(svg => {
+        const btn = document.getElementById('settings-back-btn');
+        if (btn) btn.innerHTML = svg;
+    });
+
 document.getElementById('settings-back-btn').addEventListener('click', () => {
     chrome.storage.local.set({ isSettingsOpen: false });
 });
