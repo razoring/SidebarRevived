@@ -52,9 +52,11 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'local') {
         if (changes.sites) state.sites = changes.sites.newValue;
         if (changes.tempSites) state.tempSites = changes.tempSites.newValue;
-        if (changes.activeSiteId) {
+        if (changes.activeSiteId !== undefined) {
             state.activeSiteId = changes.activeSiteId.newValue;
-            if (changes.activeSiteOwner) state.activeSiteOwner = changes.activeSiteOwner.newValue;
+        }
+        if (changes.activeSiteOwner !== undefined) {
+            state.activeSiteOwner = changes.activeSiteOwner.newValue;
         }
         if (changes.currentUrls) state.currentUrls = changes.currentUrls.newValue;
         if (changes.customTheme) {
@@ -76,9 +78,6 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
         if (changes.autoHideEnabled) {
             state.autoHideEnabled = changes.autoHideEnabled.newValue;
             updateSettingsUI();
-        }
-        if (changes.activeSiteOwner && !changes.activeSiteId) {
-            state.activeSiteOwner = changes.activeSiteOwner.newValue;
         }
         render();
     }

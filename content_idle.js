@@ -24,6 +24,11 @@
         shadow = host.attachShadow({ mode: 'closed' });
 
         // Load styles into shadow DOM
+        const sharedLink = document.createElement('link');
+        sharedLink.rel = 'stylesheet';
+        sharedLink.href = chrome.runtime.getURL('assets/sidebar_shared.css');
+        shadow.appendChild(sharedLink);
+
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = chrome.runtime.getURL('content_idle.css');
@@ -45,7 +50,7 @@
         document.documentElement.appendChild(styleElement);
 
         // Initial State Fetch
-        chrome.storage.local.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled'], (result) => {
+        chrome.storage.local.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled'], (result) => {
             sites = result.sites || [];
             tempSites = result.tempSites || [];
             isSidePanelOpen = !!result.isSidePanelOpen;

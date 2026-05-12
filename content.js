@@ -15,6 +15,7 @@
 
     let state = {
         sites: [],
+        tempSites: [],
         activeSiteId: null,
         activeSiteOwner: null,
         sidebarWidth: 350,
@@ -66,6 +67,11 @@
     }
 
     function loadCSS() {
+        const sharedLink = document.createElement('link');
+        sharedLink.rel = 'stylesheet';
+        sharedLink.href = chrome.runtime.getURL('assets/sidebar_shared.css');
+        shadow.appendChild(sharedLink);
+
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = chrome.runtime.getURL('sidebar.css');
@@ -211,7 +217,7 @@
             }
         });
 
-        chrome.storage.local.get(['sites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen'], (result) => {
+        chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen'], (result) => {
             if (result.sites) {
                 state = { ...state, ...result };
                 if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
@@ -222,6 +228,16 @@
 
         chrome.storage.onChanged.addListener((changes, namespace) => {
             if (namespace === 'local') {
+                if (changes.sites !== undefined) {
+                    state.sites = changes.sites.newValue;
+                    lastRenderState = null;
+                    render();
+                }
+                if (changes.tempSites !== undefined) {
+                    state.tempSites = changes.tempSites.newValue;
+                    lastRenderState = null;
+                    render();
+                }
                 if (changes.autoHideEnabled !== undefined) {
                     autoHideEnabled = changes.autoHideEnabled.newValue;
                     if (autoHide) {
@@ -240,6 +256,10 @@
                 }
                 if (changes.activeSiteId !== undefined) {
                     state.activeSiteId = changes.activeSiteId.newValue;
+                    render();
+                }
+                if (changes.sidepanelBlocklist !== undefined) {
+                    state.sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
                     render();
                 }
                 if (changes.customTheme !== undefined) {
@@ -380,7 +400,7 @@
         if (isFullSidebar) {
             contentArea.classList.add('active');
             contentArea.style.width = state.sidebarWidth + 'px';
-            const activeSite = state.sites.find(s => s.id === state.activeSiteId);
+            const activeSite = state.sites.find(s => s.id === state.activeSiteId) || (state.tempSites && state.tempSites.find(s => s.id === state.activeSiteId));
             if (activeSite) {
                 headerTitle.innerText = activeSite.title;
                 iframe.name = 'revived-sidebar-iframe-' + activeSite.id;

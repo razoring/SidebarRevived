@@ -3,10 +3,11 @@ importScripts('shared.js');
 let openSidePanels = 0;
 
 chrome.runtime.onInstalled.addListener(async (details) => {
-  const defaults = {
+    const defaults = {
     sites: [],
     tempSites: [],
     activeSiteId: null,
+    activeSiteOwner: null,
     isSidePanelOpen: false,
     autoHideEnabled: false,
     customTheme: __SidebarRevived.getThemeDefaults()
