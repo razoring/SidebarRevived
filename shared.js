@@ -192,7 +192,7 @@
                                 this.triggered = true;
                                 this.onShowBar();
                                 this.timer = null;
-                            }, 1000);
+                            }, 500);
                         }
                     } else {
                         if (this.timer) {
