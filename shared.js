@@ -483,7 +483,7 @@
             const tempPopulated = getTempSites && getTempSites().length > 0;
             if (pinnedHeader) pinnedHeader.style.display = isDragging ? 'flex' : 'none';
             if (tempHeader) tempHeader.style.display = isDragging ? 'flex' : 'none';
-            if (pinDivider) pinDivider.style.display = (isDragging || pinnedPopulated) ? 'block' : 'none';
+            if (pinDivider) pinDivider.style.display = (isDragging || pinnedPopulated || tempPopulated) ? 'block' : 'none';
             if (tempDivider) tempDivider.style.display = (isDragging || tempPopulated) ? 'block' : 'none';
         }
 
@@ -494,7 +494,7 @@
         renderSiteList(sites, false, pinnedHeader);
 
         pinDivider = document.createElement('div');
-        pinDivider.className = 'edge-sidebar-divider';
+        pinDivider.className = 'edge-sidebar-divider edge-sidebar-divider-pinned';
         container.appendChild(pinDivider);
 
         tempHeader = makeSectionHeader(S.TEMP_HEADER_SVG, false);

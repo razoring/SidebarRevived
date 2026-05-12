@@ -16,7 +16,8 @@ let state = {
     sidepanelBlocklist: [],
     activeSiteOwner: null,
     collapsedSections: JSON.parse(localStorage.getItem('collapsedSections') || '{}'),
-    autoHideEnabled: false
+    autoHideEnabled: false,
+    _loaded: false
 };
 
 const { createSiteFromTab, applyThemeStyles, getThemeDefaults } = __SidebarRevived;
@@ -34,6 +35,8 @@ iconBar.ondragenter = (e) => {
 
 // Initial load
 chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', 'customTheme', 'isSettingsOpen', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled', 'activeSiteOwner'], (result) => {
+    if (state._loaded) { render(); return; }
+    state._loaded = true;
     if (result.sites) state.sites = result.sites;
     if (result.tempSites) state.tempSites = result.tempSites;
     if (result.activeSiteId) state.activeSiteId = result.activeSiteId;
@@ -50,6 +53,7 @@ chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', '
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'local') {
+        state._loaded = true;
         if (changes.sites) state.sites = changes.sites.newValue;
         if (changes.tempSites) state.tempSites = changes.tempSites.newValue;
         if (changes.activeSiteId !== undefined) {
@@ -64,7 +68,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
             applyTheme();
             updateSettingsUI();
         }
-        if (changes.isSettingsOpen) {
+        if (changes.isSettingsOpen !== undefined) {
             state.isSettingsOpen = changes.isSettingsOpen.newValue;
         }
         if (changes.scrollBlocklist) {
@@ -115,14 +119,14 @@ async function render() {
         activeSiteId: state.activeSiteId,
         getSites: () => state.sites,
         getTempSites: () => state.tempSites,
-        onSiteClick: (siteId, site) => {
-            const newId = state.activeSiteId === siteId ? null : siteId;
-            chrome.storage.local.set({ activeSiteId: newId, activeSiteOwner: newId ? 'sidepanel' : null });
-            if (!state.currentUrls[siteId]) {
-                state.currentUrls[siteId] = site.url;
-                chrome.storage.local.set({ currentUrls: state.currentUrls });
-            }
-        },
+            onSiteClick: (siteId, site) => {
+                const newId = state.activeSiteId === siteId ? null : siteId;
+                chrome.storage.local.set({ activeSiteId: newId, activeSiteOwner: newId ? 'sidepanel' : null, isSettingsOpen: false });
+                if (!state.currentUrls[siteId]) {
+                    state.currentUrls[siteId] = site.url;
+                    chrome.storage.local.set({ currentUrls: state.currentUrls });
+                }
+            },
         onAddSite: () => {
             chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
                 const tab = tabs[0];

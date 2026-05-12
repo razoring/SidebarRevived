@@ -8,6 +8,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     tempSites: [],
     activeSiteId: null,
     activeSiteOwner: null,
+    isSettingsOpen: false,
     isSidePanelOpen: false,
     autoHideEnabled: false,
     customTheme: __SidebarRevived.getThemeDefaults()

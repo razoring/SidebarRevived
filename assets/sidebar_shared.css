@@ -27,7 +27,6 @@
     background-color: var(--theme-accent-color-rgba, rgba(0, 120, 215, 0.5)) !important;
     border-radius: 10px;
     transform: scale(1.05);
-    box-shadow: 0 0 0 2px var(--theme-accent-color, #0078D7);
 }
 
 .edge-sidebar-icon.drag-over {
@@ -125,6 +124,13 @@
     display: block;
     transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
     pointer-events: none;
+}
+
+.edge-sidebar-divider-pinned {
+    border: none;
+    border-top: 1px dashed var(--theme-divider-bg, #ccc);
+    background: none;
+    height: 0;
 }
 
 .drop-indicator {
