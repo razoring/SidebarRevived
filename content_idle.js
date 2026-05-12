@@ -136,15 +136,15 @@
             getSites: () => sites,
             getTempSites: () => tempSites,
             onSiteClick: (siteId) => {
-                try { chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' }); } catch (e) {}
-                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) {}
+                try { chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' }); } catch (e) { }
+                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) { }
             },
             onAddSite: () => {
-                try { chrome.runtime.sendMessage({ action: 'add_current_tab' }); } catch (e) {}
+                try { chrome.runtime.sendMessage({ action: 'add_current_tab' }); } catch (e) { }
             },
             onSettingsClick: () => {
-                try { chrome.storage.local.set({ isSettingsOpen: true }); } catch (e) {}
-                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) {}
+                try { chrome.storage.local.set({ isSettingsOpen: true }); } catch (e) { }
+                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) { }
             }
         });
     }
@@ -154,24 +154,20 @@
         const style = document.createElement('style');
         style.id = 'revived-idle-style-tag';
         style.textContent = `
-            /* Root shift: Synchronizes viewport width for detection scripts */
             html.revived-sidebar-idle-active {
                 margin-right: 48px !important;
-                width: calc(100% - 48px) !important;
                 box-sizing: border-box !important;
                 overflow-x: hidden !important;
             }
 
-            /* Aggressive Shift: Squish body to force fixed elements inwards */
-            html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode) body {
-                max-width: calc(100vw - 48px) !important;
-                width: auto !important;
+            html.revived-sidebar-idle-active body {
+                min-height: 100vh !important;
                 position: relative !important;
             }
 
-            /* Fix for YouTube and modern headers: Ensure right-aligned fixed elements see the new edge */
-            html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode) * {
-                max-width: inherit;
+            html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode) body {
+                width: calc(100vw - 48px) !important;
+                max-width: calc(100vw - 48px) !important;
             }
         `;
         document.documentElement.appendChild(style);
