@@ -54,7 +54,11 @@
         sidebarContainer.ondragenter = (e) => { e.preventDefault(); };
         shadow.appendChild(sidebarContainer);
 
-        document.documentElement.appendChild(host);
+        if (document.documentElement) document.documentElement.appendChild(host);
+
+        // Host style adjustment for idle bar
+        styleElement = document.createElement('style');
+        if (document.documentElement) document.documentElement.appendChild(styleElement);
 
         // Initial State Fetch
         chrome.storage.local.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled'], (result) => {
@@ -78,11 +82,11 @@
         // Listen for storage changes
         chrome.storage.onChanged.addListener((changes, namespace) => {
             if (namespace === 'local') {
-                if (changes.isSidePanelOpen !== undefined) isSidePanelOpen = changes.isSidePanelOpen.newValue;
-                if (changes.activeSiteId !== undefined) activeSiteId = changes.activeSiteId.newValue;
-                if (changes.activeSiteOwner !== undefined) activeSiteOwner = changes.activeSiteOwner.newValue;
                 if (changes.sites) sites = changes.sites.newValue;
                 if (changes.tempSites) tempSites = changes.tempSites.newValue;
+                if (changes.isSidePanelOpen) isSidePanelOpen = changes.isSidePanelOpen.newValue;
+                if (changes.activeSiteId !== undefined) activeSiteId = changes.activeSiteId.newValue;
+                if (changes.activeSiteOwner !== undefined) activeSiteOwner = changes.activeSiteOwner.newValue;
                 if (changes.customTheme) {
                     currentTheme = changes.customTheme.newValue;
                     applyTheme(currentTheme);
@@ -125,7 +129,7 @@
 
     let lastRenderState = null;
     async function populateIcons() {
-        const currentState = JSON.stringify({ sites, tempSites, activeSiteId, activeSiteOwner });
+        const currentState = JSON.stringify({ sites, tempSites, activeSiteId });
         if (currentState === lastRenderState) return;
         lastRenderState = currentState;
 
@@ -149,117 +153,11 @@
         });
     }
 
-    function injectHostStyles() {
-        if (document.getElementById('revived-idle-style-tag')) return;
-        const style = document.createElement('style');
-        style.id = 'revived-idle-style-tag';
-        style.textContent = `
-            html.revived-sidebar-idle-active {
-                margin-right: 48px !important;
-                box-sizing: border-box !important;
-                overflow-x: hidden !important;
-            }
-
-            html.revived-sidebar-idle-active body {
-                min-height: 100vh !important;
-                position: relative !important;
-            }
-
-            html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode):not(.revived-sidebar-fixed-mode) body {
-                width: calc(100vw - 48px) !important;
-                max-width: calc(100vw - 48px) !important;
-            }
-
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode {
-                margin-right: 48px !important;
-                overflow-x: hidden !important;
-                box-sizing: border-box !important;
-            }
-
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body {
-                max-width: calc(100% - 48px) !important;
-                padding-right: 48px !important;
-                box-sizing: border-box !important;
-                transform: none !important;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body > *:not(script):not(style):not(#revived-idle-sidebar-host):not([id*="revived"]) {
-                margin-right: -48px !important;
-            }
-
-            #revived-idle-sidebar-host {
-                position: fixed !important;
-                right: 0 !important;
-                left: auto !important;
-                transform: none !important;
-                margin-right: 0 !important;
-                z-index: 2147483647 !important;
-            }
-
-            #revived-idle-sidebar-host.revived-sidebar-fixed-mode,
-            body > #revived-idle-sidebar-host {
-                margin-right: 0 !important;
-            }
-        `;
-        document.documentElement.appendChild(style);
-    }
-
     function isSafeModeSite() {
         const hostname = window.location.hostname;
         const safeModeSites = ['google.com', 'bing.com', 'duckduckgo.com', 'baidu.com', 'yandex.ru'];
         return safeModeSites.some(s => hostname.includes(s));
     }
-
-    function isFixedPositionSite() {
-        const hostname = window.location.hostname;
-        const fixedPositionSites = [
-            'youtube.com', 'youtu.be',
-            'twitch.tv', 'player.twitch.tv',
-            'vimeo.com',
-            'dailymotion.com',
-            'bilibili.com', 'bilibili.tv'
-        ];
-        return fixedPositionSites.some(s => hostname.includes(s));
-    }
-
-    function adjustFixedElements() {
-        if (!document.documentElement.classList.contains('revived-sidebar-fixed-mode')) return;
-        const fixedElements = document.querySelectorAll('*');
-        fixedElements.forEach(el => {
-            if (el.id && el.id.includes('revived')) return;
-            const style = window.getComputedStyle(el);
-            if (style.position === 'fixed' && !el.dataset.sidebarAdjusted) {
-                el.dataset.sidebarAdjusted = 'true';
-                const currentRight = parseFloat(style.right);
-                if (!isNaN(currentRight) && currentRight >= 0) {
-                    el.style.right = (currentRight + 48) + 'px';
-                }
-            }
-        });
-    }
-
-    let fixedAdjustmentInterval = null;
-
-    function startFixedAdjustmentInterval() {
-        if (fixedAdjustmentInterval) return;
-        fixedAdjustmentInterval = setInterval(adjustFixedElements, 500);
-    }
-
-    function cleanupFixedAdjustments() {
-        if (fixedAdjustmentInterval) {
-            clearInterval(fixedAdjustmentInterval);
-            fixedAdjustmentInterval = null;
-        }
-        document.querySelectorAll('[data-sidebar-adjusted="true"]').forEach(el => {
-            el.removeAttribute('data-sidebar-adjusted');
-            el.style.right = '';
-        });
-    }
-
-    // Immediate injection for layout stability
-    injectHostStyles();
 
     async function render() {
         const ah = getAutoHide();
@@ -268,13 +166,17 @@
 
         if (currentTheme) applyTheme(currentTheme);
 
-        if (isSidePanelOpen || isSidepanelBlocked || (activeSiteId && activeSiteOwner === 'inpage')) {
+        // Check safe mode FIRST - always allow safe mode sites regardless of sidepanelBlocklist
+        const isSafe = isSafeModeSite();
+        const isScrollBlocked = scrollBlocklist.some(d => hostname.includes(d));
+
+        // Hide sidebar if sidepanel is open, blocked (and not safe mode), or active site
+        const shouldHide = isSidePanelOpen || ((isSidepanelBlocked || (activeSiteId && activeSiteOwner === 'inpage')) && !isSafe);
+        
+        if (shouldHide) {
             ah.cleanup();
             if (host) host.style.display = 'none';
-            document.documentElement.classList.remove('revived-sidebar-idle-active');
-            document.documentElement.classList.remove('revived-sidebar-safe-mode');
-            document.documentElement.classList.remove('revived-sidebar-fixed-mode');
-            cleanupFixedAdjustments();
+            if (document.documentElement) document.documentElement.classList.remove('revived-sidebar-idle-active');
             return;
         }
 
@@ -283,39 +185,86 @@
                 if (host) host.style.display = 'none';
                 ah.setup();
             }
-            document.documentElement.classList.remove('revived-sidebar-idle-active');
-            document.documentElement.classList.remove('revived-sidebar-safe-mode');
-            document.documentElement.classList.remove('revived-sidebar-fixed-mode');
-            cleanupFixedAdjustments();
+            if (document.documentElement) document.documentElement.classList.remove('revived-sidebar-idle-active');
+            if (styleElement) styleElement.textContent = '';
             populateIcons();
             return;
         }
 
         if (host) host.style.removeProperty('display');
-        document.documentElement.classList.add('revived-sidebar-idle-active');
+        if (document.documentElement) document.documentElement.classList.add('revived-sidebar-idle-active');
 
-        // Apply safe mode (limit shift to html only) for search engines
-        // Apply fixed position mode for video sites that have fixed headers/overlays
-        const isFixedSite = isFixedPositionSite();
-        const isBlocked = scrollBlocklist.some(d => hostname.includes(d));
-
-        if (isSafeModeSite()) {
-            document.documentElement.classList.add('revived-sidebar-safe-mode');
-            document.documentElement.classList.remove('revived-sidebar-fixed-mode');
-            cleanupFixedAdjustments();
-        } else if (isFixedSite || isBlocked) {
-            document.documentElement.classList.remove('revived-sidebar-safe-mode');
-            document.documentElement.classList.add('revived-sidebar-fixed-mode');
-            adjustFixedElements();
-            startFixedAdjustmentInterval();
-        } else {
-            document.documentElement.classList.remove('revived-sidebar-safe-mode');
-            document.documentElement.classList.remove('revived-sidebar-fixed-mode');
-            cleanupFixedAdjustments();
+        // scrollBlocklist first - user configured sites use transform: none approach
+        if (isScrollBlocked) {
+            if (styleElement) {
+                styleElement.textContent = `
+                    html.revived-sidebar-idle-active {
+                        margin-right: 48px !important;
+                        overflow-x: hidden !important;
+                        box-sizing: border-box !important;
+                    }
+                    html.revived-sidebar-idle-active body {
+                        max-width: calc(100% - 48px) !important;
+                        padding-right: 48px !important;
+                        box-sizing: border-box !important;
+                        transform: none !important;
+                        height: auto !important;
+                        overflow: visible !important;
+                    }
+                    #revived-idle-sidebar-host {
+                        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                `;
+            }
+        }
+        // Safe mode for search engines - offset using html padding instead of margin
+        else if (isSafe) {
+            if (styleElement) {
+                styleElement.textContent = `
+                    html.revived-sidebar-idle-active {
+                        padding-right: 48px !important;
+                        box-sizing: border-box !important;
+                    }
+                    html.revived-sidebar-idle-active body {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                    }
+                    #revived-idle-sidebar-host {
+                        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                `;
+            }
+        }
+        // Default - aggressive offset (YouTube, Coolors, all other sites)
+        else {
+            if (styleElement) {
+                styleElement.textContent = `
+                    html.revived-sidebar-idle-active {
+                        margin-right: 0 !important;
+                        overflow: hidden !important;
+                    }
+                    html.revived-sidebar-idle-active body {
+                        width: 100vw !important;
+                        max-width: calc(100vw - 48px) !important;
+                        height: 100vh !important;
+                        overflow-y: auto !important;
+                        overflow-x: hidden !important;
+                        transform: translateX(0) !important;
+                        box-sizing: border-box !important;
+                    }
+                    #revived-idle-sidebar-host {
+                        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                `;
+            }
         }
 
         await populateIcons();
     }
 
-    init();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();

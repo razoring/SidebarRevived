@@ -22,6 +22,7 @@
         currentUrls: {},
         sidepanelBlocklist: [],
         isSidePanelOpen: false,
+        isSettingsOpen: false,
         customTheme: null
     };
 
@@ -198,13 +199,11 @@
             }
         });
 
-        chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen'], (result) => {
-            if (result.sites) {
-                state = { ...state, ...result };
-                if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
-                applyTheme();
-                render();
-            }
+        chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
+            state = { ...state, ...result };
+            if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
+            applyTheme();
+            render();
         });
 
         chrome.storage.onChanged.addListener((changes, namespace) => {
@@ -250,6 +249,11 @@
                 if (changes.customTheme !== undefined) {
                     state.customTheme = changes.customTheme.newValue;
                     applyTheme();
+                    needsRender = true;
+                }
+                if (changes.isSettingsOpen !== undefined) {
+                    state.isSettingsOpen = changes.isSettingsOpen.newValue;
+                    lastRenderState = null;
                     needsRender = true;
                 }
                 if (needsRender) render();

@@ -48,7 +48,13 @@ chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', '
     if (result.autoHideEnabled !== undefined) state.autoHideEnabled = result.autoHideEnabled;
     if (result.activeSiteOwner !== undefined) state.activeSiteOwner = result.activeSiteOwner;
     applyTheme();
+    // Always render, even if sites is empty - this ensures settings opens on first click
     render();
+    // If settings was set to open before storage loaded, ensure it shows
+    if (state.isSettingsOpen) {
+        document.getElementById('icon-bar').style.display = 'none';
+        document.getElementById('content-area').style.display = 'none';
+    }
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
