@@ -309,9 +309,6 @@
             }
 
             html.revived-sidebar-idle-active.revived-sidebar-fixed-mode {
-                margin-right: 48px !important;
-                overflow-x: hidden !important;
-                box-sizing: border-box !important;
                 scrollbar-width: none !important;
                 -ms-overflow-style: none !important;
             }
@@ -322,35 +319,6 @@
                 display: none !important;
             }
 
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body::-webkit-scrollbar,
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body::-webkit-scrollbar-track,
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body::-webkit-scrollbar-thumb {
-                display: none !important;
-            }
-
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body {
-                scrollbar-width: none !important;
-                -ms-overflow-style: none !important;
-            }
-
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body {
-                direction: ltr !important;
-                max-width: calc(100% - 48px) !important;
-                padding-right: 48px !important;
-                box-sizing: border-box !important;
-                transform: none !important;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body > *:not(script):not(style):not(#revived-idle-sidebar-host):not([id*="revived"]) {
-                margin-right: -48px !important;
-            }
-
-            #revived-idle-sidebar-host.revived-sidebar-fixed-mode,
-            body > #revived-idle-sidebar-host {
-                margin-right: 0 !important;
-            }
 
             #revived-fake-scrollbar {
                 position: fixed !important;
@@ -414,7 +382,7 @@
         if (!document.documentElement.classList.contains('revived-sidebar-fixed-mode')) return;
         const fixedElements = document.querySelectorAll('*');
         fixedElements.forEach(el => {
-            if (el.id && el.id.includes('revived')) return;
+            if (el.getAttribute('id') && el.getAttribute('id').includes('revived')) return;
             const style = window.getComputedStyle(el);
             if (style.position === 'fixed' && !el.dataset.sidebarAdjusted) {
                 el.dataset.sidebarAdjusted = 'true';
@@ -496,6 +464,7 @@
         } else if (isFixedSite || isBlocked) {
             document.documentElement.classList.remove('revived-sidebar-safe-mode');
             document.documentElement.classList.add('revived-sidebar-fixed-mode');
+            cleanupFixedAdjustments();
             adjustFixedElements();
             startFixedAdjustmentInterval();
         } else {
