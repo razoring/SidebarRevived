@@ -306,11 +306,18 @@
             html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode) {
                 scrollbar-width: none !important;
                 -ms-overflow-style: none !important;
+                overflow-x: hidden !important;
+            }
+
+            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode) body {
+                margin-right: 48px !important;
             }
 
             html.revived-sidebar-idle-active.revived-sidebar-fixed-mode {
                 scrollbar-width: none !important;
                 -ms-overflow-style: none !important;
+                overflow-x: hidden !important;
+                margin-right: 48px !important;
             }
 
             html.revived-sidebar-idle-active.revived-sidebar-fixed-mode::-webkit-scrollbar,
@@ -465,8 +472,6 @@
             document.documentElement.classList.remove('revived-sidebar-safe-mode');
             document.documentElement.classList.add('revived-sidebar-fixed-mode');
             cleanupFixedAdjustments();
-            adjustFixedElements();
-            startFixedAdjustmentInterval();
         } else {
             document.documentElement.classList.remove('revived-sidebar-safe-mode');
             document.documentElement.classList.remove('revived-sidebar-fixed-mode');
