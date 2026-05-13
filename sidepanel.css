@@ -65,6 +65,16 @@ html {
     }
 }
 
+/* Push scrollbar to the left */
+#settings-panel {
+    direction: rtl;
+}
+
+#settings-scroll-blocklist,
+#settings-sidepanel-blocklist {
+    direction: rtl;
+}
+
 #settings-panel {
     flex: 1;
     flex-direction: column;

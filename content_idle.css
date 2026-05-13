@@ -24,13 +24,7 @@
     box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     pointer-events: auto;
-}
-
-@media (prefers-color-scheme: dark) {
-    #revived-idle-sidebar {
-        background: var(--theme-sidebar-bg-rgba, var(--theme-sidebar-bg, rgba(43, 43, 43, 0.95)));
-        border-left: 1px solid rgba(255, 255, 255, 0.1);
-    }
+    overflow-y: auto;
 }
 
 /* Icon styles are managed in assets/sidebar_shared.css */

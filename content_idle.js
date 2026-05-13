@@ -18,6 +18,8 @@
     let _loaded = false;
     const { applyThemeStyles, AutoHideManager } = __SidebarRevived;
 
+    let fakeScroll = { el: null, thumb: null, track: null, isDragging: false, dragStartY: 0, dragStartScroll: 0, updatePending: false };
+
     function init() {
         host = document.createElement('div');
         host.id = 'revived-idle-sidebar-host';
@@ -103,6 +105,9 @@
         if (theme?.accentColor && autoHide) {
             autoHide.updateAccentColor(theme.accentColor);
         }
+        if (fakeScroll.thumb) {
+            fakeScroll.thumb.style.background = theme?.accentColor || '#b2d7ef';
+        }
     }
 
     let autoHide = null;
@@ -149,34 +154,187 @@
         });
     }
 
+    // --- Fake Scrollbar ---
+
+    function createFakeScrollbar() {
+        if (document.getElementById('revived-fake-scrollbar')) return;
+
+        const el = document.createElement('div');
+        el.id = 'revived-fake-scrollbar';
+
+        const track = document.createElement('div');
+        track.id = 'revived-fake-scrollbar-track';
+
+        const thumb = document.createElement('div');
+        thumb.id = 'revived-fake-scrollbar-thumb';
+
+        track.appendChild(thumb);
+        el.appendChild(track);
+        document.documentElement.appendChild(el);
+
+        fakeScroll.el = el;
+        fakeScroll.track = track;
+        fakeScroll.thumb = thumb;
+
+        if (currentTheme?.accentColor) {
+            thumb.style.background = currentTheme.accentColor;
+        }
+
+        thumb.addEventListener('mousedown', onFakeThumbDragStart);
+        track.addEventListener('click', onFakeTrackClick);
+
+        window.addEventListener('scroll', requestFakeUpdate, { passive: true });
+        window.addEventListener('resize', requestFakeUpdate, { passive: true });
+
+        requestFakeUpdate();
+    }
+
+    function removeFakeScrollbar() {
+        window.removeEventListener('scroll', requestFakeUpdate);
+        window.removeEventListener('resize', requestFakeUpdate);
+        if (fakeScroll.el && fakeScroll.el.parentNode) {
+            fakeScroll.el.parentNode.removeChild(fakeScroll.el);
+        }
+        fakeScroll.el = null;
+        fakeScroll.track = null;
+        fakeScroll.thumb = null;
+        fakeScroll.updatePending = false;
+    }
+
+    function requestFakeUpdate() {
+        if (!fakeScroll.updatePending) {
+            fakeScroll.updatePending = true;
+            requestAnimationFrame(applyFakeUpdate);
+        }
+    }
+
+    function applyFakeUpdate() {
+        fakeScroll.updatePending = false;
+        if (!fakeScroll.thumb || !fakeScroll.track) return;
+
+        const scrollY = window.scrollY;
+        const scrollHeight = document.documentElement.scrollHeight;
+        const viewportHeight = window.innerHeight;
+        const maxScroll = Math.max(0, scrollHeight - viewportHeight);
+
+        if (maxScroll <= 0) {
+            fakeScroll.thumb.style.display = 'none';
+            return;
+        }
+
+        fakeScroll.thumb.style.display = 'block';
+
+        const trackHeight = fakeScroll.track.clientHeight;
+        const thumbHeight = Math.max(20, (viewportHeight / scrollHeight) * trackHeight);
+        const thumbTop = (scrollY / maxScroll) * (trackHeight - thumbHeight);
+
+        fakeScroll.thumb.style.height = thumbHeight + 'px';
+        fakeScroll.thumb.style.top = thumbTop + 'px';
+    }
+
+    function onFakeThumbDragStart(e) {
+        e.preventDefault();
+        fakeScroll.isDragging = true;
+        fakeScroll.dragStartY = e.clientY;
+        fakeScroll.dragStartScroll = window.scrollY;
+        fakeScroll.el.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onFakeThumbDrag);
+        document.addEventListener('mouseup', onFakeThumbDragEnd);
+    }
+
+    function onFakeThumbDrag(e) {
+        if (!fakeScroll.isDragging) return;
+        const delta = e.clientY - fakeScroll.dragStartY;
+        const scrollHeight = document.documentElement.scrollHeight;
+        const viewportHeight = window.innerHeight;
+        const maxScroll = Math.max(0, scrollHeight - viewportHeight);
+        const trackHeight = fakeScroll.track.clientHeight;
+        const thumbHeight = parseFloat(fakeScroll.thumb.style.height) || 20;
+        const pixelsPerScroll = (trackHeight - thumbHeight) / maxScroll;
+
+        window.scrollTo(0, fakeScroll.dragStartScroll + delta / pixelsPerScroll);
+    }
+
+    function onFakeThumbDragEnd() {
+        fakeScroll.isDragging = false;
+        fakeScroll.el.classList.remove('dragging');
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', onFakeThumbDrag);
+        document.removeEventListener('mouseup', onFakeThumbDragEnd);
+    }
+
+    function onFakeTrackClick(e) {
+        if (e.target === fakeScroll.thumb || !fakeScroll.thumb) return;
+        const rect = fakeScroll.track.getBoundingClientRect();
+        const clickY = e.clientY - rect.top;
+        const scrollHeight = document.documentElement.scrollHeight;
+        const viewportHeight = window.innerHeight;
+        const maxScroll = Math.max(0, scrollHeight - viewportHeight);
+        const trackHeight = fakeScroll.track.clientHeight;
+        const thumbHeight = parseFloat(fakeScroll.thumb.style.height) || 20;
+        const ratio = Math.max(0, Math.min(1, (clickY - thumbHeight / 2) / (trackHeight - thumbHeight)));
+
+        window.scrollTo({ top: ratio * maxScroll, behavior: 'smooth' });
+    }
+
+    // --- Host Styles ---
+
     function injectHostStyles() {
         if (document.getElementById('revived-idle-style-tag')) return;
         const style = document.createElement('style');
         style.id = 'revived-idle-style-tag';
         style.textContent = `
-            html.revived-sidebar-idle-active {
-                margin-right: 48px !important;
-                box-sizing: border-box !important;
-                overflow-x: hidden !important;
+            #revived-idle-sidebar-host {
+                position: fixed !important;
+                right: 0 !important;
+                left: auto !important;
+                top: 0 !important;
+                width: 48px !important;
+                height: 100vh !important;
+                z-index: 2147483647 !important;
+                transform: none !important;
+                pointer-events: none !important;
             }
 
-            html.revived-sidebar-idle-active body {
-                min-height: 100vh !important;
-                position: relative !important;
+            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode)::-webkit-scrollbar,
+            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode)::-webkit-scrollbar-track,
+            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode)::-webkit-scrollbar-thumb {
+                display: none !important;
             }
 
-            html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode):not(.revived-sidebar-fixed-mode) body {
-                width: calc(100vw - 48px) !important;
-                max-width: calc(100vw - 48px) !important;
+            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode) {
+                scrollbar-width: none !important;
+                -ms-overflow-style: none !important;
             }
 
             html.revived-sidebar-idle-active.revived-sidebar-fixed-mode {
                 margin-right: 48px !important;
                 overflow-x: hidden !important;
                 box-sizing: border-box !important;
+                scrollbar-width: none !important;
+                -ms-overflow-style: none !important;
+            }
+
+            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode::-webkit-scrollbar,
+            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode::-webkit-scrollbar-track,
+            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode::-webkit-scrollbar-thumb {
+                display: none !important;
+            }
+
+            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body::-webkit-scrollbar,
+            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body::-webkit-scrollbar-track,
+            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body::-webkit-scrollbar-thumb {
+                display: none !important;
             }
 
             html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body {
+                scrollbar-width: none !important;
+                -ms-overflow-style: none !important;
+            }
+
+            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode body {
+                direction: ltr !important;
                 max-width: calc(100% - 48px) !important;
                 padding-right: 48px !important;
                 box-sizing: border-box !important;
@@ -189,18 +347,46 @@
                 margin-right: -48px !important;
             }
 
-            #revived-idle-sidebar-host {
-                position: fixed !important;
-                right: 0 !important;
-                left: auto !important;
-                transform: none !important;
-                margin-right: 0 !important;
-                z-index: 2147483647 !important;
-            }
-
             #revived-idle-sidebar-host.revived-sidebar-fixed-mode,
             body > #revived-idle-sidebar-host {
                 margin-right: 0 !important;
+            }
+
+            #revived-fake-scrollbar {
+                position: fixed !important;
+                top: 0 !important;
+                right: 48px !important;
+                width: 10px !important;
+                height: 100vh !important;
+                z-index: 2147483646 !important;
+                pointer-events: auto !important;
+                display: none;
+            }
+
+            #revived-fake-scrollbar-track {
+                position: absolute !important;
+                top: 0 !important;
+                right: 0 !important;
+                width: 10px !important;
+                height: 100% !important;
+                cursor: pointer !important;
+            }
+
+            #revived-fake-scrollbar-thumb {
+                position: absolute !important;
+                right: 1px !important;
+                width: 8px !important;
+                border-radius: 4px !important;
+                background: #b2d7ef !important;
+                cursor: grab !important;
+                opacity: 0.5 !important;
+                transition: opacity 0.15s !important;
+                top: 0;
+            }
+
+            #revived-fake-scrollbar:hover #revived-fake-scrollbar-thumb,
+            #revived-fake-scrollbar.dragging #revived-fake-scrollbar-thumb {
+                opacity: 1 !important;
             }
         `;
         document.documentElement.appendChild(style);
@@ -275,6 +461,7 @@
             document.documentElement.classList.remove('revived-sidebar-safe-mode');
             document.documentElement.classList.remove('revived-sidebar-fixed-mode');
             cleanupFixedAdjustments();
+            removeFakeScrollbar();
             return;
         }
 
@@ -287,12 +474,15 @@
             document.documentElement.classList.remove('revived-sidebar-safe-mode');
             document.documentElement.classList.remove('revived-sidebar-fixed-mode');
             cleanupFixedAdjustments();
+            removeFakeScrollbar();
             populateIcons();
             return;
         }
 
         if (host) host.style.removeProperty('display');
         document.documentElement.classList.add('revived-sidebar-idle-active');
+        createFakeScrollbar();
+        if (fakeScroll.el) fakeScroll.el.style.display = 'block';
 
         // Apply safe mode (limit shift to html only) for search engines
         // Apply fixed position mode for video sites that have fixed headers/overlays
