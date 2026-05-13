@@ -37,6 +37,16 @@
         }
     }
 
+    function storageGet(keys) {
+        return new Promise((resolve) => chrome.storage.local.get(keys, resolve));
+    }
+
+    function isSafeModeSite() {
+        const hostname = window.location.hostname;
+        const safeModeSites = ['google.com', 'bing.com', 'duckduckgo.com', 'baidu.com', 'yandex.ru'];
+        return safeModeSites.some(s => hostname.includes(s));
+    }
+
     function isSidepanelBlocked() {
         const hostname = window.location.hostname;
         return (state.sidepanelBlocklist || []).some(d => hostname.includes(d));
@@ -68,21 +78,23 @@
         const style = document.createElement('style');
         style.id = 'revived-sidebar-host-styles';
         style.textContent = `
-      html.revived-sidebar-active {
-        --revived-sidebar-width: 48px;
-        margin-right: var(--revived-sidebar-width, 48px) !important;
-        width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
-        overflow-x: hidden !important;
-        overflow-y: auto !important;
-      }
-      html.revived-sidebar-active body {
-        width: 100% !important;
-        min-width: 0 !important;
-      }
-      html.revived-sidebar-active body > * {
-        max-width: 100% !important;
-        min-width: 0 !important;
-      }
+            html.revived-sidebar-active {
+                --revived-sidebar-width: 48px;
+                margin-right: var(--revived-sidebar-width, 48px) !important;
+                overflow-x: hidden !important;
+                overflow-y: auto !important;
+            }
+            html.revived-sidebar-active:not(.revived-sidebar-safe-mode) {
+                width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
+            }
+            html.revived-sidebar-active:not(.revived-sidebar-safe-mode) body {
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+            html.revived-sidebar-active:not(.revived-sidebar-safe-mode) body > * {
+                max-width: 100% !important;
+                min-width: 0 !important;
+            }
     `;
         document.documentElement.appendChild(style);
     }
@@ -178,34 +190,50 @@
                 const newWidth = window.innerWidth - e.clientX - 48;
                 if (newWidth > 200 && newWidth < 800) {
                     const totalWidth = newWidth + 48;
-                    const candidateCss = `
-                        html.revived-sidebar-active {
-                          --revived-sidebar-width: ${totalWidth}px;
-                          margin-right: var(--revived-sidebar-width, 48px) !important;
-                          width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
-                          overflow-x: hidden !important;
-                          overflow-y: auto !important;
-                        }
-                        html.revived-sidebar-active body {
-                          width: 100% !important;
-                          min-width: 0 !important;
-                        }
-                    `;
-                    let reacted = false;
-                    try {
-                        reacted = await (__SidebarRevived && __SidebarRevived.runLayoutTrial ? __SidebarRevived.runLayoutTrial(candidateCss, 700) : Promise.resolve(false));
-                    } catch (err) { reacted = false; }
+                        const prefs = await storageGet(['siteModePrefs']);
+                        const sitePrefs = prefs.siteModePrefs || {};
+                        const hostname = window.location.hostname;
+                        if (sitePrefs[hostname] === 'overlay') {
+                            // known width-sensitive site, do not commit offset
+                            document.documentElement.classList.remove('revived-sidebar-active');
+                            document.documentElement.style.removeProperty('--revived-sidebar-width');
+                        } else if (isSafeModeSite()) {
+                            // apply non-invasive safe-mode offset
+                            try {
+                                document.documentElement.classList.add('revived-sidebar-safe-mode');
+                                document.documentElement.classList.add('revived-sidebar-active');
+                                document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+                            } catch (e) { }
+                        } else {
+                            const candidateCss = `
+                                html.revived-sidebar-active {
+                                  --revived-sidebar-width: ${totalWidth}px;
+                                  margin-right: var(--revived-sidebar-width, 48px) !important;
+                                  width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
+                                  overflow-x: hidden !important;
+                                  overflow-y: auto !important;
+                                }
+                                html.revived-sidebar-active body {
+                                  width: 100% !important;
+                                  min-width: 0 !important;
+                                }
+                            `;
+                            let reacted = false;
+                            try {
+                                reacted = await (__SidebarRevived && __SidebarRevived.runLayoutTrial ? __SidebarRevived.runLayoutTrial(candidateCss, 700) : Promise.resolve(false));
+                            } catch (err) { reacted = false; }
 
-                    if (!reacted) {
-                        document.documentElement.classList.add('revived-sidebar-active');
-                        document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
-                    } else {
-                        // fallback to overlay: do not modify document width
-                        document.documentElement.classList.remove('revived-sidebar-active');
-                        document.documentElement.style.removeProperty('--revived-sidebar-width');
-                    }
+                            if (!reacted) {
+                                document.documentElement.classList.add('revived-sidebar-active');
+                                document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+                            } else {
+                                // fallback to overlay: do not modify document width
+                                document.documentElement.classList.remove('revived-sidebar-active');
+                                document.documentElement.style.removeProperty('--revived-sidebar-width');
+                            }
+                        }
 
-                    chrome.storage.local.set({ sidebarWidth: newWidth });
+                        chrome.storage.local.set({ sidebarWidth: newWidth });
                 }
             }
         });
@@ -399,6 +427,7 @@
         if (!container) return;
         container.style.display = 'none';
         document.documentElement.classList.remove('revived-sidebar-active');
+        document.documentElement.classList.remove('revived-sidebar-safe-mode');
         document.documentElement.style.removeProperty('--revived-sidebar-width');
     }
 
@@ -435,8 +464,26 @@
             // Defer running the trial until after `load` to avoid altering
             // layout during initial page computations which can cause
             // size-sensitive network requests (e.g., Bing Images cw=).
-            const runTrialAndApply = async () => {
+            // If this is a known search/image site, use the safe-mode (non-invasive) offset
+            if (isSafeModeSite()) {
                 try {
+                    document.documentElement.classList.add('revived-sidebar-safe-mode');
+                    document.documentElement.classList.add('revived-sidebar-active');
+                    document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+                } catch (e) { }
+            } else {
+                const runTrialAndApply = async () => {
+                try {
+                    const prefs = await storageGet(['siteModePrefs']);
+                    const sitePrefs = prefs.siteModePrefs || {};
+                    const hostname = window.location.hostname;
+                    if (sitePrefs[hostname] === 'overlay') {
+                        // site previously marked width-sensitive; stay overlay
+                        document.documentElement.classList.remove('revived-sidebar-active');
+                        document.documentElement.style.removeProperty('--revived-sidebar-width');
+                        return;
+                    }
+
                     const candidateCss = `
                         html.revived-sidebar-active { --revived-sidebar-width: ${totalWidth}px; margin-right: var(--revived-sidebar-width, 48px) !important; width: calc(100% - var(--revived-sidebar-width, 48px)) !important; overflow-x: hidden !important; overflow-y: auto !important; }
                         html.revived-sidebar-active body { width: 100% !important; min-width: 0 !important; }

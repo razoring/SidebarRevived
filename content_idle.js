@@ -19,6 +19,71 @@
     const { applyThemeStyles, AutoHideManager } = __SidebarRevived;
     let layoutDetectionCompleted = false;
     let layoutDetectionPending = false;
+    let isWidthSensitive = false;
+
+    // Early observer to detect size-sensitive resource loads (e.g., Bing Images cw=)
+    function initWidthObserver() {
+        try {
+            const hostname = window.location.hostname;
+            const checkUrl = (u) => u && (String(u).includes('cw=') || String(u).includes('/images/search') || String(u).includes('bing.com/images'));
+
+            // Check existing resource entries
+            try {
+                const existing = performance.getEntriesByType ? performance.getEntriesByType('resource') : [];
+                for (const e of existing) {
+                    if (checkUrl(e.name)) {
+                        isWidthSensitive = true;
+                        break;
+                    }
+                }
+            } catch (e) { }
+
+            if (isWidthSensitive) {
+                try {
+                    chrome.storage.local.get(['siteModePrefs'], (res) => {
+                        const prefs = res.siteModePrefs || {};
+                        if (!prefs[hostname]) {
+                            prefs[hostname] = 'overlay';
+                            chrome.storage.local.set({ siteModePrefs: prefs });
+                        }
+                    });
+                } catch (e) { }
+                return;
+            }
+
+            // Observe new resource entries for a short window
+            let po = null;
+            try {
+                po = new PerformanceObserver((list) => {
+                    for (const entry of list.getEntries()) {
+                        try {
+                            if (checkUrl(entry.name)) {
+                                isWidthSensitive = true;
+                                try {
+                                    chrome.storage.local.get(['siteModePrefs'], (res) => {
+                                        const prefs = res.siteModePrefs || {};
+                                        if (!prefs[hostname]) {
+                                            prefs[hostname] = 'overlay';
+                                            chrome.storage.local.set({ siteModePrefs: prefs });
+                                        }
+                                    });
+                                } catch (e) { }
+                                if (po) try { po.disconnect(); } catch (e) { }
+                                return;
+                            }
+                        } catch (e) { }
+                    }
+                });
+                po.observe({ type: 'resource', buffered: true });
+            } catch (e) { po = null; }
+
+            // Stop observing after 3s
+            setTimeout(() => { try { if (po) po.disconnect(); } catch (e) { } }, 3000);
+        } catch (e) { }
+    }
+
+    // Start the observer as early as possible
+    try { initWidthObserver(); } catch (e) { }
 
     function init() {
         host = document.createElement('div');
@@ -371,13 +436,22 @@
         // Candidate selection
         let candidate = isSafe ? 'safe-padding' : (fixedRightCount > 0 ? 'fixed-adjust' : 'global-offset');
 
-        // We run a short trial for the layout-affecting handlers to detect width-sensitive pages
-        if (candidate === 'safe-padding' || candidate === 'global-offset') {
-            const candidateCss = candidate === 'safe-padding' ? `
-                    html.revived-sidebar-idle-active { padding-right: 48px !important; box-sizing: border-box !important; }
-                    html.revived-sidebar-idle-active body { width: 100% !important; max-width: 100% !important; }
-                    #revived-idle-sidebar-host { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-                ` : `
+        // If an early observer detected size-sensitive resource loads, prefer overlay
+        if (isWidthSensitive) {
+            applyHandler('overlay');
+            return;
+        }
+
+        // Safe mode: apply the non-invasive margin approach (do not change body width)
+        if (candidate === 'safe-padding') {
+            applyHandler('safe-padding');
+            try { document.documentElement.classList.add('revived-sidebar-safe-mode'); } catch (e) { }
+            return;
+        }
+
+        // We run a short trial only for the global-offset candidate to detect width-sensitive pages
+        if (candidate === 'global-offset') {
+            const candidateCss = `
                     html.revived-sidebar-idle-active { margin-right: 0 !important; overflow: hidden !important; }
                     html.revived-sidebar-idle-active body { width: 100vw !important; max-width: calc(100vw - 48px) !important; height: 100vh !important; overflow-y: auto !important; overflow-x: hidden !important; transform: translateX(0) !important; box-sizing: border-box !important; }
                     #revived-idle-sidebar-host { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -391,10 +465,12 @@
             if (reacted) {
                 // Page reacted badly to layout change; fallback to overlay which does not alter layout
                 applyHandler('overlay');
+                try { document.documentElement.classList.remove('revived-sidebar-safe-mode'); } catch (e) { }
                 return;
             }
             // No reaction; commit candidate
             applyHandler(candidate);
+            try { document.documentElement.classList.remove('revived-sidebar-safe-mode'); } catch (e) { }
             return;
         }
 
@@ -436,8 +512,15 @@
         }
         if (name === 'safe-padding') {
             styleElement.textContent = `
-                html.revived-sidebar-idle-active { padding-right: 48px !important; box-sizing: border-box !important; }
-                html.revived-sidebar-idle-active body { width: 100% !important; max-width: 100% !important; }
+                html.revived-sidebar-idle-active {
+                    margin-right: 48px !important;
+                    box-sizing: border-box !important;
+                    overflow-x: hidden !important;
+                }
+                html.revived-sidebar-idle-active body {
+                    min-height: 100vh !important;
+                    position: relative !important;
+                }
                 #revived-idle-sidebar-host { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
             `;
             return;
@@ -469,7 +552,10 @@
         if (shouldHide) {
             ah.cleanup();
             if (host) host.style.display = 'none';
-            if (document.documentElement) document.documentElement.classList.remove('revived-sidebar-idle-active');
+            if (document.documentElement) {
+                document.documentElement.classList.remove('revived-sidebar-idle-active');
+                document.documentElement.classList.remove('revived-sidebar-safe-mode');
+            }
             return;
         }
 
@@ -478,7 +564,10 @@
                 if (host) host.style.display = 'none';
                 ah.setup();
             }
-            if (document.documentElement) document.documentElement.classList.remove('revived-sidebar-idle-active');
+            if (document.documentElement) {
+                document.documentElement.classList.remove('revived-sidebar-idle-active');
+                document.documentElement.classList.remove('revived-sidebar-safe-mode');
+            }
             if (styleElement) styleElement.textContent = '';
             populateIcons();
             return;
