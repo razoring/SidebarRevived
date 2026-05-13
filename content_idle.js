@@ -85,6 +85,38 @@
     // Start the observer as early as possible
     try { initWidthObserver(); } catch (e) { }
 
+    function injectHostStyles() {
+        try {
+            if (document.getElementById('revived-idle-style-tag')) return;
+            const style = document.createElement('style');
+            style.id = 'revived-idle-style-tag';
+            style.textContent = `
+                html.revived-sidebar-idle-active {
+                    margin-right: 48px !important;
+                    width: calc(100% - 48px) !important;
+                    box-sizing: border-box !important;
+                    overflow-x: hidden !important;
+                }
+
+                html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode) body {
+                    max-width: calc(100vw - 48px) !important;
+                    width: auto !important;
+                    position: relative !important;
+                }
+
+                html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode) * {
+                    max-width: inherit !important;
+                }
+
+                #revived-idle-sidebar-host { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+            `;
+            document.documentElement.appendChild(style);
+        } catch (e) { }
+    }
+
+    // Inject base host styles early (matches the Safe-mode commit behavior)
+    try { injectHostStyles(); } catch (e) { }
+
     function init() {
         host = document.createElement('div');
         host.id = 'revived-idle-sidebar-host';
@@ -413,6 +445,18 @@
         // Check persisted per-site preference
         let storage = await storageGet(['siteModePrefs']);
         const prefs = storage.siteModePrefs || {};
+        // If user/site already persisted as 'safe' or 'overlay', honor it
+        if (prefs[hostname] === 'safe') {
+            try {
+                document.documentElement.classList.add('revived-sidebar-idle-active');
+                document.documentElement.classList.add('revived-sidebar-safe-mode');
+                // ensure CSS variable is present for other scripts
+                document.documentElement.style.setProperty('--revived-sidebar-width', '48px');
+                // ensure body scrollbar moves left of panel
+                if (document.body) document.body.style.setProperty('padding-right', '48px', 'important');
+            } catch (e) { }
+            return;
+        }
         if (prefs[hostname]) {
             applyHandler(prefs[hostname]);
             return;
@@ -436,6 +480,33 @@
         // Candidate selection
         let candidate = isSafe ? 'safe-padding' : (fixedRightCount > 0 ? 'fixed-adjust' : 'global-offset');
 
+        // Targeted override: Bing Images sites should use safe-mode that shifts scrollbar
+        if (hostname.includes('bing.com')) {
+            try {
+                // Apply a safe CSS that shifts the viewport and nudges body scrollbar
+                styleElement.textContent = `
+                    html.revived-sidebar-idle-active {
+                        margin-right: 48px !important;
+                        width: calc(100% - 48px) !important;
+                        box-sizing: border-box !important;
+                        overflow-x: hidden !important;
+                    }
+                    html.revived-sidebar-idle-active:not(.revived-sidebar-safe-mode) body {
+                        max-width: calc(100vw - 48px) !important;
+                        width: auto !important;
+                        position: relative !important;
+                    }
+                    html.revived-sidebar-idle-active body { padding-right: 48px !important; }
+                    #revived-idle-sidebar-host { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+                `;
+                document.documentElement.classList.add('revived-sidebar-idle-active');
+                document.documentElement.classList.add('revived-sidebar-safe-mode');
+                // persist choice so we don't run trials on subsequent loads
+                prefs[hostname] = 'safe';
+                try { chrome.storage.local.set({ siteModePrefs: prefs }); } catch (e) { }
+            } catch (e) { }
+            return;
+        }
         // If an early observer detected size-sensitive resource loads, prefer overlay
         if (isWidthSensitive) {
             applyHandler('overlay');
@@ -511,12 +582,9 @@
             return;
         }
         if (name === 'safe-padding') {
+            // Keep safe-padding minimal so base injected host styles (above)
+            // can perform the width/margin shift without being overridden.
             styleElement.textContent = `
-                html.revived-sidebar-idle-active {
-                    margin-right: 48px !important;
-                    box-sizing: border-box !important;
-                    overflow-x: hidden !important;
-                }
                 html.revived-sidebar-idle-active body {
                     min-height: 100vh !important;
                     position: relative !important;

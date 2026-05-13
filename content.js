@@ -81,11 +81,9 @@
             html.revived-sidebar-active {
                 --revived-sidebar-width: 48px;
                 margin-right: var(--revived-sidebar-width, 48px) !important;
+                width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
                 overflow-x: hidden !important;
                 overflow-y: auto !important;
-            }
-            html.revived-sidebar-active:not(.revived-sidebar-safe-mode) {
-                width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
             }
             html.revived-sidebar-active:not(.revived-sidebar-safe-mode) body {
                 width: 100% !important;
@@ -467,9 +465,22 @@
             // If this is a known search/image site, use the safe-mode (non-invasive) offset
             if (isSafeModeSite()) {
                 try {
+                    // For problematic hosts like Bing, ensure scrollbar moves left by
+                    // applying a small padding-right on body while keeping safe-mode.
                     document.documentElement.classList.add('revived-sidebar-safe-mode');
                     document.documentElement.classList.add('revived-sidebar-active');
                     document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+                    if (window.location.hostname.includes('bing.com')) {
+                        try { document.body.style.setProperty('padding-right', totalWidth + 'px', 'important'); } catch (e) { }
+                        // persist safe-mode for this host
+                        try {
+                            chrome.storage.local.get(['siteModePrefs'], (res) => {
+                                const prefs = res.siteModePrefs || {};
+                                prefs[window.location.hostname] = 'safe';
+                                chrome.storage.local.set({ siteModePrefs: prefs });
+                            });
+                        } catch (e) { }
+                    }
                 } catch (e) { }
             } else {
                 const runTrialAndApply = async () => {
