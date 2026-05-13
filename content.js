@@ -157,23 +157,54 @@
 
         loadCSS();
 
-        // Resize logic
+        // Resize logic — we update the visual width during drag but defer
+        // committing the global layout change until mouseup to avoid
+        // triggering layout-sensitive reloads while the page is still loading
+        // or mid-resize.
         window.addEventListener('mousemove', (e) => {
             if (!isResizing) return;
             const newWidth = window.innerWidth - e.clientX - 48;
             if (newWidth > 200 && newWidth < 800) {
                 contentArea.style.width = newWidth + 'px';
-                updateLayout(newWidth + 48);
+                // DO NOT commit the global CSS variable here — wait until mouseup
             }
         });
 
-        window.addEventListener('mouseup', (e) => {
+        window.addEventListener('mouseup', async (e) => {
             if (isResizing) {
                 isResizing = false;
                 document.body.style.userSelect = '';
                 iframe.style.pointerEvents = '';
                 const newWidth = window.innerWidth - e.clientX - 48;
                 if (newWidth > 200 && newWidth < 800) {
+                    const totalWidth = newWidth + 48;
+                    const candidateCss = `
+                        html.revived-sidebar-active {
+                          --revived-sidebar-width: ${totalWidth}px;
+                          margin-right: var(--revived-sidebar-width, 48px) !important;
+                          width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
+                          overflow-x: hidden !important;
+                          overflow-y: auto !important;
+                        }
+                        html.revived-sidebar-active body {
+                          width: 100% !important;
+                          min-width: 0 !important;
+                        }
+                    `;
+                    let reacted = false;
+                    try {
+                        reacted = await (__SidebarRevived && __SidebarRevived.runLayoutTrial ? __SidebarRevived.runLayoutTrial(candidateCss, 700) : Promise.resolve(false));
+                    } catch (err) { reacted = false; }
+
+                    if (!reacted) {
+                        document.documentElement.classList.add('revived-sidebar-active');
+                        document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+                    } else {
+                        // fallback to overlay: do not modify document width
+                        document.documentElement.classList.remove('revived-sidebar-active');
+                        document.documentElement.style.removeProperty('--revived-sidebar-width');
+                    }
+
                     chrome.storage.local.set({ sidebarWidth: newWidth });
                 }
             }
@@ -400,9 +431,38 @@
             document.documentElement.classList.remove('revived-sidebar-active');
             document.documentElement.style.removeProperty('--revived-sidebar-width');
         } else {
-            document.documentElement.classList.add('revived-sidebar-active');
             const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
-            document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+            // Defer running the trial until after `load` to avoid altering
+            // layout during initial page computations which can cause
+            // size-sensitive network requests (e.g., Bing Images cw=).
+            const runTrialAndApply = async () => {
+                try {
+                    const candidateCss = `
+                        html.revived-sidebar-active { --revived-sidebar-width: ${totalWidth}px; margin-right: var(--revived-sidebar-width, 48px) !important; width: calc(100% - var(--revived-sidebar-width, 48px)) !important; overflow-x: hidden !important; overflow-y: auto !important; }
+                        html.revived-sidebar-active body { width: 100% !important; min-width: 0 !important; }
+                    `;
+                    const reacted = await (__SidebarRevived && __SidebarRevived.runLayoutTrial ? __SidebarRevived.runLayoutTrial(candidateCss, 700) : Promise.resolve(false));
+                    if (reacted) {
+                        // Fall back to overlay (do not modify document width)
+                        document.documentElement.classList.remove('revived-sidebar-active');
+                        document.documentElement.style.removeProperty('--revived-sidebar-width');
+                    } else {
+                        document.documentElement.classList.add('revived-sidebar-active');
+                        document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+                    }
+                } catch (e) {
+                    document.documentElement.classList.add('revived-sidebar-active');
+                    document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+                }
+            };
+
+            if (document.readyState !== 'complete') {
+                // Wait for load, but also have a fallback timer
+                window.addEventListener('load', runTrialAndApply, { once: true });
+                setTimeout(runTrialAndApply, 2000);
+            } else {
+                await runTrialAndApply();
+            }
         }
     }
 

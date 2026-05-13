@@ -557,6 +557,150 @@
     };
 
     // ============ EXPORT ============
+    // Run a short, non-destructive trial by applying `candidateCss` and observing
+    // outgoing resource loads and navigations. Returns true if the page reacted
+    // (e.g., image/resource URLs containing `cw=`), else false.
+    S.runLayoutTrial = function (candidateCss, timeout = 700) {
+        return new Promise((resolve) => {
+            const recorded = new Set();
 
+            let perfObserver = null;
+            try {
+                perfObserver = new PerformanceObserver((list) => {
+                    for (const entry of list.getEntries()) {
+                        try {
+                            const name = entry.name || '';
+                            if (name && (name.includes('cw=') || name.includes('/images/search') || name.includes('bing.com/images'))) {
+                                recorded.add(name);
+                            }
+                        } catch (e) { }
+                    }
+                });
+                perfObserver.observe({ type: 'resource', buffered: false });
+            } catch (e) { perfObserver = null; }
+
+            let mutObserver = null;
+            try {
+                mutObserver = new MutationObserver((mutations) => {
+                    for (const m of mutations) {
+                        try {
+                            if (m.type === 'attributes' && (m.attributeName === 'src' || m.attributeName === 'srcset')) {
+                                const url = (m.target && m.target.getAttribute) ? m.target.getAttribute(m.attributeName) : null;
+                                if (url && (url.includes('cw=') || url.includes('/images/search') || url.includes('bing.com/images'))) recorded.add(url);
+                            } else if (m.type === 'childList') {
+                                for (const node of m.addedNodes) {
+                                    if (node && node.tagName === 'IMG') {
+                                        const s = node.getAttribute && node.getAttribute('src');
+                                        if (s && (s.includes('cw=') || s.includes('/images/search') || s.includes('bing.com/images'))) recorded.add(s);
+                                    }
+                                }
+                            }
+                        } catch (e) { }
+                    }
+                });
+                mutObserver.observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['src', 'srcset'] });
+            } catch (e) { mutObserver = null; }
+
+            let origImgSetAttr = null;
+            let origSrcDescriptor = null;
+            try {
+                origImgSetAttr = HTMLImageElement.prototype.setAttribute;
+                HTMLImageElement.prototype.setAttribute = function(name, value) {
+                    try {
+                        if ((name === 'src' || name === 'srcset') && value && (String(value).includes('cw=') || String(value).includes('/images/search') || String(value).includes('bing.com/images'))) {
+                            recorded.add(String(value));
+                        }
+                    } catch (e) { }
+                    return origImgSetAttr.apply(this, arguments);
+                };
+            } catch (e) { origImgSetAttr = null; }
+
+            try {
+                origSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+                if (origSrcDescriptor && origSrcDescriptor.set) {
+                    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+                        set: function(val) {
+                            try { if (val && String(val).includes('cw=')) recorded.add(String(val)); } catch (e) { }
+                            return origSrcDescriptor.set.call(this, val);
+                        },
+                        get: function() { return origSrcDescriptor.get.call(this); },
+                        configurable: true,
+                        enumerable: true
+                    });
+                }
+            } catch (e) { origSrcDescriptor = null; }
+
+            const origFetch = window.fetch;
+            let origXhrOpen = null;
+            let origXhrSend = null;
+            let xhrProto = window.XMLHttpRequest && window.XMLHttpRequest.prototype;
+            try {
+                if (origFetch) {
+                    window.fetch = function(resource, ...args) {
+                        try {
+                            const url = resource && (resource.url || resource);
+                            if (url && (String(url).includes('cw=') || String(url).includes('/images/search') || String(url).includes('bing.com/images'))) recorded.add(String(url));
+                        } catch (e) { }
+                        return origFetch.apply(this, arguments);
+                    };
+                }
+            } catch (e) { }
+
+            try {
+                if (xhrProto) {
+                    origXhrOpen = xhrProto.open;
+                    origXhrSend = xhrProto.send;
+                    xhrProto.open = function(method, url) {
+                        try { this.__revived_url = url; } catch (e) { }
+                        return origXhrOpen.apply(this, arguments);
+                    };
+                    xhrProto.send = function(body) {
+                        try { if (this.__revived_url && (String(this.__revived_url).includes('cw=') || String(this.__revived_url).includes('/images/search') || String(this.__revived_url).includes('bing.com/images'))) recorded.add(this.__revived_url); } catch (e) { }
+                        return origXhrSend.apply(this, arguments);
+                    };
+                }
+            } catch (e) { }
+
+            let navigated = false;
+            const onBeforeUnload = () => { navigated = true; };
+            const onPageHide = () => { navigated = true; };
+            const onPopState = () => { navigated = true; };
+            const onHashChange = () => { navigated = true; };
+            window.addEventListener('beforeunload', onBeforeUnload, { once: true });
+            window.addEventListener('pagehide', onPageHide, { once: true });
+            window.addEventListener('popstate', onPopState);
+            window.addEventListener('hashchange', onHashChange);
+
+            const trialStyle = document.createElement('style');
+            trialStyle.id = 'revived-shared-detector-trial-style';
+            trialStyle.textContent = candidateCss || '';
+            try { document.documentElement.appendChild(trialStyle); } catch (e) { }
+
+            const finish = () => {
+                try { if (origFetch) window.fetch = origFetch; } catch (e) { }
+                try {
+                    if (xhrProto && origXhrOpen) { xhrProto.open = origXhrOpen; }
+                    if (xhrProto && origXhrSend) { xhrProto.send = origXhrSend; }
+                } catch (e) { }
+                try { window.removeEventListener('beforeunload', onBeforeUnload); } catch (e) { }
+                try { window.removeEventListener('pagehide', onPageHide); } catch (e) { }
+                try { window.removeEventListener('popstate', onPopState); } catch (e) { }
+                try { window.removeEventListener('hashchange', onHashChange); } catch (e) { }
+                try { if (trialStyle && trialStyle.parentNode) trialStyle.parentNode.removeChild(trialStyle); } catch (e) { }
+                try { if (perfObserver) perfObserver.disconnect(); } catch (e) { }
+                try { if (mutObserver) mutObserver.disconnect(); } catch (e) { }
+                try { if (origImgSetAttr) HTMLImageElement.prototype.setAttribute = origImgSetAttr; } catch (e) { }
+                try {
+                    if (origSrcDescriptor) Object.defineProperty(HTMLImageElement.prototype, 'src', origSrcDescriptor);
+                } catch (e) { }
+            };
+
+            setTimeout(() => {
+                finish();
+                const matched = Array.from(recorded).some(u => u && (String(u).includes('cw=') || String(u).includes('/images/search') || String(u).includes('bing.com/images')));
+                resolve(matched || navigated);
+            }, timeout);
+        });
+    };
     globalThis.__SidebarRevived = S;
 })();

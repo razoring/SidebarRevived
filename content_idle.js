@@ -17,6 +17,8 @@
     let currentTheme = null;
     let _loaded = false;
     const { applyThemeStyles, AutoHideManager } = __SidebarRevived;
+    let layoutDetectionCompleted = false;
+    let layoutDetectionPending = false;
 
     function init() {
         host = document.createElement('div');
@@ -159,6 +161,297 @@
         return safeModeSites.some(s => hostname.includes(s));
     }
 
+    // Helper to promisify chrome.storage.local.get
+    function storageGet(keys) {
+        return new Promise((resolve) => chrome.storage.local.get(keys, resolve));
+    }
+
+    // Run a short, non-destructive trial by applying `candidateCss` and observing
+    // outgoing network requests (fetch / XHR) and navigations. Returns true
+    // if the page reacted (e.g., requests containing `cw=` or navigation), else false.
+    function runLayoutTrial(candidateCss, timeout = 700) {
+        return new Promise((resolve) => {
+            const recorded = new Set();
+
+            // PerformanceObserver to catch resource loads (images, etc.)
+            let perfObserver = null;
+            try {
+                perfObserver = new PerformanceObserver((list) => {
+                    for (const entry of list.getEntries()) {
+                        try {
+                            const name = entry.name || '';
+                            if (name && (name.includes('cw=') || name.includes('/images/search') || name.includes('bing.com/images'))) {
+                                recorded.add(name);
+                            }
+                        } catch (e) { }
+                    }
+                });
+                perfObserver.observe({ type: 'resource', buffered: false });
+            } catch (e) { perfObserver = null; }
+
+            // MutationObserver for <img> src/srcset changes and new nodes
+            let mutObserver = null;
+            try {
+                mutObserver = new MutationObserver((mutations) => {
+                    for (const m of mutations) {
+                        try {
+                            if (m.type === 'attributes' && (m.attributeName === 'src' || m.attributeName === 'srcset')) {
+                                const url = (m.target && m.target.getAttribute) ? m.target.getAttribute(m.attributeName) : null;
+                                if (url && (url.includes('cw=') || url.includes('/images/search') || url.includes('bing.com/images'))) recorded.add(url);
+                            } else if (m.type === 'childList') {
+                                for (const node of m.addedNodes) {
+                                    if (node && node.tagName === 'IMG') {
+                                        const s = node.getAttribute && node.getAttribute('src');
+                                        if (s && (s.includes('cw=') || s.includes('/images/search') || s.includes('bing.com/images'))) recorded.add(s);
+                                    }
+                                }
+                            }
+                        } catch (e) { }
+                    }
+                });
+                mutObserver.observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['src', 'srcset'] });
+            } catch (e) { mutObserver = null; }
+
+            // Monkeypatch image attribute setters to catch direct assignments
+            let origImgSetAttr = null;
+            let origSrcDescriptor = null;
+            try {
+                origImgSetAttr = HTMLImageElement.prototype.setAttribute;
+                HTMLImageElement.prototype.setAttribute = function(name, value) {
+                    try {
+                        if ((name === 'src' || name === 'srcset') && value && (String(value).includes('cw=') || String(value).includes('/images/search') || String(value).includes('bing.com/images'))) {
+                            recorded.add(String(value));
+                        }
+                    } catch (e) { }
+                    return origImgSetAttr.apply(this, arguments);
+                };
+            } catch (e) { origImgSetAttr = null; }
+
+            try {
+                origSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+                if (origSrcDescriptor && origSrcDescriptor.set) {
+                    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+                        set: function(val) {
+                            try { if (val && String(val).includes('cw=')) recorded.add(String(val)); } catch (e) { }
+                            return origSrcDescriptor.set.call(this, val);
+                        },
+                        get: function() { return origSrcDescriptor.get.call(this); },
+                        configurable: true,
+                        enumerable: true
+                    });
+                }
+            } catch (e) { origSrcDescriptor = null; }
+
+            // Wrap fetch and XHR as additional signal
+            const origFetch = window.fetch;
+            let origXhrOpen = null;
+            let origXhrSend = null;
+            let xhrProto = window.XMLHttpRequest && window.XMLHttpRequest.prototype;
+            try {
+                if (origFetch) {
+                    window.fetch = function(resource, ...args) {
+                        try {
+                            const url = resource && (resource.url || resource);
+                            if (url && (String(url).includes('cw=') || String(url).includes('/images/search') || String(url).includes('bing.com/images'))) recorded.add(String(url));
+                        } catch (e) { }
+                        return origFetch.apply(this, arguments);
+                    };
+                }
+            } catch (e) { }
+
+            try {
+                if (xhrProto) {
+                    origXhrOpen = xhrProto.open;
+                    origXhrSend = xhrProto.send;
+                    xhrProto.open = function(method, url) {
+                        try { this.__revived_url = url; } catch (e) { }
+                        return origXhrOpen.apply(this, arguments);
+                    };
+                    xhrProto.send = function(body) {
+                        try { if (this.__revived_url && (String(this.__revived_url).includes('cw=') || String(this.__revived_url).includes('/images/search') || String(this.__revived_url).includes('bing.com/images'))) recorded.add(this.__revived_url); } catch (e) { }
+                        return origXhrSend.apply(this, arguments);
+                    };
+                }
+            } catch (e) { }
+
+            let navigated = false;
+            const onBeforeUnload = () => { navigated = true; };
+            const onPageHide = () => { navigated = true; };
+            const onPopState = () => { navigated = true; };
+            const onHashChange = () => { navigated = true; };
+            window.addEventListener('beforeunload', onBeforeUnload, { once: true });
+            window.addEventListener('pagehide', onPageHide, { once: true });
+            window.addEventListener('popstate', onPopState);
+            window.addEventListener('hashchange', onHashChange);
+
+            // Apply candidate CSS transiently
+            const trialStyle = document.createElement('style');
+            trialStyle.id = 'revived-detector-trial-style';
+            trialStyle.textContent = candidateCss || '';
+            try { document.documentElement.appendChild(trialStyle); } catch (e) { }
+
+            const finish = () => {
+                try { if (origFetch) window.fetch = origFetch; } catch (e) { }
+                try {
+                    if (xhrProto && origXhrOpen) { xhrProto.open = origXhrOpen; }
+                    if (xhrProto && origXhrSend) { xhrProto.send = origXhrSend; }
+                } catch (e) { }
+                try { window.removeEventListener('beforeunload', onBeforeUnload); } catch (e) { }
+                try { window.removeEventListener('pagehide', onPageHide); } catch (e) { }
+                try { window.removeEventListener('popstate', onPopState); } catch (e) { }
+                try { window.removeEventListener('hashchange', onHashChange); } catch (e) { }
+                try { if (trialStyle && trialStyle.parentNode) trialStyle.parentNode.removeChild(trialStyle); } catch (e) { }
+                try { if (perfObserver) perfObserver.disconnect(); } catch (e) { }
+                try { if (mutObserver) mutObserver.disconnect(); } catch (e) { }
+                try { if (origImgSetAttr) HTMLImageElement.prototype.setAttribute = origImgSetAttr; } catch (e) { }
+                try {
+                    if (origSrcDescriptor) Object.defineProperty(HTMLImageElement.prototype, 'src', origSrcDescriptor);
+                } catch (e) { }
+            };
+
+            setTimeout(() => {
+                finish();
+                const matched = Array.from(recorded).some(u => u && (String(u).includes('cw=') || String(u).includes('/images/search') || String(u).includes('bing.com/images')));
+                resolve(matched || navigated);
+            }, timeout);
+        });
+    }
+
+    // Decide which handler to use for the current page and apply it.
+    // Handlers: 'preserve' (scroll blocklist), 'safe-padding', 'fixed-adjust', 'global-offset', 'overlay'
+    async function detectAndApplyLayout(hostname, isSafe, isScrollBlocked) {
+        // Respect user scroll blocklist first
+        if (isScrollBlocked) {
+            if (styleElement) {
+                styleElement.textContent = `
+                    html.revived-sidebar-idle-active {
+                        margin-right: 48px !important;
+                        overflow-x: hidden !important;
+                        box-sizing: border-box !important;
+                    }
+                    html.revived-sidebar-idle-active body {
+                        max-width: calc(100% - 48px) !important;
+                        padding-right: 48px !important;
+                        box-sizing: border-box !important;
+                        transform: none !important;
+                        height: auto !important;
+                        overflow: visible !important;
+                    }
+                    #revived-idle-sidebar-host {
+                        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                `;
+            }
+            return;
+        }
+
+        // Check persisted per-site preference
+        let storage = await storageGet(['siteModePrefs']);
+        const prefs = storage.siteModePrefs || {};
+        if (prefs[hostname]) {
+            applyHandler(prefs[hostname]);
+            return;
+        }
+
+        // Heuristic: count right-anchored fixed/sticky elements
+        let fixedRightCount = 0;
+        try {
+            const all = Array.from(document.querySelectorAll('*'));
+            for (const el of all) {
+                try {
+                    const cs = window.getComputedStyle(el);
+                    if (!(cs.position === 'fixed' || cs.position === 'sticky')) continue;
+                    const rect = el.getBoundingClientRect();
+                    if (rect.width < 16 || rect.height < 16) continue;
+                    if (Math.abs(rect.right - window.innerWidth) <= 8) fixedRightCount++;
+                } catch (e) { }
+            }
+        } catch (e) { }
+
+        // Candidate selection
+        let candidate = isSafe ? 'safe-padding' : (fixedRightCount > 0 ? 'fixed-adjust' : 'global-offset');
+
+        // We run a short trial for the layout-affecting handlers to detect width-sensitive pages
+        if (candidate === 'safe-padding' || candidate === 'global-offset') {
+            const candidateCss = candidate === 'safe-padding' ? `
+                    html.revived-sidebar-idle-active { padding-right: 48px !important; box-sizing: border-box !important; }
+                    html.revived-sidebar-idle-active body { width: 100% !important; max-width: 100% !important; }
+                    #revived-idle-sidebar-host { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+                ` : `
+                    html.revived-sidebar-idle-active { margin-right: 0 !important; overflow: hidden !important; }
+                    html.revived-sidebar-idle-active body { width: 100vw !important; max-width: calc(100vw - 48px) !important; height: 100vh !important; overflow-y: auto !important; overflow-x: hidden !important; transform: translateX(0) !important; box-sizing: border-box !important; }
+                    #revived-idle-sidebar-host { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+                `;
+
+            let reacted = false;
+            try {
+                reacted = await runLayoutTrial(candidateCss, 350);
+            } catch (e) { reacted = false; }
+
+            if (reacted) {
+                // Page reacted badly to layout change; fallback to overlay which does not alter layout
+                applyHandler('overlay');
+                return;
+            }
+            // No reaction; commit candidate
+            applyHandler(candidate);
+            return;
+        }
+
+        // For fixed-adjust candidate we apply targeted adjustments (safer than global offset)
+        if (candidate === 'fixed-adjust') {
+            // Simple implementation: nudge right-anchored fixed elements away from edge
+            try {
+                const css = `
+                    html.revived-sidebar-idle-active { box-sizing: border-box !important; }
+                    #revived-idle-sidebar-host { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+                `;
+                styleElement.textContent = css;
+                const els = Array.from(document.querySelectorAll('*'));
+                for (const el of els) {
+                    try {
+                        const cs = window.getComputedStyle(el);
+                        if (!(cs.position === 'fixed' || cs.position === 'sticky')) continue;
+                        const rect = el.getBoundingClientRect();
+                        if (rect.width < 16 || rect.height < 16) continue;
+                        if (Math.abs(rect.right - window.innerWidth) <= 8) {
+                            el.style.setProperty('right', '48px', 'important');
+                            el.style.setProperty('margin-right', '48px', 'important');
+                        }
+                    } catch (e) { }
+                }
+            } catch (e) { }
+            return;
+        }
+
+        // Fallback: overlay (do nothing to page layout)
+        applyHandler('overlay');
+    }
+
+    function applyHandler(name) {
+        if (!styleElement) return;
+        if (name === 'overlay') {
+            styleElement.textContent = '';
+            return;
+        }
+        if (name === 'safe-padding') {
+            styleElement.textContent = `
+                html.revived-sidebar-idle-active { padding-right: 48px !important; box-sizing: border-box !important; }
+                html.revived-sidebar-idle-active body { width: 100% !important; max-width: 100% !important; }
+                #revived-idle-sidebar-host { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+            `;
+            return;
+        }
+        if (name === 'global-offset') {
+            styleElement.textContent = `
+                html.revived-sidebar-idle-active { margin-right: 0 !important; overflow: hidden !important; }
+                html.revived-sidebar-idle-active body { width: 100vw !important; max-width: calc(100vw - 48px) !important; height: 100vh !important; overflow-y: auto !important; overflow-x: hidden !important; transform: translateX(0) !important; box-sizing: border-box !important; }
+                #revived-idle-sidebar-host { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+            `;
+            return;
+        }
+    }
+
     async function render() {
         const ah = getAutoHide();
         const hostname = window.location.hostname;
@@ -194,69 +487,29 @@
         if (host) host.style.removeProperty('display');
         if (document.documentElement) document.documentElement.classList.add('revived-sidebar-idle-active');
 
-        // scrollBlocklist first - user configured sites use transform: none approach
-        if (isScrollBlocked) {
-            if (styleElement) {
-                styleElement.textContent = `
-                    html.revived-sidebar-idle-active {
-                        margin-right: 48px !important;
-                        overflow-x: hidden !important;
-                        box-sizing: border-box !important;
-                    }
-                    html.revived-sidebar-idle-active body {
-                        max-width: calc(100% - 48px) !important;
-                        padding-right: 48px !important;
-                        box-sizing: border-box !important;
-                        transform: none !important;
-                        height: auto !important;
-                        overflow: visible !important;
-                    }
-                    #revived-idle-sidebar-host {
-                        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    }
-                `;
+        // Detect and apply the best layout handling for this site.
+        // Defer layout-affecting changes until after `load` to avoid
+        // interfering with pages that compute size parameters on initial load.
+        if (!layoutDetectionCompleted) {
+            if (document.readyState !== 'complete') {
+                if (!layoutDetectionPending) {
+                    layoutDetectionPending = true;
+                    const runDetect = async () => {
+                        try { await detectAndApplyLayout(hostname, isSafe, isScrollBlocked); } catch (e) { }
+                        layoutDetectionCompleted = true;
+                    };
+                    window.addEventListener('load', runDetect, { once: true });
+                    // fallback if load doesn't fire
+                    setTimeout(runDetect, 2000);
+                }
+            } else {
+                await detectAndApplyLayout(hostname, isSafe, isScrollBlocked);
+                layoutDetectionCompleted = true;
             }
-        }
-        // Safe mode for search engines - offset using html padding instead of margin
-        else if (isSafe) {
-            if (styleElement) {
-                styleElement.textContent = `
-                    html.revived-sidebar-idle-active {
-                        padding-right: 48px !important;
-                        box-sizing: border-box !important;
-                    }
-                    html.revived-sidebar-idle-active body {
-                        width: 100% !important;
-                        max-width: 100% !important;
-                    }
-                    #revived-idle-sidebar-host {
-                        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    }
-                `;
-            }
-        }
-        // Default - aggressive offset (YouTube, Coolors, all other sites)
-        else {
-            if (styleElement) {
-                styleElement.textContent = `
-                    html.revived-sidebar-idle-active {
-                        margin-right: 0 !important;
-                        overflow: hidden !important;
-                    }
-                    html.revived-sidebar-idle-active body {
-                        width: 100vw !important;
-                        max-width: calc(100vw - 48px) !important;
-                        height: 100vh !important;
-                        overflow-y: auto !important;
-                        overflow-x: hidden !important;
-                        transform: translateX(0) !important;
-                        box-sizing: border-box !important;
-                    }
-                    #revived-idle-sidebar-host {
-                        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    }
-                `;
-            }
+        } else {
+            // Already completed initial detection — run a lightweight re-check
+            // in case the user updated preferences or blocklists.
+            try { await detectAndApplyLayout(hostname, isSafe, isScrollBlocked); } catch (e) { }
         }
 
         await populateIcons();
