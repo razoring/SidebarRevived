@@ -18,7 +18,37 @@
     let _loaded = false;
     const { applyThemeStyles, AutoHideManager } = __SidebarRevived;
 
-    let fakeScroll = { el: null, thumb: null, track: null, isDragging: false, dragStartY: 0, dragStartScroll: 0, updatePending: false };
+    function injectWidthHacker() {
+        if (document.getElementById('revived-width-hacker')) return;
+        const script = document.createElement('script');
+        script.id = 'revived-width-hacker';
+        script.textContent = `
+            (function() {
+                const originalClientWidth = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth');
+                const originalOffsetWidth = Object.getOwnPropertyDescriptor(Element.prototype, 'offsetWidth');
+                
+                function getFakeWidth(el, originalGetter) {
+                    const val = originalGetter.call(el);
+                    if (el === document.documentElement && el.classList.contains('revived-sidebar-idle-active')) {
+                        if (window.location.hostname.includes('bing.com')) {
+                            return window.innerWidth - 17;
+                        }
+                    }
+                    return val;
+                }
+
+                Object.defineProperty(document.documentElement, 'clientWidth', {
+                    get: function() { return getFakeWidth(this, originalClientWidth.get); },
+                    configurable: true
+                });
+                Object.defineProperty(document.documentElement, 'offsetWidth', {
+                    get: function() { return getFakeWidth(this, originalOffsetWidth.get); },
+                    configurable: true
+                });
+            })();
+        `;
+        (document.head || document.documentElement).appendChild(script);
+    }
 
     function init() {
         host = document.createElement('div');
@@ -110,49 +140,7 @@
         }
     }
 
-    let autoHide = null;
-
-    function getAutoHide() {
-        if (!autoHide) {
-            autoHide = new AutoHideManager({
-                onShowBar: () => {
-                    populateIcons();
-                    host.style.removeProperty('display');
-                },
-                onHideBar: () => { host.style.display = 'none'; },
-                getPanelWidth: () => 48,
-                getAccentColor: () => currentTheme?.accentColor || '#b2d7ef',
-                leaveThresholdOffset: 5
-            });
-        }
-        return autoHide;
-    }
-
-    let lastRenderState = null;
-    async function populateIcons() {
-        const currentState = JSON.stringify({ sites, tempSites, activeSiteId, activeSiteOwner });
-        if (currentState === lastRenderState) return;
-        lastRenderState = currentState;
-
-        await __SidebarRevived.renderIconBar(sidebarContainer, {
-            sites: sites,
-            tempSites: tempSites || [],
-            activeSiteId: activeSiteId,
-            getSites: () => sites,
-            getTempSites: () => tempSites,
-            onSiteClick: (siteId) => {
-                try { chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' }); } catch (e) { }
-                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) { }
-            },
-            onAddSite: () => {
-                try { chrome.runtime.sendMessage({ action: 'add_current_tab' }); } catch (e) { }
-            },
-            onSettingsClick: () => {
-                try { chrome.storage.local.set({ isSettingsOpen: true }); } catch (e) { }
-                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) { }
-            }
-        });
-    }
+    let fakeScroll = { el: null, thumb: null, track: null, isDragging: false, dragStartY: 0, dragStartScroll: 0, updatePending: false };
 
     // --- Fake Scrollbar ---
 
@@ -278,6 +266,52 @@
         window.scrollTo({ top: ratio * maxScroll, behavior: 'smooth' });
     }
 
+    let autoHide = null;
+
+    function getAutoHide() {
+        if (!autoHide) {
+            autoHide = new AutoHideManager({
+                onShowBar: () => {
+                    populateIcons();
+                    host.style.removeProperty('display');
+                },
+                onHideBar: () => { host.style.display = 'none'; },
+                getPanelWidth: () => 48,
+                getAccentColor: () => currentTheme?.accentColor || '#b2d7ef',
+                leaveThresholdOffset: 5
+            });
+        }
+        return autoHide;
+    }
+
+    let lastRenderState = null;
+    async function populateIcons() {
+        const currentState = JSON.stringify({ sites, tempSites, activeSiteId, activeSiteOwner });
+        if (currentState === lastRenderState) return;
+        lastRenderState = currentState;
+
+        await __SidebarRevived.renderIconBar(sidebarContainer, {
+            sites: sites,
+            tempSites: tempSites || [],
+            activeSiteId: activeSiteId,
+            getSites: () => sites,
+            getTempSites: () => tempSites,
+            onSiteClick: (siteId) => {
+                try { chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' }); } catch (e) { }
+                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) { }
+            },
+            onAddSite: () => {
+                try { chrome.runtime.sendMessage({ action: 'add_current_tab' }); } catch (e) { }
+            },
+            onSettingsClick: () => {
+                try { chrome.storage.local.set({ isSettingsOpen: true }); } catch (e) { }
+                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) { }
+            }
+        });
+    }
+
+
+
     // --- Host Styles ---
 
     function injectHostStyles() {
@@ -297,44 +331,27 @@
                 pointer-events: none !important;
             }
 
-            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode)::-webkit-scrollbar,
-            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode)::-webkit-scrollbar-track,
-            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode)::-webkit-scrollbar-thumb {
+            html.revived-sidebar-idle-active::-webkit-scrollbar,
+            html.revived-sidebar-idle-active::-webkit-scrollbar-track,
+            html.revived-sidebar-idle-active::-webkit-scrollbar-thumb {
                 display: none !important;
             }
 
-            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode) {
+            html.revived-sidebar-idle-active {
                 scrollbar-width: none !important;
                 -ms-overflow-style: none !important;
                 overflow-x: hidden !important;
-                margin-right: 58px !important;
-                width: calc(100% - 58px) !important;
             }
 
-            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode) body {
-                width: 100% !important;
+            html.revived-sidebar-idle-active body {
+                margin-right: 48px !important;
                 min-width: 0 !important;
             }
             
-            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode) body > * {
+            html.revived-sidebar-idle-active body > * {
                 max-width: 100% !important;
                 min-width: 0 !important;
             }
-
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode {
-                scrollbar-width: none !important;
-                -ms-overflow-style: none !important;
-                overflow-x: hidden !important;
-                margin-right: 58px !important;
-                width: calc(100% - 58px) !important;
-            }
-
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode::-webkit-scrollbar,
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode::-webkit-scrollbar-track,
-            html.revived-sidebar-idle-active.revived-sidebar-fixed-mode::-webkit-scrollbar-thumb {
-                display: none !important;
-            }
-
 
             #revived-fake-scrollbar {
                 position: fixed !important;
@@ -395,23 +412,27 @@
     }
 
     function adjustFixedElements() {
-        const offset = 58; // 48px sidebar + 10px scrollbar
+        const offset = 48; // 48px sidebar
+
         const fixedElements = document.querySelectorAll('*');
         fixedElements.forEach(el => {
             if (el.getAttribute('id') && el.getAttribute('id').includes('revived')) return;
             const style = window.getComputedStyle(el);
+            
             if ((style.position === 'fixed' || style.position === 'sticky') && !el.dataset.sidebarAdjusted) {
                 el.dataset.sidebarAdjusted = 'true';
                 const currentRight = parseFloat(style.right);
+                const currentLeft = parseFloat(style.left);
                 
-                if (!isNaN(currentRight) && currentRight >= 0) {
+                const isFullWidth = (style.width === '100%' || style.width === '100vw' || el.offsetWidth >= window.innerWidth - 1);
+                const isRightAligned = !isNaN(currentRight) && currentRight >= 0 && currentRight < (window.innerWidth / 2);
+                
+                if (isFullWidth) {
+                    el.dataset.originalMaxWidth = style.maxWidth;
+                    el.style.maxWidth = `calc(100vw - ${offset}px)`;
+                } else if (isRightAligned && (isNaN(currentLeft) || currentLeft > 0)) {
                     el.dataset.originalRight = style.right;
                     el.style.right = (currentRight + offset) + 'px';
-                    
-                    if (style.width === '100%' || style.width === '100vw' || el.offsetWidth >= window.innerWidth) {
-                        el.dataset.originalMaxWidth = style.maxWidth;
-                        el.style.maxWidth = `calc(100vw - ${offset}px)`;
-                    }
                 }
             }
         });
@@ -467,7 +488,6 @@
             removeFakeScrollbar();
             return;
         }
-
         if (autoHideEnabled) {
             if (!ah.triggered) {
                 if (host) host.style.display = 'none';
@@ -486,6 +506,8 @@
         document.documentElement.classList.add('revived-sidebar-idle-active');
         createFakeScrollbar();
         if (fakeScroll.el) fakeScroll.el.style.display = 'block';
+        injectWidthHacker();
+
 
         // Apply safe mode (limit shift to html only) for search engines
         // Apply fixed position mode for video sites that have fixed headers/overlays
