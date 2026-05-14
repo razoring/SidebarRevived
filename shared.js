@@ -494,7 +494,7 @@
         renderSiteList(sites, false, pinnedHeader);
 
         pinDivider = document.createElement('div');
-        pinDivider.className = 'edge-sidebar-divider edge-sidebar-divider-pinned';
+        pinDivider.className = 'edge-sidebar-divider';
         container.appendChild(pinDivider);
 
         tempHeader = makeSectionHeader(S.TEMP_HEADER_SVG, false);

@@ -99,14 +99,19 @@ function applyTheme() {
 
 async function render() {
     if (state.isSettingsOpen) {
+        // Update UI state first to prevent flash of unstyled content
+        updateSettingsUI();
+        initCollapsibleSections();
+        
         iconBar.style.display = 'none';
         contentArea.style.display = 'none';
         const note = document.getElementById('inpage-sidebar-note');
         if (note) note.style.display = 'none';
+        
         const sp = document.getElementById('settings-panel');
-        if (sp) sp.style.display = 'flex';
-        initCollapsibleSections();
-        updateSettingsUI();
+        if (sp) {
+            sp.style.display = 'flex';
+        }
         return;
     }
 

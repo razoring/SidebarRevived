@@ -70,16 +70,46 @@
         }
     });
 
-    // Viewport width proxy (hides the sidebar width from the page)
+    // Viewport width proxy — report the real viewport width so sites like
+    // Bing Images don't detect our CSS offset as a resize (preventing cw= loops).
+    const getRealInnerWidth = () => originalInnerWidth ? originalInnerWidth.get.call(window) : window.outerWidth;
+
     Object.defineProperty(window, 'innerWidth', {
         get: function() {
-            if (isFaking()) {
-                const sidebarWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--revived-sidebar-width')) || 48;
-                return (originalInnerWidth ? originalInnerWidth.get.call(this) : window.outerWidth) + sidebarWidth;
-            }
-            return originalInnerWidth ? originalInnerWidth.get.call(this) : window.outerWidth;
+            return getRealInnerWidth();
         }
     });
+
+    // clientWidth proxies — these are what most sites (including Bing Images)
+    // actually read to compute viewport-dependent parameters like cw=.
+    // Our CSS offset narrows clientWidth by 48px; spoofing it back prevents
+    // reactive navigations while the visual layout offset still works.
+    if (originalClientWidth) {
+        Object.defineProperty(document.documentElement, 'clientWidth', {
+            get: function() {
+                if (isFaking()) return getRealInnerWidth();
+                return originalClientWidth.get.call(this);
+            },
+            configurable: true
+        });
+    }
+
+    const patchBodyClientWidth = () => {
+        if (!document.body) return;
+        const bodyDesc = getDescriptor(document.body, 'clientWidth')
+                      || getDescriptor(HTMLElement.prototype, 'clientWidth');
+        if (bodyDesc) {
+            Object.defineProperty(document.body, 'clientWidth', {
+                get: function() {
+                    if (isFaking()) return getRealInnerWidth();
+                    return bodyDesc.get.call(this);
+                },
+                configurable: true
+            });
+        }
+    };
+    if (document.body) patchBodyClientWidth();
+    else document.addEventListener('DOMContentLoaded', patchBodyClientWidth, { once: true });
 
     // Event bridging: when body scrolls, tell the window it scrolled
     document.addEventListener('scroll', function(e) {
