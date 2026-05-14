@@ -94,28 +94,27 @@
         adjust(el, style, isFullWidth) {
             const originalStyle = {
                 transition: el.style.transition,
-                transform: el.style.transform,
+                translate: el.style.translate,
                 maxWidth: el.style.maxWidth
             };
 
             this.adjustedElements.set(el, originalStyle);
 
-            el.style.transition = (el.style.transition ? el.style.transition + ', ' : '') + 'transform 0.3s, max-width 0.3s';
+            el.style.transition = (el.style.transition ? el.style.transition + ', ' : '') + 'translate 0.3s, max-width 0.3s';
             
             if (isFullWidth) {
                 // Constrain full-width elements so they don't slide under
                 el.style.setProperty('max-width', 'calc(100vw - 48px)', 'important');
             } else {
-                // Simply shift overlapping right-side elements to the left by 48px
-                const currentTransform = style.transform !== 'none' ? style.transform : '';
-                el.style.setProperty('transform', currentTransform + (currentTransform ? ' ' : '') + 'translateX(-48px)', 'important');
+                // Use the independent 'translate' property to avoid locking 'transform' animations
+                el.style.setProperty('translate', '-48px 0', 'important');
             }
         },
 
         restoreAll() {
             this.adjustedElements.forEach((originalStyle, el) => {
                 el.style.transition = originalStyle.transition;
-                if (originalStyle.transform !== undefined) el.style.transform = originalStyle.transform;
+                if (originalStyle.translate !== undefined) el.style.translate = originalStyle.translate;
                 if (originalStyle.maxWidth !== undefined) el.style.maxWidth = originalStyle.maxWidth;
             });
             this.adjustedElements.clear();
