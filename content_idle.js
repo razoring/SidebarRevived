@@ -17,6 +17,96 @@
     let currentTheme = null;
     const { applyThemeStyles, AutoHideManager } = __SidebarRevived;
 
+    const FixedElementManager = {
+        active: false,
+        adjustedElements: new Map(),
+        observer: null,
+        timeout: null,
+
+        start() {
+            if (this.active) return;
+            this.active = true;
+            this.scan();
+            this.observer = new MutationObserver(() => {
+                if (this.timeout) clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => this.scan(), 500);
+            });
+            this.observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+            window.addEventListener('resize', this.handleResize);
+        },
+
+        stop() {
+            this.active = false;
+            if (this.observer) this.observer.disconnect();
+            if (this.timeout) clearTimeout(this.timeout);
+            window.removeEventListener('resize', this.handleResize);
+            this.restoreAll();
+        },
+
+        handleResize: () => {
+            if (FixedElementManager.timeout) clearTimeout(FixedElementManager.timeout);
+            FixedElementManager.timeout = setTimeout(() => FixedElementManager.scan(), 500);
+        },
+
+        scan() {
+            if (!this.active) return;
+            
+            // Look for likely candidates to minimize getComputedStyle calls
+            const candidates = document.querySelectorAll('header, nav, footer, aside, div');
+            const windowWidth = window.innerWidth;
+            
+            candidates.forEach(el => {
+                // Ignore our own elements and hidden elements
+                if (el.id && el.id.includes('revived')) return;
+                if (!el.offsetParent) return; 
+                
+                if (this.adjustedElements.has(el)) return;
+
+                const style = window.getComputedStyle(el);
+                if (style.position === 'fixed') {
+                    const rect = el.getBoundingClientRect();
+                    const isFullWidth = rect.width >= windowWidth - 10;
+                    const isRightAligned = style.right === '0px';
+                    const isFullHeight = rect.height >= window.innerHeight - 10;
+                    
+                    if (isFullWidth || isRightAligned) {
+                        this.adjust(el, style, isFullWidth, isRightAligned, isFullHeight);
+                    }
+                }
+            });
+        },
+
+        adjust(el, style, isFullWidth, isRightAligned, isFullHeight) {
+            const originalStyle = {
+                transition: el.style.transition,
+                right: el.style.right,
+                maxWidth: el.style.maxWidth,
+                marginRight: el.style.marginRight
+            };
+
+            this.adjustedElements.set(el, originalStyle);
+
+            el.style.transition = (el.style.transition ? el.style.transition + ', ' : '') + 'right 0.3s, max-width 0.3s, margin-right 0.3s';
+            
+            if (isRightAligned) {
+                el.style.setProperty('right', '48px', 'important');
+            } else if (isFullWidth) {
+                el.style.setProperty('max-width', 'calc(100vw - 48px)', 'important');
+            } else {
+                el.style.setProperty('margin-right', '48px', 'important');
+            }
+        },
+
+        restoreAll() {
+            this.adjustedElements.forEach((originalStyle, el) => {
+                el.style.transition = originalStyle.transition;
+                if (originalStyle.right !== undefined) el.style.right = originalStyle.right;
+                if (originalStyle.maxWidth !== undefined) el.style.maxWidth = originalStyle.maxWidth;
+                if (originalStyle.marginRight !== undefined) el.style.marginRight = originalStyle.marginRight;
+            });
+            this.adjustedElements.clear();
+        }
+    };
 
 
     function init() {
@@ -161,6 +251,7 @@
 
         if (isSidePanelOpen || isSidepanelBlocked || (activeSiteId && activeSiteOwner === 'inpage')) {
             ah.cleanup();
+            FixedElementManager.stop();
             host.style.display = 'none';
             document.documentElement.classList.remove('revived-sidebar-idle-active');
             return;
@@ -171,6 +262,7 @@
                 host.style.display = 'none';
                 ah.setup();
             }
+            FixedElementManager.stop();
             document.documentElement.classList.remove('revived-sidebar-idle-active');
             styleElement.textContent = '';
             populateIcons();
@@ -179,6 +271,7 @@
 
         host.style.removeProperty('display');
         document.documentElement.classList.add('revived-sidebar-idle-active');
+        FixedElementManager.start();
 
         const isBlocked = scrollBlocklist.some(d => hostname.includes(d));
 
@@ -213,7 +306,6 @@
                     height: 100vh !important;
                     overflow-y: auto !important;
                     overflow-x: hidden !important;
-                    transform: translateX(0) !important;
                     box-sizing: border-box !important;
                 }
                 #revived-idle-sidebar-host {
