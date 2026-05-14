@@ -27,16 +27,18 @@
     const originalClientWidth = getDescriptor(document.documentElement, 'clientWidth');
 
     // IntersectionObserver patching
-    const OriginalObserver = window.IntersectionObserver;
-    if (OriginalObserver) {
-        window.IntersectionObserver = function(callback, options) {
-            if (isFaking() && (!options || !options.root)) {
-                options = options || {};
-                options.root = document.body;
-            }
-            return new OriginalObserver(callback, options);
-        };
-        window.IntersectionObserver.prototype = OriginalObserver.prototype;
+    if (!window.location.hostname.includes('youtube.com')) {
+        const OriginalObserver = window.IntersectionObserver;
+        if (OriginalObserver) {
+            window.IntersectionObserver = function(callback, options) {
+                if (isFaking() && (!options || !options.root)) {
+                    options = options || {};
+                    options.root = document.body;
+                }
+                return new OriginalObserver(callback, options);
+            };
+            window.IntersectionObserver.prototype = OriginalObserver.prototype;
+        }
     }
 
     // Scroll positioning proxy

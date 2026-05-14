@@ -80,7 +80,8 @@
                         
                         // If the element visibly overlaps the right 48px of the screen
                         if (rect.right > windowWidth - 48 && rect.left < windowWidth && rect.width > 0 && rect.height > 0) {
-                            const isFullWidth = rect.width >= windowWidth - 10;
+                            // Account for scrollbars (which reduce rect.width by ~15-20px) and check if it anchors to the left
+                            const isFullWidth = rect.left <= 10 && rect.width >= windowWidth - 30;
                             this.adjust(el, style, isFullWidth);
                         }
                     }
