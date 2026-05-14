@@ -51,58 +51,71 @@
         scan() {
             if (!this.active) return;
             
-            // Look for likely candidates to minimize getComputedStyle calls
-            const candidates = document.querySelectorAll('header, nav, footer, aside, div');
             const windowWidth = window.innerWidth;
+            const candidates = [];
             
-            candidates.forEach(el => {
-                // Ignore our own elements and hidden elements
-                if (el.id && el.id.includes('revived')) return;
-                if (!el.offsetParent) return; 
-                
-                if (this.adjustedElements.has(el)) return;
-
-                const style = window.getComputedStyle(el);
-                if (style.position === 'fixed') {
-                    const rect = el.getBoundingClientRect();
-                    const isFullWidth = rect.width >= windowWidth - 10;
-                    const isRightAligned = style.right === '0px';
-                    const isFullHeight = rect.height >= window.innerHeight - 10;
-                    
-                    if (isFullWidth || isRightAligned) {
-                        this.adjust(el, style, isFullWidth, isRightAligned, isFullHeight);
-                    }
+            // Helper to pierce Shadow DOMs (essential for YouTube, Reddit, etc.)
+            const collect = (root) => {
+                const nodes = root.querySelectorAll('*');
+                for (let i = 0; i < nodes.length; i++) {
+                    const node = nodes[i];
+                    candidates.push(node);
+                    if (node.shadowRoot) collect(node.shadowRoot);
                 }
-            });
+            };
+            collect(document);
+            
+            for (let i = 0; i < candidates.length; i++) {
+                const el = candidates[i];
+                // Ignore our own elements and hidden elements
+                if (el.id && el.id.includes('revived')) continue;
+                // Elements inside shadow DOM might not have offsetParent natively exposed,
+                // but checking getBoundingClientRect is safe enough.
+                if (this.adjustedElements.has(el)) continue;
+
+                try {
+                    const style = window.getComputedStyle(el);
+                    if (style.position === 'fixed') {
+                        const rect = el.getBoundingClientRect();
+                        
+                        // If the element visibly overlaps the right 48px of the screen
+                        if (rect.right > windowWidth - 48 && rect.left < windowWidth && rect.width > 0 && rect.height > 0) {
+                            const isFullWidth = rect.width >= windowWidth - 10;
+                            this.adjust(el, style, isFullWidth);
+                        }
+                    }
+                } catch(e) {
+                    // Ignore errors from disconnected or secure shadow roots
+                }
+            }
         },
 
-        adjust(el, style, isFullWidth, isRightAligned, isFullHeight) {
+        adjust(el, style, isFullWidth) {
             const originalStyle = {
                 transition: el.style.transition,
-                right: el.style.right,
-                maxWidth: el.style.maxWidth,
-                marginRight: el.style.marginRight
+                transform: el.style.transform,
+                maxWidth: el.style.maxWidth
             };
 
             this.adjustedElements.set(el, originalStyle);
 
-            el.style.transition = (el.style.transition ? el.style.transition + ', ' : '') + 'right 0.3s, max-width 0.3s, margin-right 0.3s';
+            el.style.transition = (el.style.transition ? el.style.transition + ', ' : '') + 'transform 0.3s, max-width 0.3s';
             
-            if (isRightAligned) {
-                el.style.setProperty('right', '48px', 'important');
-            } else if (isFullWidth) {
+            if (isFullWidth) {
+                // Constrain full-width elements so they don't slide under
                 el.style.setProperty('max-width', 'calc(100vw - 48px)', 'important');
             } else {
-                el.style.setProperty('margin-right', '48px', 'important');
+                // Simply shift overlapping right-side elements to the left by 48px
+                const currentTransform = style.transform !== 'none' ? style.transform : '';
+                el.style.setProperty('transform', currentTransform + (currentTransform ? ' ' : '') + 'translateX(-48px)', 'important');
             }
         },
 
         restoreAll() {
             this.adjustedElements.forEach((originalStyle, el) => {
                 el.style.transition = originalStyle.transition;
-                if (originalStyle.right !== undefined) el.style.right = originalStyle.right;
+                if (originalStyle.transform !== undefined) el.style.transform = originalStyle.transform;
                 if (originalStyle.maxWidth !== undefined) el.style.maxWidth = originalStyle.maxWidth;
-                if (originalStyle.marginRight !== undefined) el.style.marginRight = originalStyle.marginRight;
             });
             this.adjustedElements.clear();
         }
@@ -306,6 +319,7 @@
                     height: 100vh !important;
                     overflow-y: auto !important;
                     overflow-x: hidden !important;
+                    position: relative !important;
                     box-sizing: border-box !important;
                 }
                 #revived-idle-sidebar-host {
