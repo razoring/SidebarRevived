@@ -307,17 +307,26 @@
                 scrollbar-width: none !important;
                 -ms-overflow-style: none !important;
                 overflow-x: hidden !important;
+                margin-right: 58px !important;
+                width: calc(100% - 58px) !important;
             }
 
             html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode) body {
-                margin-right: 48px !important;
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+            
+            html.revived-sidebar-idle-active:not(.revived-sidebar-fixed-mode) body > * {
+                max-width: 100% !important;
+                min-width: 0 !important;
             }
 
             html.revived-sidebar-idle-active.revived-sidebar-fixed-mode {
                 scrollbar-width: none !important;
                 -ms-overflow-style: none !important;
                 overflow-x: hidden !important;
-                margin-right: 48px !important;
+                margin-right: 58px !important;
+                width: calc(100% - 58px) !important;
             }
 
             html.revived-sidebar-idle-active.revived-sidebar-fixed-mode::-webkit-scrollbar,
@@ -386,16 +395,23 @@
     }
 
     function adjustFixedElements() {
-        if (!document.documentElement.classList.contains('revived-sidebar-fixed-mode')) return;
+        const offset = 58; // 48px sidebar + 10px scrollbar
         const fixedElements = document.querySelectorAll('*');
         fixedElements.forEach(el => {
             if (el.getAttribute('id') && el.getAttribute('id').includes('revived')) return;
             const style = window.getComputedStyle(el);
-            if (style.position === 'fixed' && !el.dataset.sidebarAdjusted) {
+            if ((style.position === 'fixed' || style.position === 'sticky') && !el.dataset.sidebarAdjusted) {
                 el.dataset.sidebarAdjusted = 'true';
                 const currentRight = parseFloat(style.right);
+                
                 if (!isNaN(currentRight) && currentRight >= 0) {
-                    el.style.right = (currentRight + 48) + 'px';
+                    el.dataset.originalRight = style.right;
+                    el.style.right = (currentRight + offset) + 'px';
+                    
+                    if (style.width === '100%' || style.width === '100vw' || el.offsetWidth >= window.innerWidth) {
+                        el.dataset.originalMaxWidth = style.maxWidth;
+                        el.style.maxWidth = `calc(100vw - ${offset}px)`;
+                    }
                 }
             }
         });
@@ -415,7 +431,19 @@
         }
         document.querySelectorAll('[data-sidebar-adjusted="true"]').forEach(el => {
             el.removeAttribute('data-sidebar-adjusted');
-            el.style.right = '';
+            if (el.dataset.originalRight !== undefined) {
+                el.style.right = el.dataset.originalRight;
+                delete el.dataset.originalRight;
+            } else {
+                el.style.right = '';
+            }
+            
+            if (el.dataset.originalMaxWidth !== undefined) {
+                el.style.maxWidth = el.dataset.originalMaxWidth;
+                delete el.dataset.originalMaxWidth;
+            } else {
+                el.style.maxWidth = '';
+            }
         });
     }
 
@@ -477,6 +505,9 @@
             document.documentElement.classList.remove('revived-sidebar-fixed-mode');
             cleanupFixedAdjustments();
         }
+
+        adjustFixedElements();
+        startFixedAdjustmentInterval();
 
         await populateIcons();
     }
