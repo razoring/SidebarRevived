@@ -27,7 +27,7 @@
     {
       "resources": [
         "assets/*",
-        "content_idle.css"
+        "sidepanel.css"
       ],
       "matches": [
         "<all_urls>"
@@ -41,11 +41,7 @@
       ],
       "js": [
         "shared.js",
-        "content.js",
-        "content_idle.js"
-      ],
-      "css": [
-        "content_idle.css"
+        "content.js"
       ],
       "run_at": "document_start",
       "all_frames": false
@@ -55,7 +51,17 @@
         "<all_urls>"
       ],
       "js": [
-        "scroll_faker.js"
+        "persistence.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "scroll.js"
       ],
       "run_at": "document_start",
       "world": "MAIN",

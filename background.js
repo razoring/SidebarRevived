@@ -42,12 +42,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     if (!tab.url || !tab.url.startsWith('http')) continue;
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ['shared.js', 'content.js', 'content_idle.js']
+      files: ['shared.js', 'content.js']
     }).catch(() => { });
 
-    chrome.scripting.insertCSS({
-      target: { tabId: tab.id },
-      files: ['content_idle.css']
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
+      files: ['persistence.js']
     }).catch(() => { });
   }
 
