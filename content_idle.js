@@ -17,7 +17,85 @@
     let currentTheme = null;
     const { applyThemeStyles, AutoHideManager } = __SidebarRevived;
 
+    function injectScrollFaker() {
+        const script = document.createElement('script');
+        script.textContent = `
+            (function() {
+                if (window.__revivedScrollFakerActive) return;
+                window.__revivedScrollFakerActive = true;
+                
+                function isFaking() {
+                    return document.documentElement.classList.contains('revived-sidebar-idle-active') && 
+                           getComputedStyle(document.body).overflowY === 'auto';
+                }
+
+                function getDescriptor(obj, prop) {
+                    let current = obj;
+                    while (current) {
+                        let desc = Object.getOwnPropertyDescriptor(current, prop);
+                        if (desc) return desc;
+                        current = Object.getPrototypeOf(current);
+                    }
+                    return null;
+                }
+
+                const originalScrollY = getDescriptor(window, 'scrollY');
+                const originalPageYOffset = getDescriptor(window, 'pageYOffset');
+                const originalScrollTop = getDescriptor(Element.prototype, 'scrollTop');
+
+                const OriginalObserver = window.IntersectionObserver;
+                if (OriginalObserver) {
+                    window.IntersectionObserver = function(callback, options) {
+                        if (isFaking() && (!options || !options.root)) {
+                            options = options || {};
+                            options.root = document.body;
+                        }
+                        return new OriginalObserver(callback, options);
+                    };
+                    window.IntersectionObserver.prototype = OriginalObserver.prototype;
+                }
+
+                Object.defineProperty(window, 'scrollY', {
+                    get: function() {
+                        if (isFaking()) return document.body.scrollTop;
+                        return originalScrollY ? originalScrollY.get.call(this) : (this.pageYOffset || 0);
+                    }
+                });
+
+                Object.defineProperty(window, 'pageYOffset', {
+                    get: function() {
+                        if (isFaking()) return document.body.scrollTop;
+                        return originalPageYOffset ? originalPageYOffset.get.call(this) : (this.scrollY || 0);
+                    }
+                });
+
+                Object.defineProperty(document.documentElement, 'scrollTop', {
+                    get: function() {
+                        if (isFaking()) return document.body.scrollTop;
+                        return originalScrollTop ? originalScrollTop.get.call(this) : 0;
+                    },
+                    set: function(val) {
+                        if (isFaking()) {
+                            document.body.scrollTop = val;
+                        } else if (originalScrollTop) {
+                            originalScrollTop.set.call(this, val);
+                        }
+                    }
+                });
+
+                document.body.addEventListener('scroll', function(e) {
+                    if (isFaking()) {
+                        window.dispatchEvent(new Event('scroll'));
+                    }
+                }, { passive: true });
+            })();
+        `;
+        (document.head || document.documentElement).appendChild(script);
+        script.remove();
+    }
+
     function init() {
+        injectScrollFaker();
         host = document.createElement('div');
         host.id = 'revived-idle-sidebar-host';
         host.style.cssText = `
@@ -216,6 +294,20 @@
                 }
                 #revived-idle-sidebar-host {
                     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+            `;
+        }
+
+        if (hostname.includes('mail.google.com')) {
+            styleElement.textContent += `
+                html.revived-sidebar-idle-active .gb_Pd.gb_Sd.gb_4d {
+                    padding-right: 48px !important;
+                }
+                html.revived-sidebar-idle-active .brC-aT5-aOt-Jw {
+                    right: 48px !important;
+                }
+                html.revived-sidebar-idle-active .bkK {
+                    margin-right: 48px !important;
                 }
             `;
         }
