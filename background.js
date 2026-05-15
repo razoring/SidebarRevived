@@ -116,15 +116,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             chrome.sidePanel.open({ windowId: sender.tab.windowId }).catch(() => { });
         }
     } else if (message.action === 'add_current_tab') {
-        if (sender.tab) {
-            const newSite = __SidebarRevived.createSiteFromTab(sender.tab);
-            chrome.storage.local.get(['sites'], (result) => {
-                const sites = result.sites || [];
-                if (!sites.find(s => s.url === newSite.url)) {
-                    sites.push(newSite);
-                    chrome.storage.local.set({ sites });
-                }
-            });
+        // Open the sidepanel and show the Add Page
+        if (sender.tab && sender.tab.windowId) {
+            chrome.sidePanel.open({ windowId: sender.tab.windowId }).catch(() => { });
+            chrome.storage.local.set({ isAddPageOpen: true, isSettingsOpen: false });
         }
     } else if (message.ping) {
         sendResponse({ status: 'alive' });

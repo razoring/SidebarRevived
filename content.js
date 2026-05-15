@@ -16,6 +16,7 @@
     let resizer = null;
     let isResizing = false;
     let autoHideEnabled = false;
+    const hostname = window.location.hostname;
 
     // Cleanup previous instance listeners
     if (globalThis.__SidebarRevived_Cleanup_Active) {
@@ -67,7 +68,6 @@
     }
 
     function isSafeModeSite() {
-        const hostname = window.location.hostname;
         const safeModeSites = ['google.com', 'bing.com', 'duckduckgo.com', 'baidu.com', 'yandex.ru'];
         return safeModeSites.some(s => hostname.includes(s));
     }
@@ -220,46 +220,45 @@
                 const newWidth = window.innerWidth - e.clientX - 48;
                 if (newWidth > 200 && newWidth < 800) {
                     const totalWidth = newWidth + 48;
-                        const prefs = await storageGet(['siteModePrefs']);
-                        const sitePrefs = prefs.siteModePrefs || {};
-                        const hostname = window.location.hostname;
-                        if (sitePrefs[hostname] === 'overlay') {
+                    const prefs = await storageGet(['siteModePrefs']);
+                    const sitePrefs = prefs.siteModePrefs || {};
+                    if (sitePrefs[hostname] === 'overlay') {
+                        document.documentElement.classList.remove('revived-sidebar-active');
+                        document.documentElement.style.removeProperty('--revived-sidebar-width');
+                    } else if (isSafeModeSite()) {
+                        try {
+                            document.documentElement.classList.add('revived-sidebar-safe-mode');
+                            document.documentElement.classList.add('revived-sidebar-active');
+                            document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+                        } catch (e) { }
+                    } else {
+                        const candidateCss = `
+                            html.revived-sidebar-active {
+                              --revived-sidebar-width: ${totalWidth}px;
+                              margin-right: var(--revived-sidebar-width, 48px) !important;
+                              width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
+                              overflow-x: hidden !important;
+                              overflow-y: auto !important;
+                            }
+                            html.revived-sidebar-active body {
+                              width: 100% !important;
+                              min-width: 0 !important;
+                            }
+                        `;
+                        let reacted = false;
+                        try {
+                            reacted = await (SR && SR.runLayoutTrial ? SR.runLayoutTrial(candidateCss, 700) : Promise.resolve(false));
+                        } catch (err) { reacted = false; }
+
+                        if (!reacted) {
+                            document.documentElement.classList.add('revived-sidebar-active');
+                            document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+                        } else {
                             document.documentElement.classList.remove('revived-sidebar-active');
                             document.documentElement.style.removeProperty('--revived-sidebar-width');
-                        } else if (isSafeModeSite()) {
-                            try {
-                                document.documentElement.classList.add('revived-sidebar-safe-mode');
-                                document.documentElement.classList.add('revived-sidebar-active');
-                                document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
-                            } catch (e) { }
-                        } else {
-                            const candidateCss = `
-                                html.revived-sidebar-active {
-                                  --revived-sidebar-width: ${totalWidth}px;
-                                  margin-right: var(--revived-sidebar-width, 48px) !important;
-                                  width: calc(100% - var(--revived-sidebar-width, 48px)) !important;
-                                  overflow-x: hidden !important;
-                                  overflow-y: auto !important;
-                                }
-                                html.revived-sidebar-active body {
-                                  width: 100% !important;
-                                  min-width: 0 !important;
-                                }
-                            `;
-                            let reacted = false;
-                            try {
-                                reacted = await (SR && SR.runLayoutTrial ? SR.runLayoutTrial(candidateCss, 700) : Promise.resolve(false));
-                            } catch (err) { reacted = false; }
-
-                            if (!reacted) {
-                                document.documentElement.classList.add('revived-sidebar-active');
-                                document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
-                            } else {
-                                document.documentElement.classList.remove('revived-sidebar-active');
-                                document.documentElement.style.removeProperty('--revived-sidebar-width');
-                            }
                         }
-                        SR.safeStorage.set({ sidebarWidth: newWidth });
+                    }
+                    SR.safeStorage.set({ sidebarWidth: newWidth });
                 }
             }
         }, { signal });
@@ -514,7 +513,7 @@
         if (isFullSidebar) {
             contentArea.classList.add('active');
             contentArea.style.width = state.sidebarWidth + 'px';
-            const activeSite = state.sites.find(s => s.id === state.activeSiteId) || (state.tempSites && state.tempSites.find(s => s.id === state.activeSiteId));
+            const activeSite = (state.sites && state.sites.find(s => s.id === state.activeSiteId)) || (state.tempSites && state.tempSites.find(s => s.id === state.activeSiteId));
             if (activeSite) {
                 headerTitle.innerText = activeSite.title;
                 iframe.name = 'revived-sidebar-iframe-' + activeSite.id;
@@ -551,7 +550,6 @@
                 try {
                     const prefs = await storageGet(['siteModePrefs']);
                     const sitePrefs = prefs.siteModePrefs || {};
-                    const hostname = window.location.hostname;
                     if (sitePrefs[hostname] === 'overlay') {
                         document.documentElement.classList.remove('revived-sidebar-active');
                         document.documentElement.style.removeProperty('--revived-sidebar-width');
@@ -594,6 +592,7 @@
 // ============================================================
 (() => {
     if (window !== window.top) return;
+    const hostname = window.location.hostname;
 
     let host = null;
     let shadow = null;
@@ -928,8 +927,7 @@
     async function render() {
         if (!initialized) return;
         const ah = getAutoHide();
-        const hostname = window.location.hostname;
-        const isSidepanelBlocked = sidepanelBlocklist.some(d => hostname.includes(d));
+        const isSidepanelBlocked = (sidepanelBlocklist || []).some(d => hostname.includes(d));
 
         if (currentTheme) applyTheme(currentTheme);
 

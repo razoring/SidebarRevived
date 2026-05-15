@@ -3,7 +3,7 @@
     const S = {};
     S.isOrphaned = () => {
         try {
-            return !chrome.runtime || !chrome.runtime.id || !chrome.runtime.getURL;
+            return typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id || !chrome.runtime.getURL;
         } catch (e) {
             return true;
         }
@@ -629,8 +629,8 @@
         let pinnedHeader, tempHeader, pinDivider, tempDivider;
 
         function updateVisibility(isDragging = false) {
-            const pinnedPopulated = getSites && getSites().length > 0;
-            const tempPopulated = getTempSites && getTempSites().length > 0;
+            const pinnedPopulated = (getSites && getSites()) ? getSites().length > 0 : false;
+            const tempPopulated = (getTempSites && getTempSites()) ? getTempSites().length > 0 : false;
             
             const showHeaders = isDragging && showCategoryIcons;
 
