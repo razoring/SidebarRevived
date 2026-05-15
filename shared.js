@@ -178,7 +178,8 @@
                 fontColor: isDark ? '#ffffff' : '#1a1a1a',
                 sidebarBackground: isDark ? '#3b3b3b' : '#dddfe2',
                 dividerBackground: isDark ? '#555555' : '#c0c0c0',
-                accentColor: isDark ? '#b2d7ef' : '#0078d7',
+                midtoneBackground: isDark ? '#292929' : '#f0f0f0',
+                accentColor: isDark ? '#249ef0' : '#249ef0',
                 panelOpacity: 1,
                 panelBlur: 0
             };
@@ -187,7 +188,8 @@
             fontColor: isDark ? '#ffffff' : '#1a1a1a',
             sidebarBackground: isDark ? '#3c3c3c' : '#ffffff',
             dividerBackground: isDark ? '#555555' : '#c0c0c0',
-            accentColor: isDark ? '#b2d7ef' : '#0078d7',
+            midtoneBackground: isDark ? '#292929' : '#f0f0f0',
+            accentColor: isDark ? '#249ef0' : '#249ef0',
             panelOpacity: 1,
             panelBlur: 0
         };
@@ -273,6 +275,7 @@
             if (theme.fontColor) el.style.setProperty('--theme-font-color', theme.fontColor);
             if (theme.sidebarBackground) el.style.setProperty('--theme-sidebar-bg', theme.sidebarBackground);
             if (theme.dividerBackground) el.style.setProperty('--theme-divider-bg', theme.dividerBackground);
+            if (theme.midtoneBackground) el.style.setProperty('--theme-midtone-bg', theme.midtoneBackground);
             if (theme.accentColor) el.style.setProperty('--theme-accent-color', theme.accentColor);
             if (theme.panelOpacity !== undefined) {
                 el.style.setProperty('--theme-panel-opacity', theme.panelOpacity);
@@ -283,16 +286,12 @@
                 el.style.setProperty('--theme-settings-bg', rgba);
                 el.style.setProperty('--theme-sidebar-bg-rgba', rgba);
             }
-            if (theme.accentColor) {
-                const ar = S.hexToRgb(theme.accentColor);
-                el.style.setProperty('--theme-accent-color-rgba', `rgba(${ar.r},${ar.g},${ar.b},0.5)`);
-            }
             if (theme.panelBlur !== undefined) el.style.setProperty('--theme-panel-blur', theme.panelBlur + 'px');
         } else {
             const props = [
-                '--theme-font-color', '--theme-sidebar-bg', '--theme-divider-bg',
+                '--theme-font-color', '--theme-sidebar-bg', '--theme-divider-bg', '--theme-midtone-bg',
                 '--theme-accent-color', '--theme-panel-opacity', '--theme-panel-blur',
-                '--theme-settings-bg', '--theme-sidebar-bg-rgba', '--theme-accent-color-rgba'
+                '--theme-settings-bg', '--theme-sidebar-bg-rgba'
             ];
             props.forEach(p => el.style.removeProperty(p));
         }
@@ -500,7 +499,7 @@
         function makeSectionHeader(svg, isPinned) {
             const el = document.createElement('div');
             el.className = isPinned ? 'pinned-header' : 'temp-header';
-            el.style.cssText = `width: 32px; height: 32px; display: none; align-items: center; justify-content: center; color: var(--theme-font-color, inherit);`;
+            el.style.cssText = `width: 32px; height: 32px; display: none; align-items: center; justify-content: center; color: var(--theme-divider-bg, #d6d6d6);`;
             const inner = document.createElement('div');
             inner.style.cssText = isPinned ? 'transform: rotate(45deg); display: flex;' : 'display: flex;';
             inner.innerHTML = svg;
