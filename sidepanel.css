@@ -1086,7 +1086,7 @@ html {
 .add-page-favicon {
     width: 18px;
     height: 18px;
-    border-radius: 50%;
+    border-radius: 3px;
     flex-shrink: 0;
     object-fit: contain;
 }
@@ -1230,7 +1230,7 @@ html {
 .search-result-item img {
     width: 16px;
     height: 16px;
-    border-radius: 50%;
+    border-radius: 3px;
     flex-shrink: 0;
     object-fit: contain;
 }
