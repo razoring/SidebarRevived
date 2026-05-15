@@ -127,7 +127,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 });
 
 function applyTheme() {
-    applyThemeStyles(document.documentElement, state.customTheme);
+    applyThemeStyles(document.documentElement, state.customTheme || __SidebarRevived.getThemeDefaults());
 }
 
 async function render() {

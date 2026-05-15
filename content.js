@@ -46,7 +46,7 @@
     let currentTheme = null;
 
     function applyTheme() {
-        currentTheme = state.customTheme;
+        currentTheme = state.customTheme || SR.getThemeDefaults();
         SR.applyThemeStyles(host, currentTheme);
         if (currentTheme?.accentColor && autoHide) {
             autoHide.updateAccentColor(currentTheme.accentColor);
@@ -867,9 +867,10 @@
     }
 
     function applyTheme(theme) {
-        applyThemeStyles(host, theme);
-        if (theme?.accentColor && autoHide) {
-            autoHide.updateAccentColor(theme.accentColor);
+        currentTheme = theme || SR.getThemeDefaults();
+        applyThemeStyles(host, currentTheme);
+        if (currentTheme?.accentColor && autoHide) {
+            autoHide.updateAccentColor(currentTheme.accentColor);
         }
     }
 
