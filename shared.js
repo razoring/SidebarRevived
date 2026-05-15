@@ -200,6 +200,53 @@
         return { r: parseInt(h.substring(0, 2), 16), g: parseInt(h.substring(2, 4), 16), b: parseInt(h.substring(4, 6), 16) };
     };
 
+    S.rgbToHsl = function (r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+        if (max === min) { h = s = 0; }
+        else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return { h, s, l };
+    };
+
+    S.hslToRgb = function (h, s, l) {
+        let r, g, b;
+        if (s === 0) { r = g = b = l; }
+        else {
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            const hue2rgb = (p, q, t) => {
+                if (t < 0) t += 1; if (t > 1) t -= 1;
+                if (t < 1 / 6) return p + (q - p) * 6 * t;
+                if (t < 1 / 2) return q;
+                if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                return p;
+            };
+            r = hue2rgb(p, q, h + 1 / 3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1 / 3);
+        }
+        return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+    };
+
+    S.shiftHue = function (hex, degrees) {
+        const rgb = S.hexToRgb(hex);
+        const hsl = S.rgbToHsl(rgb.r, rgb.g, rgb.b);
+        hsl.h = (hsl.h + (degrees / 360)) % 1;
+        if (hsl.h < 0) hsl.h += 1;
+        const shiftedRgb = S.hslToRgb(hsl.h, hsl.s, hsl.l);
+        return `rgb(${shiftedRgb.r}, ${shiftedRgb.g}, ${shiftedRgb.b})`;
+    };
+
     S.createSiteFromTab = function (tab) {
         let cleanedUrl = tab.url;
         try {
@@ -269,43 +316,45 @@
             this._enterTime = 0;
             this._rafId = 0;
             this._latestEdgeDist = 0;
+            this.inner = null;
         }
 
         updateAccentColor(color) {
             this.accentColor = color;
-            if (this.indicator && this.indicator.parentElement) {
-                const rgb = S.hexToRgb(color);
-                this.indicator.style.background = `linear-gradient(to left, 
-                    rgba(${rgb.r},${rgb.g},${rgb.b},1) 0%, 
-                    rgba(${rgb.r},${rgb.g},${rgb.b},0.6) 20%, 
-                    rgba(${rgb.r},${rgb.g},${rgb.b},0.3) 40%, 
-                    rgba(${rgb.r},${rgb.g},${rgb.b},0.12) 60%, 
-                    rgba(${rgb.r},${rgb.g},${rgb.b},0.04) 80%, 
-                    transparent 100%)`;
+            if (this.inner) {
+                const color2 = S.shiftHue(color, 50);
+                this.inner.style.background = `repeating-linear-gradient(to bottom, ${color}, ${color2} 50%, ${color} 100%)`;
+                this.inner.style.backgroundSize = '100% 1000px';
             }
         }
 
         ensureIndicator() {
             if (!this.indicator || !this.indicator.parentElement) {
                 this.indicator = document.createElement('div');
-                this.indicator.id = 'revived-auto-hide-indicator';
+                this.indicator.id = 'revived-auto-hide-indicator-host';
+                this.inner = document.createElement('div');
+                this.inner.id = 'revived-auto-hide-indicator';
+                this.indicator.appendChild(this.inner);
 
-                // Inject animation keyframes if not present
                 if (!document.getElementById('revived-wave-anim')) {
                     const style = document.createElement('style');
                     style.id = 'revived-wave-anim';
                     style.textContent = `
                         @keyframes revived-indicator-wave {
-                            0%, 100% { transform: translateX(0) scaleX(1); }
-                            50% { transform: translateX(4px) scaleX(1.1); }
+                            0%, 100% { transform: scaleX(1); }
+                            50% { transform: scaleX(1.5); }
+                        }
+                        @keyframes revived-indicator-glow {
+                            0% { background-position-y: 0; }
+                            100% { background-position-y: 1000px; }
                         }
                     `;
                     document.head.appendChild(style);
                 }
-
                 document.documentElement.appendChild(this.indicator);
             }
-            const rgb = S.hexToRgb(this.accentColor);
+
+            const color2 = S.shiftHue(this.accentColor, 50);
             this.indicator.style.cssText = `
                 position: fixed;
                 top: 0;
@@ -314,29 +363,35 @@
                 height: 100vh;
                 z-index: 2147483646;
                 pointer-events: none;
-                background: linear-gradient(to left,
-                    rgba(${rgb.r},${rgb.g},${rgb.b},1) 0%,
-                    rgba(${rgb.r},${rgb.g},${rgb.b},0.6) 20%,
-                    rgba(${rgb.r},${rgb.g},${rgb.b},0.3) 40%,
-                    rgba(${rgb.r},${rgb.g},${rgb.b},0.12) 60%,
-                    rgba(${rgb.r},${rgb.g},${rgb.b},0.04) 80%,
-                    transparent 100%);
                 opacity: 0;
-                transition: opacity 0.3s ease, transform 0.3s ease;
-                animation: revived-indicator-wave 3s infinite ease-in-out;
+                visibility: hidden;
+                transition: opacity 0.3s ease, visibility 0.3s ease;
+            `;
+
+            this.inner.style.cssText = `
+                width: 100%;
+                height: 100%;
+                background: repeating-linear-gradient(to bottom, ${this.accentColor}, ${color2} 50%, ${this.accentColor} 100%);
+                background-size: 100% 1000px;
+                -webkit-mask-image: linear-gradient(to left, black 0%, rgba(0,0,0,0.6) 20%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.1) 60%, transparent 100%);
+                mask-image: linear-gradient(to left, black 0%, rgba(0,0,0,0.6) 20%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.1) 60%, transparent 100%);
+                animation: revived-indicator-wave 5s infinite ease-in-out, revived-indicator-glow 15s infinite linear;
                 transform-origin: right center;
+                opacity: 0.6;
             `;
             return this.indicator;
         }
 
         showIndicator() {
             const el = this.ensureIndicator();
-            requestAnimationFrame(() => { el.style.opacity = '0.6'; });
+            el.style.visibility = 'visible';
+            requestAnimationFrame(() => { el.style.opacity = '1'; });
         }
 
         hideIndicator() {
             if (this.indicator && this.indicator.parentElement) {
                 this.indicator.style.opacity = '0';
+                this.indicator.style.visibility = 'hidden';
             }
         }
 
