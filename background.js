@@ -13,6 +13,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     isSidePanelOpen: false,
     autoHideEnabled: false,
     showCategoryIcons: false,
+    scrollBlocklist: [],
+    sidepanelBlocklist: [],
+    autoHideBlocklist: [],
     customTheme: __SidebarRevived.getThemeDefaults()
   };
 

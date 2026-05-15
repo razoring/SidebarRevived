@@ -169,6 +169,30 @@
               <textarea id="settings-sidepanel-blocklist" placeholder="example.com&#10;anotherdomain.org"
                 spellcheck="false"></textarea>
             </div>
+            <div class="settings-subsection">
+              <div class="settings-subsection-title">Auto-Hide Blocklist</div>
+              <p class="settings-description">Force the in-page sidebar to use Auto-Hide on these sites, even if it is
+                globally disabled. Useful for sites where the sidebar overlaps content.</p>
+              <button id="add-to-autohide-blocklist-btn" class="settings-accent-btn">Add Current Site to
+                Blocklist</button>
+              <textarea id="settings-autohide-blocklist" placeholder="example.com&#10;anotherdomain.org"
+                spellcheck="false"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-category">
+          <div class="settings-category-header collapsible" data-target="backup-section">
+            <span>Backup & Restore</span>
+            <span class="collapse-arrow">&#9660;</span>
+          </div>
+          <div class="settings-category-body" id="backup-section">
+            <p class="settings-description">Export your entire sidebar configuration, including all pinned apps, blocklists, and theme settings.</p>
+            <div class="settings-actions">
+              <button id="export-all-btn">Export All Settings</button>
+              <button id="import-all-btn">Import All Settings</button>
+              <input type="file" id="import-all-file" style="display:none" accept=".json" />
+            </div>
           </div>
         </div>
       </div>

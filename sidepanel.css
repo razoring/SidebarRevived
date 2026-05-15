@@ -802,7 +802,8 @@ html {
 }
 
 #settings-scroll-blocklist,
-#settings-sidepanel-blocklist {
+#settings-sidepanel-blocklist,
+#settings-autohide-blocklist {
     width: 100%;
     min-height: 54px;
     padding: 8px 10px;
@@ -819,7 +820,8 @@ html {
 }
 
 #settings-scroll-blocklist:focus,
-#settings-sidepanel-blocklist:focus {
+#settings-sidepanel-blocklist:focus,
+#settings-autohide-blocklist:focus {
     border-color: var(--theme-accent-color, #b2d7ef);
 }
 
@@ -833,7 +835,8 @@ html {
     }
 
     #settings-scroll-blocklist,
-    #settings-sidepanel-blocklist {
+    #settings-sidepanel-blocklist,
+    #settings-autohide-blocklist {
         background: rgba(0, 0, 0, 0.2);
     }
 
@@ -975,11 +978,11 @@ html {
 
 /* Drop indicator — single side stroke */
 .pinned-app-item.drop-target-left {
-    border-left: 2px solid var(--theme-accent-color, #0078D7);
+    border-left: 1px solid var(--theme-accent-color, #0078D7);
 }
 
 .pinned-app-item.drop-target-right {
-    border-right: 2px solid var(--theme-accent-color, #0078D7);
+    border-right: 1px solid var(--theme-accent-color, #0078D7);
 }
 
 /* Supplemental line like the sidepanel indicator */
@@ -1319,4 +1322,13 @@ html {
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.empty-state {
+    width: 100%;
+    text-align: center;
+    padding: 20px;
+    opacity: 0.5;
+    font-size: 13px;
+    color: var(--theme-font-color, #d6d6d6);
 }

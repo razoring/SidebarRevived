@@ -14,6 +14,7 @@ let state = {
     isSettingsOpen: false,
     scrollBlocklist: [],
     sidepanelBlocklist: [],
+    autoHideBlocklist: [],
     activeSiteOwner: null,
     collapsedSections: JSON.parse(localStorage.getItem('collapsedSections') || '{}'),
     autoHideEnabled: false,
@@ -52,7 +53,7 @@ iconBar.ondragenter = (e) => {
 };
 
 // Initial load
-chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', 'customTheme', 'isSettingsOpen', 'isAddPageOpen', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled', 'activeSiteOwner'], async (result) => {
+chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', 'customTheme', 'isSettingsOpen', 'isAddPageOpen', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'activeSiteOwner'], async (result) => {
     if (state._loaded) { 
         await __SidebarRevived.svgReady;
         render(); 
@@ -68,6 +69,7 @@ chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', '
     if (result.isAddPageOpen !== undefined) state.isAddPageOpen = result.isAddPageOpen;
     if (result.scrollBlocklist) state.scrollBlocklist = result.scrollBlocklist;
     if (result.sidepanelBlocklist) state.sidepanelBlocklist = result.sidepanelBlocklist;
+    if (result.autoHideBlocklist) state.autoHideBlocklist = result.autoHideBlocklist;
     if (result.autoHideEnabled !== undefined) state.autoHideEnabled = result.autoHideEnabled;
     if (result.showCategoryIcons !== undefined) state.showCategoryIcons = result.showCategoryIcons;
     if (result.activeSiteOwner !== undefined) state.activeSiteOwner = result.activeSiteOwner;
@@ -110,10 +112,8 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
             state.scrollBlocklist = changes.scrollBlocklist.newValue;
             updateSettingsUI();
         }
-        if (changes.sidepanelBlocklist) {
-            state.sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
-            updateSettingsUI();
-        }
+        if (changes.sidepanelBlocklist) state.sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
+        if (changes.autoHideBlocklist) state.autoHideBlocklist = changes.autoHideBlocklist.newValue;
         if (changes.autoHideEnabled) {
             state.autoHideEnabled = changes.autoHideEnabled.newValue;
             updateSettingsUI();
@@ -364,32 +364,36 @@ async function updateAddPageUI() {
         }
 
         pinnedGrid.innerHTML = '';
-        state.sites.forEach((site) => {
-            const item = document.createElement('div');
-            item.className = 'pinned-app-item';
-            item.draggable = true;
-            item.dataset.id = site.id;
-            item.innerHTML = `<img src="${site.faviconUrl}" alt="${site.title}" title="${site.title}" />`;
-            
-            item.ondragstart = (e) => {
-                e.dataTransfer.setData('text/plain', site.id);
-                item.classList.add('dragging');
-                if (pinnedTrash) pinnedTrash.classList.add('visible');
-            };
-            
-            item.ondragend = () => {
-                item.classList.remove('dragging');
-                if (pinnedTrash) {
-                    pinnedTrash.classList.remove('visible');
-                    pinnedTrash.classList.remove('trash-hover');
-                }
-                pinnedGrid.querySelectorAll('.drop-target-left, .drop-target-right').forEach(el => {
-                    el.classList.remove('drop-target-left', 'drop-target-right');
-                });
-            };
+        if (state.sites.length === 0) {
+            pinnedGrid.innerHTML = '<div class="empty-state">No pinned apps</div>';
+        } else {
+            state.sites.forEach((site) => {
+                const item = document.createElement('div');
+                item.className = 'pinned-app-item';
+                item.draggable = true;
+                item.dataset.id = site.id;
+                item.innerHTML = `<img src="${site.faviconUrl}" alt="${site.title}" title="${site.title}" />`;
+                
+                item.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', site.id);
+                    item.classList.add('dragging');
+                    if (pinnedTrash) pinnedTrash.classList.add('visible');
+                };
+                
+                item.ondragend = () => {
+                    item.classList.remove('dragging');
+                    if (pinnedTrash) {
+                        pinnedTrash.classList.remove('visible');
+                        pinnedTrash.classList.remove('trash-hover');
+                    }
+                    pinnedGrid.querySelectorAll('.drop-target-left, .drop-target-right').forEach(el => {
+                        el.classList.remove('drop-target-left', 'drop-target-right');
+                    });
+                };
 
-            pinnedGrid.appendChild(item);
-        });
+                pinnedGrid.appendChild(item);
+            });
+        }
 
         pinnedGrid.ondragover = (e) => {
             e.preventDefault();
@@ -660,6 +664,11 @@ function updateSettingsUI() {
         sideInp.value = (state.sidepanelBlocklist || []).join('\n');
     }
 
+    const autoInp = document.getElementById('settings-autohide-blocklist');
+    if (autoInp && document.activeElement !== autoInp) {
+        autoInp.value = (state.autoHideBlocklist || []).join('\n');
+    }
+
     const addBtn = document.getElementById('add-to-blocklist-btn');
     if (addBtn) {
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
@@ -682,6 +691,20 @@ function updateSettingsUI() {
                 const hostname = new URL(tab.url).hostname;
                 const currentList = state.sidepanelBlocklist || [];
                 sideBtn.textContent = currentList.includes(hostname)
+                    ? 'Remove Current Site from Blocklist'
+                    : 'Add Current Site to Blocklist';
+            }
+        });
+    }
+
+    const autoBtn = document.getElementById('add-to-autohide-blocklist-btn');
+    if (autoBtn) {
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+            const tab = tabs[0];
+            if (tab && tab.url && tab.url.startsWith('http')) {
+                const hostname = new URL(tab.url).hostname;
+                const currentList = state.autoHideBlocklist || [];
+                autoBtn.textContent = currentList.includes(hostname)
                     ? 'Remove Current Site from Blocklist'
                     : 'Add Current Site to Blocklist';
             }
@@ -829,6 +852,26 @@ document.getElementById('add-to-sidepanel-blocklist-btn').addEventListener('clic
     });
 });
 
+document.getElementById('settings-autohide-blocklist').addEventListener('input', (e) => {
+    const list = e.target.value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+    chrome.storage.local.set({ autoHideBlocklist: list });
+});
+
+document.getElementById('add-to-autohide-blocklist-btn').addEventListener('click', () => {
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+        const tab = tabs[0];
+        if (tab && tab.url && tab.url.startsWith('http')) {
+            const hostname = new URL(tab.url).hostname;
+            const currentList = state.autoHideBlocklist || [];
+            if (!currentList.includes(hostname)) {
+                chrome.storage.local.set({ autoHideBlocklist: [...currentList, hostname] });
+            } else {
+                chrome.storage.local.set({ autoHideBlocklist: currentList.filter(d => d !== hostname) });
+            }
+        }
+    });
+});
+
 document.getElementById('export-theme-btn').addEventListener('click', () => {
     const themeStr = JSON.stringify(state.customTheme || {}, null, 2);
     const blob = new Blob([themeStr], { type: "application/json" });
@@ -904,3 +947,37 @@ function renderMostVisited() {
         });
     });
 }
+
+document.getElementById('export-all-btn').addEventListener('click', () => {
+    chrome.storage.local.get(null, (allData) => {
+        const dataStr = JSON.stringify(allData, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "sidebar_backup.json";
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+});
+
+document.getElementById('import-all-btn').addEventListener('click', () => {
+    document.getElementById('import-all-file').click();
+});
+
+document.getElementById('import-all-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        try {
+            const parsed = JSON.parse(ev.target.result);
+            chrome.storage.local.set(parsed, () => {
+                window.location.reload();
+            });
+        } catch (err) {
+            alert("Invalid Backup JSON");
+        }
+    };
+    reader.readAsText(file);
+});

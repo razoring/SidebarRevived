@@ -25,6 +25,7 @@
         sidebarWidth: 350,
         currentUrls: {},
         sidepanelBlocklist: [],
+        autoHideBlocklist: [],
         isSidePanelOpen: false,
         isSettingsOpen: false,
         customTheme: null
@@ -227,7 +228,7 @@
         }
 
         if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
+            chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
                 state = { ...state, ...result };
                 if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
                 applyTheme();
@@ -272,6 +273,10 @@
                     }
                     if (changes.sidepanelBlocklist !== undefined) {
                         state.sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
+                        needsRender = true;
+                    }
+                    if (changes.autoHideBlocklist !== undefined) {
+                        state.autoHideBlocklist = changes.autoHideBlocklist.newValue;
                         needsRender = true;
                     }
                     if (changes.customTheme !== undefined) {
@@ -364,7 +369,9 @@
             return;
         }
 
-        if (autoHideEnabled) {
+        const isAutoHideForced = state.autoHideBlocklist && state.autoHideBlocklist.some(d => hostname.includes(d));
+
+        if (autoHideEnabled || isAutoHideForced) {
             if (ah.triggered) {
                 renderInternal();
             } else {
@@ -415,7 +422,9 @@
         // Now populate icons (this might be async if SVGs are still fetching)
         await populateIcons();
 
-        if (autoHideEnabled) {
+        const isAutoHideForced = state.autoHideBlocklist && state.autoHideBlocklist.some(d => hostname.includes(d));
+
+        if (autoHideEnabled || isAutoHideForced) {
             document.documentElement.classList.remove('revived-sidebar-active');
             document.documentElement.style.removeProperty('--revived-sidebar-width');
         } else {
@@ -489,6 +498,8 @@
     let styleElement = null;
     let scrollBlocklist = [];
     let sidepanelBlocklist = [];
+    let autoHideBlocklist = [];
+
     let autoHideEnabled = false;
     let currentTheme = null;
     const SR = globalThis.__SidebarRevived;
@@ -544,7 +555,8 @@
             
             for (let i = 0; i < candidates.length; i++) {
                 const el = candidates[i];
-                if (el.id && el.id.includes('revived')) continue;
+                if (el.id && typeof el.id === 'string' && el.id.includes('revived')) continue;
+                if (el.id && typeof el.id !== 'string' && String(el.id).includes('revived')) continue;
                 if (this.adjustedElements.has(el)) continue;
 
                 try {
@@ -626,42 +638,51 @@
         styleElement = document.createElement('style');
         document.documentElement.appendChild(styleElement);
 
-        chrome.storage.local.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled'], (result) => {
-            sites = result.sites || [];
-            tempSites = result.tempSites || [];
-            isSidePanelOpen = !!result.isSidePanelOpen;
-            activeSiteId = result.activeSiteId;
-            activeSiteOwner = result.activeSiteOwner || null;
-            scrollBlocklist = result.scrollBlocklist || [];
-            sidepanelBlocklist = result.sidepanelBlocklist || [];
-            if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
-            if (result.customTheme) {
-                currentTheme = result.customTheme;
-                applyTheme(currentTheme);
-            }
-            render();
-        });
-
-        chrome.storage.onChanged.addListener((changes, namespace) => {
-            if (namespace === 'local') {
-                if (changes.sites) sites = changes.sites.newValue;
-                if (changes.tempSites) tempSites = changes.tempSites.newValue;
-                if (changes.isSidePanelOpen) isSidePanelOpen = changes.isSidePanelOpen.newValue;
-                if (changes.activeSiteId !== undefined) activeSiteId = changes.activeSiteId.newValue;
-                if (changes.activeSiteOwner !== undefined) activeSiteOwner = changes.activeSiteOwner.newValue;
-                if (changes.customTheme) {
-                    currentTheme = changes.customTheme.newValue;
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+            chrome.storage.local.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled'], (result) => {
+                sites = result.sites || [];
+                tempSites = result.tempSites || [];
+                isSidePanelOpen = !!result.isSidePanelOpen;
+                activeSiteId = result.activeSiteId;
+                activeSiteOwner = result.activeSiteOwner || null;
+                scrollBlocklist = result.scrollBlocklist || [];
+                sidepanelBlocklist = result.sidepanelBlocklist || [];
+                autoHideBlocklist = result.autoHideBlocklist || [];
+                if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
+                if (result.customTheme) {
+                    currentTheme = result.customTheme;
                     applyTheme(currentTheme);
                 }
-                if (changes.scrollBlocklist) scrollBlocklist = changes.scrollBlocklist.newValue;
-                if (changes.sidepanelBlocklist) sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
-                if (changes.autoHideEnabled !== undefined) {
-                    autoHideEnabled = changes.autoHideEnabled.newValue;
-                    if (autoHide) autoHide.cleanup();
-                }
                 render();
-            }
-        });
+            });
+
+            chrome.storage.onChanged.addListener((changes, namespace) => {
+                if (namespace === 'local') {
+                    if (changes.sites) sites = changes.sites.newValue;
+                    if (changes.tempSites) tempSites = changes.tempSites.newValue;
+                    if (changes.isSidePanelOpen) isSidePanelOpen = changes.isSidePanelOpen.newValue;
+                    if (changes.activeSiteId !== undefined) activeSiteId = changes.activeSiteId.newValue;
+                    if (changes.activeSiteOwner !== undefined) activeSiteOwner = changes.activeSiteOwner.newValue;
+                    if (changes.customTheme) {
+                        currentTheme = changes.customTheme.newValue;
+                        applyTheme(currentTheme);
+                    }
+                    if (changes.scrollBlocklist) scrollBlocklist = changes.scrollBlocklist.newValue;
+                    if (changes.sidepanelBlocklist) sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
+                    if (changes.autoHideBlocklist) {
+                        autoHideBlocklist = changes.autoHideBlocklist.newValue;
+                        if (autoHide) autoHide.cleanup();
+                        idleAutoHideArmed = false;
+                    }
+                    if (changes.autoHideEnabled !== undefined) {
+                        autoHideEnabled = changes.autoHideEnabled.newValue;
+                        if (autoHide) autoHide.cleanup();
+                        idleAutoHideArmed = false;
+                    }
+                    render();
+                }
+            });
+        }
     }
 
     function applyTheme(theme) {
@@ -672,6 +693,7 @@
     }
 
     let autoHide = null;
+    let idleAutoHideArmed = false;
 
     function getAutoHide() {
         if (!autoHide) {
@@ -702,15 +724,25 @@
             getSites: () => sites,
             getTempSites: () => tempSites,
             onSiteClick: (siteId) => {
-                chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' });
-                chrome.runtime.sendMessage({ action: 'open_side_panel' });
+                if (typeof chrome !== 'undefined' && chrome.storage) {
+                    chrome.storage.local.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' });
+                }
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                    chrome.runtime.sendMessage({ action: 'open_side_panel' });
+                }
             },
             onAddSite: () => {
-                chrome.runtime.sendMessage({ action: 'add_current_tab' });
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                    chrome.runtime.sendMessage({ action: 'add_current_tab' });
+                }
             },
             onSettingsClick: () => {
-                chrome.storage.local.set({ isSettingsOpen: true });
-                chrome.runtime.sendMessage({ action: 'open_side_panel' });
+                if (typeof chrome !== 'undefined' && chrome.storage) {
+                    chrome.storage.local.set({ isSettingsOpen: true });
+                }
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                    chrome.runtime.sendMessage({ action: 'open_side_panel' });
+                }
             }
         });
     }
@@ -724,21 +756,29 @@
 
         if (isSidePanelOpen || isSidepanelBlocked || (activeSiteId && activeSiteOwner === 'inpage')) {
             ah.cleanup();
+            idleAutoHideArmed = false;
             FixedElementManager.stop();
             host.style.display = 'none';
             document.documentElement.classList.remove('revived-sidebar-idle-active');
             return;
         }
 
-        if (autoHideEnabled) {
-            if (!ah.triggered) {
+        const isAutoHideForced = autoHideBlocklist && autoHideBlocklist.some(d => hostname.includes(d));
+
+        if (autoHideEnabled || isAutoHideForced) {
+            if (ah.triggered) {
+                host.style.removeProperty('display');
+                populateIcons();
+            } else {
                 host.style.display = 'none';
-                ah.setup();
+                if (!idleAutoHideArmed) {
+                    ah.setup();
+                    idleAutoHideArmed = true;
+                }
             }
             FixedElementManager.stop();
             document.documentElement.classList.remove('revived-sidebar-idle-active');
             styleElement.textContent = '';
-            populateIcons();
             return;
         }
 
