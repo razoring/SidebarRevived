@@ -9,6 +9,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     activeSiteId: null,
     activeSiteOwner: null,
     isSettingsOpen: false,
+    isAddPageOpen: false,
     isSidePanelOpen: false,
     autoHideEnabled: false,
     customTheme: __SidebarRevived.getThemeDefaults()
@@ -91,14 +92,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (openSidePanels > 0) chrome.storage.local.set({ isSidePanelOpen: true });
     sendResponse({ status: 'alive' });
   } else if (message.action === 'add_current_tab') {
-    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-      const tab = tabs[0];
-      if (tab && tab.url && tab.url.startsWith('http')) {
-        const newSite = __SidebarRevived.createSiteFromTab(tab);
-        chrome.storage.local.get(['sites'], (result) => {
-          chrome.storage.local.set({ sites: [...(result.sites || []), newSite] });
-        });
-      }
+    chrome.sidePanel.open({ windowId: sender.tab.windowId }).then(() => {
+      chrome.storage.local.set({ isAddPageOpen: true, isSettingsOpen: false });
     });
   }
 });

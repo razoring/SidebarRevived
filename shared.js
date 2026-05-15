@@ -3,12 +3,19 @@
 
     // ============ SVG ICONS ============
 
-    const svgReady = Promise.all([
-        fetch(chrome.runtime.getURL('assets/add_icon.svg')).then(r => r.text()),
-        fetch(chrome.runtime.getURL('assets/trash_icon.svg')).then(r => r.text()),
-        fetch(chrome.runtime.getURL('assets/settings_icon.svg')).then(r => r.text()),
-        fetch(chrome.runtime.getURL('assets/pin_icon.svg')).then(r => r.text()),
-        fetch(chrome.runtime.getURL('assets/temporary_icon.svg')).then(r => r.text()),
+    const fetchSvg = (path, fallback) => fetch(chrome.runtime.getURL(path))
+        .then(r => r.text())
+        .catch(err => {
+            console.error(`Failed to load SVG: ${path}`, err);
+            return fallback || '<svg viewBox="0 0 24 24"></svg>';
+        });
+
+    S.svgReady = Promise.all([
+        fetchSvg('assets/add_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>'),
+        fetchSvg('assets/trash_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>'),
+        fetchSvg('assets/settings_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'),
+        fetchSvg('assets/pin_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"></path></svg>'),
+        fetchSvg('assets/temporary_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'),
     ]).then(([add, trash, settings, pin, temp]) => {
         S.ADD_ICON_SVG = add;
         S.TRASH_ICON_SVG = trash;
@@ -286,7 +293,7 @@
         onSettingsClick,
         getIconOpacity
     }) {
-        await svgReady;
+        await S.svgReady;
         function makeDropZone() {
             const z = document.createElement('div');
             z.className = 'drop-indicator';

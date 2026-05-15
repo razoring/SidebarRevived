@@ -22,6 +22,36 @@
         <p class="inpage-note-sub">Click a site below to switch back to the sidepanel</p>
       </div>
     </div>
+    <div id="add-page-panel" style="display: none;">
+      <div class="settings-header">
+        <button id="add-page-back-btn" title="Back"></button>
+        <h2>Edit Apps</h2>
+      </div>
+      <div class="add-page-form">
+
+        <div id="add-current-tab-item" class="add-page-item add-page-item-clickable">
+          <div class="add-page-item-info">
+            <img id="current-tab-favicon" class="add-page-favicon" src="" alt="" />
+            <span id="current-tab-title" class="add-page-title">Loading...</span>
+          </div>
+          <span id="add-current-tab-icon" class="add-page-row-icon"></span>
+        </div>
+
+        <div class="pinned-apps-container">
+          <div class="pinned-apps-header">
+            <div class="pinned-apps-title">Pinned Apps</div>
+            <div id="pinned-apps-trash" class="pinned-apps-trash"></div>
+          </div>
+          <div id="pinned-apps-grid" class="pinned-apps-grid"></div>
+        </div>
+
+        <div class="add-page-search-wrapper">
+          <input type="text" id="site-search-input" placeholder="Search for a site..." spellcheck="false" />
+          <div id="search-results" class="search-results-list"></div>
+        </div>
+
+      </div>
+    </div>
     <div id="settings-panel" style="display: none;">
       <div class="settings-header">
         <button id="settings-back-btn" title="Close settings"></button>

@@ -17,8 +17,25 @@ let state = {
     activeSiteOwner: null,
     collapsedSections: JSON.parse(localStorage.getItem('collapsedSections') || '{}'),
     autoHideEnabled: false,
+    isAddPageOpen: false,
     _loaded: false
 };
+
+async function searchSites(query) {
+    if (!query || query.length < 2) return [];
+    try {
+        const response = await fetch(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        return data.map(item => ({
+            title: item.name,
+            url: 'https://' + item.domain,
+            faviconUrl: item.logo || `https://www.google.com/s2/favicons?domain=${item.domain}&sz=64`
+        }));
+    } catch (err) {
+        console.error('Search failed', err);
+        return [];
+    }
+}
 
 const { createSiteFromTab, applyThemeStyles, getThemeDefaults } = __SidebarRevived;
 
@@ -34,8 +51,12 @@ iconBar.ondragenter = (e) => {
 };
 
 // Initial load
-chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', 'customTheme', 'isSettingsOpen', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled', 'activeSiteOwner'], (result) => {
-    if (state._loaded) { render(); return; }
+chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', 'customTheme', 'isSettingsOpen', 'isAddPageOpen', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideEnabled', 'activeSiteOwner'], async (result) => {
+    if (state._loaded) { 
+        await __SidebarRevived.svgReady;
+        render(); 
+        return; 
+    }
     state._loaded = true;
     if (result.sites) state.sites = result.sites;
     if (result.tempSites) state.tempSites = result.tempSites;
@@ -43,11 +64,14 @@ chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', '
     if (result.currentUrls) state.currentUrls = result.currentUrls;
     if (result.customTheme) state.customTheme = result.customTheme;
     if (result.isSettingsOpen !== undefined) state.isSettingsOpen = result.isSettingsOpen;
+    if (result.isAddPageOpen !== undefined) state.isAddPageOpen = result.isAddPageOpen;
     if (result.scrollBlocklist) state.scrollBlocklist = result.scrollBlocklist;
     if (result.sidepanelBlocklist) state.sidepanelBlocklist = result.sidepanelBlocklist;
     if (result.autoHideEnabled !== undefined) state.autoHideEnabled = result.autoHideEnabled;
     if (result.activeSiteOwner !== undefined) state.activeSiteOwner = result.activeSiteOwner;
+    
     applyTheme();
+    await __SidebarRevived.svgReady;
     // Always render, even if sites is empty - this ensures settings opens on first click
     render();
     // If settings was set to open before storage loaded, ensure it shows
@@ -77,6 +101,9 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
         if (changes.isSettingsOpen !== undefined) {
             state.isSettingsOpen = changes.isSettingsOpen.newValue;
         }
+        if (changes.isAddPageOpen !== undefined) {
+            state.isAddPageOpen = changes.isAddPageOpen.newValue;
+        }
         if (changes.scrollBlocklist) {
             state.scrollBlocklist = changes.scrollBlocklist.newValue;
             updateSettingsUI();
@@ -98,6 +125,10 @@ function applyTheme() {
 }
 
 async function render() {
+    const sp = document.getElementById('settings-panel');
+    const ap = document.getElementById('add-page-panel');
+    const note = document.getElementById('inpage-sidebar-note');
+
     if (state.isSettingsOpen) {
         // Update UI state first to prevent flash of unstyled content
         updateSettingsUI();
@@ -105,24 +136,63 @@ async function render() {
         
         iconBar.style.display = 'none';
         contentArea.style.display = 'none';
-        const note = document.getElementById('inpage-sidebar-note');
         if (note) note.style.display = 'none';
-        
-        const sp = document.getElementById('settings-panel');
-        if (sp) {
-            sp.style.display = 'flex';
-        }
-        return;
+        if (ap) ap.style.display = 'none';
+        if (sp) sp.style.display = 'flex';
+        return; // Settings panel still hides everything else
     }
 
-    iconBar.style.display = 'flex';
-    const sp = document.getElementById('settings-panel');
-    if (sp) sp.style.display = 'none';
+    // Handle Add Page visibility but don't return early
+    if (state.isAddPageOpen) {
+        updateAddPageUI();
+        iconBar.style.display = 'flex';
+        contentArea.style.display = 'none';
+        if (note) note.style.display = 'none';
+        if (sp) sp.style.display = 'none';
+        if (ap) ap.style.display = 'flex';
+    } else {
+        iconBar.style.display = 'flex';
+        if (sp) sp.style.display = 'none';
+        if (ap) ap.style.display = 'none';
 
-    const inPageActive = state.activeSiteOwner === 'inpage';
-    const note = document.getElementById('inpage-sidebar-note');
-    if (note) note.style.display = inPageActive ? 'flex' : 'none';
-    contentArea.style.display = (!inPageActive && state.activeSiteId) ? 'flex' : 'none';
+        const inPageActive = state.activeSiteOwner === 'inpage';
+        if (note) note.style.display = inPageActive ? 'flex' : 'none';
+        contentArea.style.display = (!inPageActive && state.activeSiteId) ? 'flex' : 'none';
+
+        if (state.activeSiteId && !inPageActive) {
+            contentArea.classList.add('active');
+            const activeSite = state.sites.find(s => s.id === state.activeSiteId) || (state.tempSites && state.tempSites.find(s => s.id === state.activeSiteId));
+            if (activeSite) {
+                document.title = activeSite.title;
+
+                let targetIframe = document.getElementById('iframe-' + activeSite.id);
+
+                const allIframes = document.querySelectorAll('.app-frame-instance');
+                allIframes.forEach(f => f.style.display = 'none');
+
+                if (!targetIframe) {
+                    targetIframe = document.createElement('iframe');
+                    targetIframe.id = 'iframe-' + activeSite.id;
+                    targetIframe.className = 'app-frame-instance';
+                    targetIframe.style.flex = '1';
+                    targetIframe.style.border = 'none';
+                    targetIframe.style.width = '100%';
+                    targetIframe.style.height = '100%';
+                    targetIframe.allow = "camera; microphone; geolocation; clipboard-read; clipboard-write; autoplay; fullscreen";
+                    targetIframe.src = activeSite.url;
+                    contentArea.appendChild(targetIframe);
+                } else {
+                    targetIframe.style.display = 'block';
+                }
+
+                const defaultIframe = document.getElementById('app-frame');
+                if (defaultIframe) defaultIframe.remove();
+            }
+        } else if (!inPageActive) {
+            contentArea.classList.remove('active');
+            document.title = "Sidebar";
+        }
+    }
 
     const iconBarOptions = {
         sites: state.sites,
@@ -130,78 +200,343 @@ async function render() {
         activeSiteId: state.activeSiteId,
         getSites: () => state.sites,
         getTempSites: () => state.tempSites,
-            onSiteClick: (siteId, site) => {
-                const newId = state.activeSiteId === siteId ? null : siteId;
-                chrome.storage.local.set({ activeSiteId: newId, activeSiteOwner: newId ? 'sidepanel' : null, isSettingsOpen: false });
-                if (!state.currentUrls[siteId]) {
-                    state.currentUrls[siteId] = site.url;
-                    chrome.storage.local.set({ currentUrls: state.currentUrls });
-                }
-            },
+        onSiteClick: (siteId, site) => {
+            const newId = state.activeSiteId === siteId ? null : siteId;
+            chrome.storage.local.set({ activeSiteId: newId, activeSiteOwner: newId ? 'sidepanel' : null, isSettingsOpen: false, isAddPageOpen: false });
+            if (!state.currentUrls[siteId]) {
+                state.currentUrls[siteId] = site.url;
+                chrome.storage.local.set({ currentUrls: state.currentUrls });
+            }
+        },
         onAddSite: () => {
-            chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-                const tab = tabs[0];
-                if (tab && tab.url && tab.url.startsWith('http')) {
-                    const newSite = createSiteFromTab(tab);
-                    chrome.storage.local.set({ sites: [...state.sites, newSite] });
-                } else {
-                    alert("Cannot pin browser internal pages. Please open a regular website.");
-                }
-            });
+            const searchInput = document.getElementById('site-search-input');
+            if (searchInput) {
+                searchInput.value = '';
+                renderSearchResults('');
+            }
+            chrome.storage.local.set({ isAddPageOpen: true, isSettingsOpen: false });
         },
         onSettingsClick: () => {
-            chrome.storage.local.set({ isSettingsOpen: true });
+            chrome.storage.local.set({ isSettingsOpen: true, isAddPageOpen: false });
         },
         getIconOpacity: (site) => (site.id === state.activeSiteId || document.getElementById('iframe-' + site.id)) ? '1' : '0.5'
     };
 
+    // Now populate icons (this might be async if SVGs are still fetching)
     await __SidebarRevived.renderIconBar(iconBar, iconBarOptions);
-
-    if (inPageActive) return;
-
-    // Content Area: Persistent Multi-Iframe state
-    if (state.activeSiteId) {
-        contentArea.classList.add('active');
-        const activeSite = state.sites.find(s => s.id === state.activeSiteId) || (state.tempSites && state.tempSites.find(s => s.id === state.activeSiteId));
-        if (activeSite) {
-            document.title = activeSite.title;
-
-            let targetIframe = document.getElementById('iframe-' + activeSite.id);
-
-            const allIframes = document.querySelectorAll('.app-frame-instance');
-            allIframes.forEach(f => f.style.display = 'none');
-
-            if (!targetIframe) {
-                targetIframe = document.createElement('iframe');
-                targetIframe.id = 'iframe-' + activeSite.id;
-                targetIframe.className = 'app-frame-instance';
-                targetIframe.style.flex = '1';
-                targetIframe.style.border = 'none';
-                targetIframe.style.width = '100%';
-                targetIframe.style.height = '100%';
-                targetIframe.allow = "camera; microphone; geolocation; clipboard-read; clipboard-write; autoplay; fullscreen";
-                targetIframe.src = activeSite.url;
-                contentArea.appendChild(targetIframe);
-            } else {
-                targetIframe.style.display = 'block';
-            }
-
-            const defaultIframe = document.getElementById('app-frame');
-            if (defaultIframe) defaultIframe.remove();
-        }
-    } else {
-        contentArea.classList.remove('active');
-        document.title = "Sidebar";
-    }
 }
 
 function initCollapsibleSections() {
     document.querySelectorAll('.settings-category-header.collapsible').forEach(header => {
         const targetId = header.dataset.target;
         const isCollapsed = state.collapsedSections[targetId];
-        if (isCollapsed) header.classList.add('collapsed');
+        const body = document.getElementById(targetId);
+        if (body) {
+            body.style.display = isCollapsed ? 'none' : 'block';
+            header.querySelector('.collapse-arrow').style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+        }
+        header.onclick = () => {
+            const nowCollapsed = body.style.display !== 'none';
+            body.style.display = nowCollapsed ? 'none' : 'block';
+            header.querySelector('.collapse-arrow').style.transform = nowCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            state.collapsedSections[targetId] = nowCollapsed;
+            localStorage.setItem('collapsedSections', JSON.stringify(state.collapsedSections));
+        };
     });
 }
+
+let currentTabInfo = null;
+
+function refreshCurrentTab() {
+    const faviconImg = document.getElementById('current-tab-favicon');
+    const titleSpan = document.getElementById('current-tab-title');
+    const tabItem = document.getElementById('add-current-tab-item');
+    if (!faviconImg || !titleSpan) return;
+
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+        const tab = tabs[0];
+        if (tab && tab.url && tab.url.startsWith('http')) {
+            currentTabInfo = tab;
+            faviconImg.src = tab.favIconUrl || 'assets/pin_icon.svg';
+            titleSpan.innerText = tab.title;
+            if (tabItem) { tabItem.style.opacity = '1'; tabItem.style.pointerEvents = ''; }
+        } else {
+            currentTabInfo = null;
+            faviconImg.src = 'assets/pin_icon.svg';
+            titleSpan.innerText = 'Internal Page (Cannot Add)';
+            if (tabItem) { tabItem.style.opacity = '0.4'; tabItem.style.pointerEvents = 'none'; }
+        }
+    });
+}
+
+// Refresh the current-tab row whenever the user switches tabs (while panel is open)
+chrome.tabs.onActivated.addListener(() => {
+    if (state.isAddPageOpen) refreshCurrentTab();
+});
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (state.isAddPageOpen && changeInfo.status === 'complete') refreshCurrentTab();
+});
+
+async function updateAddPageUI() {
+    const tabItem = document.getElementById('add-current-tab-item');
+
+    refreshCurrentTab();
+
+    // Wire the whole row as the click target (idempotent)
+    if (tabItem && !tabItem.dataset.clickBound) {
+        tabItem.dataset.clickBound = '1';
+        tabItem.onclick = () => {
+            if (currentTabInfo) {
+                const newSite = createSiteFromTab(currentTabInfo);
+                chrome.storage.local.set({ sites: [...state.sites, newSite] });
+            }
+        };
+    }
+
+    // Inject add icon (right-aligned, accent coloured)
+    const rowIcon = document.getElementById('add-current-tab-icon');
+    if (rowIcon && !rowIcon.dataset.iconLoaded) {
+        rowIcon.innerHTML = __SidebarRevived.ADD_ICON_SVG;
+        rowIcon.dataset.iconLoaded = '1';
+    }
+
+    // Render Pinned Apps grid
+    const pinnedGrid = document.getElementById('pinned-apps-grid');
+    const pinnedTrash = document.getElementById('pinned-apps-trash');
+    
+    if (pinnedTrash && !pinnedTrash.dataset.iconLoaded) {
+        pinnedTrash.innerHTML = __SidebarRevived.TRASH_ICON_SVG;
+        pinnedTrash.dataset.iconLoaded = '1';
+        
+        pinnedTrash.ondragover = (e) => {
+            e.preventDefault();
+            pinnedTrash.classList.add('trash-hover');
+        };
+        pinnedTrash.ondragleave = () => {
+            pinnedTrash.classList.remove('trash-hover');
+        };
+        pinnedTrash.ondrop = (e) => {
+            e.preventDefault();
+            pinnedTrash.classList.remove('trash-hover');
+            pinnedTrash.classList.remove('visible');
+            const siteId = e.dataTransfer.getData('text/plain');
+            if (siteId) {
+                const newSites = state.sites.filter(s => s.id !== siteId);
+                chrome.storage.local.set({ sites: newSites });
+            }
+        };
+    }
+
+    if (pinnedGrid) {
+        pinnedGrid.innerHTML = '';
+        state.sites.forEach((site) => {
+            const item = document.createElement('div');
+            item.className = 'pinned-app-item';
+            item.draggable = true;
+            item.dataset.id = site.id;
+            item.innerHTML = `<img src="${site.faviconUrl}" alt="${site.title}" title="${site.title}" />`;
+            
+            item.ondragstart = (e) => {
+                e.dataTransfer.setData('text/plain', site.id);
+                item.classList.add('dragging');
+                if (pinnedTrash) pinnedTrash.classList.add('visible');
+                // Ensure the drag image doesn't show the trash overlay if there was one
+            };
+            
+            item.ondragend = () => {
+                item.classList.remove('dragging');
+                if (pinnedTrash) {
+                    pinnedTrash.classList.remove('visible');
+                    pinnedTrash.classList.remove('trash-hover');
+                }
+            };
+
+            pinnedGrid.appendChild(item);
+        });
+
+        pinnedGrid.ondragover = (e) => {
+            e.preventDefault();
+            const draggingItem = pinnedGrid.querySelector('.dragging');
+            if (!draggingItem) return;
+            
+            const afterElement = (function() {
+                const draggables = [...pinnedGrid.querySelectorAll('.pinned-app-item:not(.dragging)')];
+                return draggables.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const centerX = box.left + box.width / 2;
+                    const centerY = box.top + box.height / 2;
+                    const distance = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2));
+                    if (distance < closest.offset) {
+                        return { offset: distance, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.POSITIVE_INFINITY }).element;
+            })();
+            
+            if (afterElement) {
+                // If we're closer to the right side of the element, insert after it
+                const rect = afterElement.getBoundingClientRect();
+                if (e.clientX > rect.left + rect.width / 2) {
+                    pinnedGrid.insertBefore(draggingItem, afterElement.nextSibling);
+                } else {
+                    pinnedGrid.insertBefore(draggingItem, afterElement);
+                }
+            } else {
+                pinnedGrid.appendChild(draggingItem);
+            }
+        };
+
+        pinnedGrid.ondrop = (e) => {
+            e.preventDefault();
+            const newOrder = [...pinnedGrid.querySelectorAll('.pinned-app-item')].map(el => {
+                return state.sites.find(s => s.id === el.dataset.id);
+            }).filter(Boolean);
+            
+            // Only update if order changed
+            if (JSON.stringify(newOrder.map(s => s.id)) !== JSON.stringify(state.sites.map(s => s.id))) {
+                chrome.storage.local.set({ sites: newOrder });
+            }
+        };
+    }
+
+    // Load close_icon.svg for back button (same as settings panel)
+    const backBtn = document.getElementById('add-page-back-btn');
+    if (backBtn && !backBtn.dataset.iconLoaded) {
+        fetch(chrome.runtime.getURL('assets/close_icon.svg'))
+            .then(r => r.text())
+            .then(svg => { backBtn.innerHTML = svg; backBtn.dataset.iconLoaded = '1'; })
+            .catch(() => { backBtn.innerHTML = '✕'; });
+    }
+
+    // (Search reset is now handled only when the panel is explicitly opened)
+}
+
+function isValidDomain(str) {
+    // Strip protocol and path, just check the host part
+    const host = str.replace(/^https?:\/\//i, '').split('/')[0].split('?')[0].toLowerCase();
+    // Must have at least one dot, valid chars, no spaces, TLD at least 2 chars
+    return /^([a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(host);
+}
+
+function normaliseDomain(str) {
+    // Return clean domain (no protocol, no trailing slash)
+    return str.replace(/^https?:\/\//i, '').split('/')[0].split('?')[0].toLowerCase();
+}
+
+async function renderSearchResults(query) {
+    const container = document.getElementById('search-results');
+    if (!container) return;
+    
+    if (!query || query.length < 2) {
+        container.innerHTML = '';
+        container.classList.remove('visible');
+        return;
+    }
+
+    container.innerHTML = '<div class="search-status">Searching...</div>';
+
+    const results = await searchSites(query);
+    container.innerHTML = '';
+
+    results.forEach(app => {
+        const domain = app.url.replace('https://', '').replace('http://', '');
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        item.innerHTML = `
+            <img src="${app.faviconUrl}" alt="" />
+            <span class="result-title">${app.title}</span>
+            <span class="result-domain">${domain}</span>
+            <div class="result-add-btn"></div>
+        `;
+        const addBtn = item.querySelector('.result-add-btn');
+        addBtn.innerHTML = __SidebarRevived.ADD_ICON_SVG;
+
+        item.onclick = () => {
+            const site = {
+                id: 'site-' + Date.now() + Math.random().toString(36).substr(2, 5),
+                title: app.title,
+                url: app.url,
+                faviconUrl: app.faviconUrl,
+                initial: app.title.charAt(0)
+            };
+            chrome.storage.local.set({ sites: [...state.sites, site] });
+        };
+        container.appendChild(item);
+    });
+
+    // Append direct-URL entry if the query looks like a valid domain
+    if (isValidDomain(query)) {
+        const domain = normaliseDomain(query);
+        const url = 'https://' + domain;
+        const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+
+        const item = document.createElement('div');
+        item.className = 'search-result-item search-result-direct';
+        item.innerHTML = `
+            <img src="${faviconUrl}" alt="" />
+            <span class="result-title">${domain}</span>
+            <span class="result-domain">${url}</span>
+            <div class="result-add-btn"></div>
+        `;
+        const addBtn = item.querySelector('.result-add-btn');
+        addBtn.innerHTML = __SidebarRevived.ADD_ICON_SVG;
+
+        item.onclick = () => {
+            const site = {
+                id: 'site-' + Date.now() + Math.random().toString(36).substr(2, 5),
+                title: domain,
+                url,
+                faviconUrl,
+                initial: domain.charAt(0).toUpperCase()
+            };
+            chrome.storage.local.set({ sites: [...state.sites, site] });
+        };
+        container.appendChild(item);
+    }
+
+    if (container.children.length === 0) {
+        container.innerHTML = '<div class="search-status">No results found</div>';
+    }
+
+    container.classList.add('visible');
+}
+
+let searchTimeout = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const backBtn = document.getElementById('add-page-back-btn');
+    if (backBtn) {
+        backBtn.onclick = () => {
+            chrome.storage.local.set({ isAddPageOpen: false });
+        };
+    }
+
+
+    const searchInput = document.getElementById('site-search-input');
+    if (searchInput) {
+        searchInput.oninput = (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            searchTimeout = setTimeout(() => {
+                renderSearchResults(query);
+            }, 300);
+        };
+        // Hide overlay when focus leaves, restore if query present
+        searchInput.onblur = () => {
+            setTimeout(() => {
+                const container = document.getElementById('search-results');
+                if (container) container.classList.remove('visible');
+            }, 150); // small delay so clicks on results register
+        };
+        searchInput.onfocus = () => {
+            if (searchInput.value.trim().length >= 2) {
+                const container = document.getElementById('search-results');
+                if (container && container.children.length) container.classList.add('visible');
+            }
+        };
+    }
+});
 
 function updateSettingsUI() {
     const theme = state.customTheme || {};
@@ -294,7 +629,7 @@ fetch(chrome.runtime.getURL('assets/close_icon.svg'))
     });
 
 document.getElementById('settings-back-btn').addEventListener('click', () => {
-    chrome.storage.local.set({ isSettingsOpen: false });
+    chrome.storage.local.set({ isSettingsOpen: false, isAddPageOpen: false });
 });
 
 function debounceThemeUpdate() {

@@ -379,7 +379,8 @@
 
     async function renderInternal() {
         if (currentTheme) SR.applyThemeStyles(host, currentTheme);
-        await populateIcons();
+        
+        // Show container immediately to avoid perceived lag
         container.style.display = '';
 
         const isFullSidebar = state.activeSiteId && state.activeSiteOwner === 'inpage';
@@ -399,6 +400,9 @@
         } else {
             contentArea.classList.remove('active');
         }
+
+        // Now populate icons (this might be async if SVGs are still fetching)
+        await populateIcons();
 
         if (autoHideEnabled) {
             document.documentElement.classList.remove('revived-sidebar-active');
