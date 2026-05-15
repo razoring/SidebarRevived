@@ -101,6 +101,25 @@
                 min-width: 0 !important;
             }
     `;
+        if (window.location.hostname.includes('bing.com')) {
+            style.textContent += `
+                html.revived-sidebar-active #mmComponent_images_1,
+                html.revived-sidebar-active .dg_u,
+                html.revived-sidebar-active #b_content,
+                html.revived-sidebar-active .b_viewport {
+                    padding-right: var(--revived-sidebar-width, 48px) !important;
+                    box-sizing: border-box !important;
+                }
+                html.revived-sidebar-active #id_sc,
+                html.revived-sidebar-active #fltIdtLnk,
+                html.revived-sidebar-active #id_l,
+                html.revived-sidebar-active #id_rh_w,
+                html.revived-sidebar-active #sb_feedback,
+                html.revived-sidebar-active .acf-button-standard__btn {
+                    margin-right: var(--revived-sidebar-width, 48px) !important;
+                }
+            `;
+        }
         document.documentElement.appendChild(style);
     }
 
@@ -109,6 +128,7 @@
         document.querySelectorAll('#revived-edge-sidebar-host').forEach(el => el.remove());
         document.querySelectorAll('#revived-sidebar-host-styles').forEach(el => el.remove());
         document.documentElement.classList.remove('revived-sidebar-active');
+        document.documentElement.setAttribute('data-revived-host', window.location.hostname);
 
         injectHostStyles();
         // Create Shadow Host
@@ -441,8 +461,7 @@
         if (!state.initialized && !state.sites.length) return;
 
         const ah = getAutoHide();
-        const hostname = window.location.hostname;
-        const isBlocked = state.sidepanelBlocklist.some(d => hostname.includes(d)) && !state.activeSiteId;
+        const isBlocked = (state.sidepanelBlocklist || []).some(d => hostname.includes(d)) && !state.activeSiteId;
 
         if (state.activeSiteId && state.activeSiteOwner === 'inpage') {
             ah.cleanup();
@@ -458,7 +477,7 @@
             return;
         }
 
-        const isAutoHideForced = state.autoHideBlocklist && state.autoHideBlocklist.some(d => hostname.includes(d));
+        const isAutoHideForced = (state.autoHideBlocklist || []).some(d => hostname.includes(d));
 
         if (autoHideEnabled || isAutoHideForced) {
             if (ah.triggered) {
@@ -714,6 +733,7 @@
         document.querySelectorAll('#revived-idle-sidebar-host').forEach(el => el.remove());
         document.querySelectorAll('#revived-idle-sidebar-styles').forEach(el => el.remove());
         document.documentElement.classList.remove('revived-sidebar-idle-active');
+        document.documentElement.setAttribute('data-revived-host', window.location.hostname);
 
         host = document.createElement('div');
         host.id = 'revived-idle-sidebar-host';
@@ -928,7 +948,7 @@
             return;
         }
 
-        const isAutoHideForced = autoHideBlocklist && autoHideBlocklist.some(d => hostname.includes(d));
+        const isAutoHideForced = (autoHideBlocklist || []).some(d => hostname.includes(d));
 
         if (autoHideEnabled || isAutoHideForced) {
             if (ah.triggered) {
@@ -951,7 +971,7 @@
         document.documentElement.classList.add('revived-sidebar-idle-active');
         FixedElementManager.start();
 
-        const isBlocked = scrollBlocklist.some(d => hostname.includes(d));
+        const isBlocked = (scrollBlocklist || []).some(d => hostname.includes(d));
 
         if (isBlocked) {
             styleElement.textContent = `
@@ -1002,6 +1022,26 @@
                     right: 48px !important;
                 }
                 html.revived-sidebar-idle-active .bkK {
+                    margin-right: 48px !important;
+                }
+            `;
+        }
+
+        if (hostname.includes('bing.com')) {
+            styleElement.textContent += `
+                html.revived-sidebar-idle-active #mmComponent_images_1,
+                html.revived-sidebar-idle-active .dg_u,
+                html.revived-sidebar-idle-active #b_content,
+                html.revived-sidebar-idle-active .b_viewport {
+                    padding-right: 48px !important;
+                    box-sizing: border-box !important;
+                }
+                html.revived-sidebar-idle-active #id_sc,
+                html.revived-sidebar-idle-active #fltIdtLnk,
+                html.revived-sidebar-idle-active #id_l,
+                html.revived-sidebar-idle-active #id_rh_w,
+                html.revived-sidebar-idle-active #sb_feedback,
+                html.revived-sidebar-idle-active .acf-button-standard__btn {
                     margin-right: 48px !important;
                 }
             `;
