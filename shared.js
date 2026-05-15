@@ -304,7 +304,7 @@
         onAddSite,
         onSettingsClick,
         getIconOpacity,
-        hideCategoryIconsOnDrag
+        showCategoryIcons
     }) {
         await S.svgReady;
         function makeDropZone() {
@@ -416,6 +416,7 @@
                     icon.innerText = site.initial || site.title.charAt(0);
                 }
                 icon.title = site.title;
+                icon.dataset.id = site.id;
 
                 icon.onclick = () => {
                     if (onSiteClick) onSiteClick(site.id, site);
@@ -502,13 +503,18 @@
             const pinnedPopulated = getSites && getSites().length > 0;
             const tempPopulated = getTempSites && getTempSites().length > 0;
             
-            const showHeaders = isDragging && !hideCategoryIconsOnDrag;
+            const showHeaders = isDragging && showCategoryIcons;
 
             if (pinnedHeader) pinnedHeader.style.display = showHeaders ? 'flex' : 'none';
             if (tempHeader) tempHeader.style.display = showHeaders ? 'flex' : 'none';
             if (pinDivider) pinDivider.style.display = (isDragging || pinnedPopulated || tempPopulated) ? 'block' : 'none';
             if (tempDivider) tempDivider.style.display = (isDragging || tempPopulated) ? 'block' : 'none';
         }
+
+        const oldRects = new Map();
+        container.querySelectorAll('.edge-sidebar-icon').forEach(el => {
+            if (el.dataset.id) oldRects.set(el.dataset.id, el.getBoundingClientRect());
+        });
 
         container.innerHTML = '';
 
@@ -577,6 +583,28 @@
             if (onSettingsClick) onSettingsClick();
         };
         container.appendChild(settingsBtn);
+
+        // Animate icons into position
+        if (oldRects.size > 0) {
+            requestAnimationFrame(() => {
+                const icons = container.querySelectorAll('.edge-sidebar-icon');
+                icons.forEach(icon => {
+                    const id = icon.dataset.id;
+                    if (!id || !oldRects.has(id)) return;
+                    const oldRect = oldRects.get(id);
+                    const newRect = icon.getBoundingClientRect();
+                    const dx = oldRect.left - newRect.left;
+                    const dy = oldRect.top - newRect.top;
+                    if (dx || dy) {
+                        icon.style.transition = 'none';
+                        icon.style.transform = `translate(${dx}px, ${dy}px)`;
+                        icon.offsetHeight; // force reflow
+                        icon.style.transition = 'transform 0.5s cubic-bezier(0.2, 0, 0, 1)';
+                        icon.style.transform = '';
+                    }
+                });
+            });
+        }
     };
 
     // ============ EXPORT ============

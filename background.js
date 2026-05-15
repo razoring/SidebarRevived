@@ -12,6 +12,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     isAddPageOpen: false,
     isSidePanelOpen: false,
     autoHideEnabled: false,
+    showCategoryIcons: false,
     customTheme: __SidebarRevived.getThemeDefaults()
   };
 

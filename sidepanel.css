@@ -300,6 +300,11 @@ html {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.edge-sidebar-icon img {
+    border-radius: 50%;
+    object-fit: contain;
+}
+
 .edge-sidebar-icon svg,
 .edge-sidebar-header svg,
 .edge-sidebar-add-btn svg {
@@ -948,10 +953,11 @@ html {
 }
 
 .pinned-apps-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
-    justify-items: center;
+    justify-content: flex-start;
+    align-items: center;
 }
 
 .pinned-app-item {
@@ -1026,7 +1032,7 @@ html {
 .pinned-app-item img {
     width: 28px;
     height: 28px;
-    border-radius: 4px;
+    border-radius: 50%;
     object-fit: contain;
     pointer-events: none;
 }
@@ -1080,7 +1086,7 @@ html {
 .add-page-favicon {
     width: 18px;
     height: 18px;
-    border-radius: 3px;
+    border-radius: 50%;
     flex-shrink: 0;
     object-fit: contain;
 }
@@ -1224,7 +1230,7 @@ html {
 .search-result-item img {
     width: 16px;
     height: 16px;
-    border-radius: 3px;
+    border-radius: 50%;
     flex-shrink: 0;
     object-fit: contain;
 }

@@ -17,7 +17,7 @@ let state = {
     activeSiteOwner: null,
     collapsedSections: JSON.parse(localStorage.getItem('collapsedSections') || '{}'),
     autoHideEnabled: false,
-    hideCategoryIconsOnDrag: false,
+    showCategoryIcons: false,
     isAddPageOpen: false,
     _loaded: false
 };
@@ -69,7 +69,7 @@ chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', '
     if (result.scrollBlocklist) state.scrollBlocklist = result.scrollBlocklist;
     if (result.sidepanelBlocklist) state.sidepanelBlocklist = result.sidepanelBlocklist;
     if (result.autoHideEnabled !== undefined) state.autoHideEnabled = result.autoHideEnabled;
-    if (result.hideCategoryIconsOnDrag !== undefined) state.hideCategoryIconsOnDrag = result.hideCategoryIconsOnDrag;
+    if (result.showCategoryIcons !== undefined) state.showCategoryIcons = result.showCategoryIcons;
     if (result.activeSiteOwner !== undefined) state.activeSiteOwner = result.activeSiteOwner;
     
     applyTheme();
@@ -118,8 +118,8 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
             state.autoHideEnabled = changes.autoHideEnabled.newValue;
             updateSettingsUI();
         }
-        if (changes.hideCategoryIconsOnDrag) {
-            state.hideCategoryIconsOnDrag = changes.hideCategoryIconsOnDrag.newValue;
+        if (changes.showCategoryIcons) {
+            state.showCategoryIcons = changes.showCategoryIcons.newValue;
             updateSettingsUI();
         }
         render();
@@ -150,7 +150,7 @@ async function render() {
 
     // Handle Add Page visibility but don't return early
     if (state.isAddPageOpen) {
-        updateAddPageUI();
+        await updateAddPageUI();
         iconBar.style.display = 'flex';
         contentArea.style.display = 'none';
         if (note) note.style.display = 'none';
@@ -225,7 +225,7 @@ async function render() {
         onSettingsClick: () => {
             chrome.storage.local.set({ isSettingsOpen: true, isAddPageOpen: false });
         },
-        hideCategoryIconsOnDrag: state.hideCategoryIconsOnDrag,
+        showCategoryIcons: state.showCategoryIcons,
         getIconOpacity: (site) => (site.id === state.activeSiteId || document.getElementById('iframe-' + site.id)) ? '1' : '0.5'
     };
 
@@ -271,7 +271,7 @@ function refreshCurrentTab() {
                 const u = new URL(tab.url);
                 cleanedUrl = u.origin + u.pathname;
             } catch (e) { }
-
+            // No longer stripping parameters as per user request to allow exact pages
             faviconImg.src = tab.favIconUrl || 'assets/pin_icon.svg';
             titleSpan.innerText = tab.title;
             if (urlSpan) urlSpan.innerText = cleanedUrl;
@@ -302,6 +302,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 });
 
 async function updateAddPageUI() {
+    await __SidebarRevived.svgReady;
     const tabItem = document.getElementById('add-current-tab-item');
 
     refreshCurrentTab();
@@ -352,6 +353,11 @@ async function updateAddPageUI() {
     }
 
     if (pinnedGrid) {
+        const oldRects = new Map();
+        pinnedGrid.querySelectorAll('.pinned-app-item').forEach(el => {
+            if (el.dataset.id) oldRects.set(el.dataset.id, el.getBoundingClientRect());
+        });
+
         pinnedGrid.innerHTML = '';
         state.sites.forEach((site) => {
             const item = document.createElement('div');
@@ -434,6 +440,28 @@ async function updateAddPageUI() {
             sites.splice(toIndex, 0, moved);
             chrome.storage.local.set({ sites });
         };
+
+        // Animate icons into position
+        if (oldRects.size > 0) {
+            requestAnimationFrame(() => {
+                const items = pinnedGrid.querySelectorAll('.pinned-app-item');
+                items.forEach(item => {
+                    const id = item.dataset.id;
+                    if (!id || !oldRects.has(id)) return;
+                    const oldRect = oldRects.get(id);
+                    const newRect = item.getBoundingClientRect();
+                    const dx = oldRect.left - newRect.left;
+                    const dy = oldRect.top - newRect.top;
+                    if (dx || dy) {
+                        item.style.transition = 'none';
+                        item.style.transform = `translate(${dx}px, ${dy}px)`;
+                        item.offsetHeight; // force reflow
+                        item.style.transition = 'transform 0.5s cubic-bezier(0.2, 0, 0, 1)';
+                        item.style.transform = '';
+                    }
+                });
+            });
+        }
     }
 
     // Load close_icon.svg for back button (same as settings panel)
@@ -448,16 +476,19 @@ async function updateAddPageUI() {
     // (Search reset is now handled only when the panel is explicitly opened)
 }
 
-function isValidDomain(str) {
-    // Strip protocol and path, just check the host part
-    const host = str.replace(/^https?:\/\//i, '').split('/')[0].split('?')[0].toLowerCase();
-    // Must have at least one dot, valid chars, no spaces, TLD at least 2 chars
-    return /^([a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(host);
+function isValidUrl(str) {
+    try {
+        const urlToTest = str.includes('://') ? str : 'https://' + str;
+        const u = new URL(urlToTest);
+        return u.hostname.includes('.') && u.hostname.replace('www.', '').length >= 3;
+    } catch (e) {
+        return false;
+    }
 }
 
-function normaliseDomain(str) {
-    // Return clean domain (no protocol, no trailing slash)
-    return str.replace(/^https?:\/\//i, '').split('/')[0].split('?')[0].toLowerCase();
+function normaliseUrl(str) {
+    if (str.includes('://')) return str;
+    return 'https://' + str;
 }
 
 async function renderSearchResults(query) {
@@ -501,18 +532,25 @@ async function renderSearchResults(query) {
         container.appendChild(item);
     });
 
-    // Append direct-URL entry if the query looks like a valid domain
-    if (isValidDomain(query)) {
-        const domain = normaliseDomain(query);
-        const url = 'https://' + domain;
-        const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+    // Append direct-URL entry if the query looks like a valid URL or domain
+    if (isValidUrl(query)) {
+        const url = normaliseUrl(query);
+        let displayTitle = query;
+        let faviconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(url)}`;
+        
+        try {
+            const u = new URL(url);
+            displayTitle = u.hostname.replace('www.', '');
+        } catch(e) {}
 
         const item = document.createElement('div');
         item.className = 'search-result-item search-result-direct';
         item.innerHTML = `
             <img src="${faviconUrl}" alt="" />
-            <span class="result-title">${domain}</span>
-            <span class="result-domain">${url}</span>
+            <div style="display:flex; flex-direction:column; min-width:0; flex:1;">
+                <span class="result-title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayTitle}</span>
+                <span class="result-domain" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; opacity:0.7;">${url}</span>
+            </div>
             <div class="result-add-btn"></div>
         `;
         const addBtn = item.querySelector('.result-add-btn');
@@ -521,10 +559,10 @@ async function renderSearchResults(query) {
         item.onclick = () => {
             const site = {
                 id: 'site-' + Date.now() + Math.random().toString(36).substr(2, 5),
-                title: domain,
+                title: displayTitle,
                 url,
                 faviconUrl,
-                initial: domain.charAt(0).toUpperCase()
+                initial: displayTitle.charAt(0).toUpperCase()
             };
             chrome.storage.local.set({ sites: [...state.sites, site] });
         };
@@ -646,8 +684,8 @@ function updateSettingsUI() {
     const autoHideChk = document.getElementById('settings-auto-hide');
     if (autoHideChk) autoHideChk.checked = state.autoHideEnabled;
 
-    const hideCatDragChk = document.getElementById('settings-hide-category-drag');
-    if (hideCatDragChk) hideCatDragChk.checked = state.hideCategoryIconsOnDrag;
+    const showCatChk = document.getElementById('settings-show-category-drag');
+    if (showCatChk) showCatChk.checked = state.showCategoryIcons;
 }
 
 // Collapsible section toggle
@@ -739,9 +777,9 @@ document.getElementById('settings-auto-hide').addEventListener('change', (e) => 
     chrome.storage.local.set({ autoHideEnabled: state.autoHideEnabled });
 });
 
-document.getElementById('settings-hide-category-drag').addEventListener('change', (e) => {
-    state.hideCategoryIconsOnDrag = e.target.checked;
-    chrome.storage.local.set({ hideCategoryIconsOnDrag: state.hideCategoryIconsOnDrag });
+document.getElementById('settings-show-category-drag').addEventListener('change', (e) => {
+    state.showCategoryIcons = e.target.checked;
+    chrome.storage.local.set({ showCategoryIcons: state.showCategoryIcons });
 });
 
 document.getElementById('settings-scroll-blocklist').addEventListener('input', (e) => {
