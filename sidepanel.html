@@ -32,7 +32,10 @@
         <div id="add-current-tab-item" class="add-page-item add-page-item-clickable">
           <div class="add-page-item-info">
             <img id="current-tab-favicon" class="add-page-favicon" src="" alt="" />
-            <span id="current-tab-title" class="add-page-title">Loading...</span>
+            <div class="add-page-title-container">
+              <span id="current-tab-title" class="add-page-title">Loading...</span>
+              <span id="current-tab-url" class="add-page-url"></span>
+            </div>
           </div>
           <span id="add-current-tab-icon" class="add-page-row-icon"></span>
         </div>
@@ -124,6 +127,13 @@
               <span>Auto-Hide Sidepanel</span>
               <div class="toggle-track">
                 <input type="checkbox" id="settings-auto-hide" />
+                <div class="toggle-thumb"></div>
+              </div>
+            </label>
+            <label class="toggle-row">
+              <span>Hide Category Icons</span>
+              <div class="toggle-track">
+                <input type="checkbox" id="settings-hide-category-drag" />
                 <div class="toggle-thumb"></div>
               </div>
             </label>

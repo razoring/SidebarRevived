@@ -30,7 +30,8 @@
         customTheme: null
     };
 
-    const SR = __SidebarRevived;
+    const SR = globalThis.__SidebarRevived;
+    if (!SR) return;
     let currentTheme = null;
 
     function applyTheme() {
@@ -480,7 +481,9 @@
     let sidepanelBlocklist = [];
     let autoHideEnabled = false;
     let currentTheme = null;
-    const { applyThemeStyles, AutoHideManager } = __SidebarRevived;
+    const SR = globalThis.__SidebarRevived;
+    if (!SR) return;
+    const { applyThemeStyles, AutoHideManager } = SR;
 
     const FixedElementManager = {
         active: false,

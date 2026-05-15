@@ -1,14 +1,20 @@
 (() => {
+    if (globalThis.__SidebarRevived) return;
     const S = {};
 
     // ============ SVG ICONS ============
 
-    const fetchSvg = (path, fallback) => fetch(chrome.runtime.getURL(path))
-        .then(r => r.text())
-        .catch(err => {
-            console.error(`Failed to load SVG: ${path}`, err);
-            return fallback || '<svg viewBox="0 0 24 24"></svg>';
-        });
+    const fetchSvg = (path, fallback) => {
+        if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getURL) {
+            return Promise.resolve(fallback || '<svg viewBox="0 0 24 24"></svg>');
+        }
+        return fetch(chrome.runtime.getURL(path))
+            .then(r => r.text())
+            .catch(err => {
+                console.error(`Failed to load SVG: ${path}`, err);
+                return fallback || '<svg viewBox="0 0 24 24"></svg>';
+            });
+    };
 
     S.svgReady = Promise.all([
         fetchSvg('assets/add_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>'),
@@ -66,12 +72,18 @@
     };
 
     S.createSiteFromTab = function (tab) {
-        const title = tab.title || new URL(tab.url).hostname.replace('www.', '');
-        const faviconUrl = tab.favIconUrl || `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(tab.url)}`;
+        let cleanedUrl = tab.url;
+        try {
+            const u = new URL(tab.url);
+            cleanedUrl = u.origin + u.pathname;
+        } catch (e) { }
+
+        const title = tab.title || new URL(cleanedUrl).hostname.replace('www.', '');
+        const faviconUrl = tab.favIconUrl || `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(cleanedUrl)}`;
         return {
             id: 'site_' + Date.now(),
             title: title,
-            url: tab.url,
+            url: cleanedUrl,
             faviconUrl: faviconUrl,
             color: '#f0f0f0',
             initial: title.charAt(0).toUpperCase()
@@ -291,7 +303,8 @@
         onSiteClick,
         onAddSite,
         onSettingsClick,
-        getIconOpacity
+        getIconOpacity,
+        hideCategoryIconsOnDrag
     }) {
         await S.svgReady;
         function makeDropZone() {
@@ -488,8 +501,11 @@
         function updateVisibility(isDragging = false) {
             const pinnedPopulated = getSites && getSites().length > 0;
             const tempPopulated = getTempSites && getTempSites().length > 0;
-            if (pinnedHeader) pinnedHeader.style.display = isDragging ? 'flex' : 'none';
-            if (tempHeader) tempHeader.style.display = isDragging ? 'flex' : 'none';
+            
+            const showHeaders = isDragging && !hideCategoryIconsOnDrag;
+
+            if (pinnedHeader) pinnedHeader.style.display = showHeaders ? 'flex' : 'none';
+            if (tempHeader) tempHeader.style.display = showHeaders ? 'flex' : 'none';
             if (pinDivider) pinDivider.style.display = (isDragging || pinnedPopulated || tempPopulated) ? 'block' : 'none';
             if (tempDivider) tempDivider.style.display = (isDragging || tempPopulated) ? 'block' : 'none';
         }

@@ -17,6 +17,7 @@ let state = {
     activeSiteOwner: null,
     collapsedSections: JSON.parse(localStorage.getItem('collapsedSections') || '{}'),
     autoHideEnabled: false,
+    hideCategoryIconsOnDrag: false,
     isAddPageOpen: false,
     _loaded: false
 };
@@ -68,6 +69,7 @@ chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', '
     if (result.scrollBlocklist) state.scrollBlocklist = result.scrollBlocklist;
     if (result.sidepanelBlocklist) state.sidepanelBlocklist = result.sidepanelBlocklist;
     if (result.autoHideEnabled !== undefined) state.autoHideEnabled = result.autoHideEnabled;
+    if (result.hideCategoryIconsOnDrag !== undefined) state.hideCategoryIconsOnDrag = result.hideCategoryIconsOnDrag;
     if (result.activeSiteOwner !== undefined) state.activeSiteOwner = result.activeSiteOwner;
     
     applyTheme();
@@ -114,6 +116,10 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
         }
         if (changes.autoHideEnabled) {
             state.autoHideEnabled = changes.autoHideEnabled.newValue;
+            updateSettingsUI();
+        }
+        if (changes.hideCategoryIconsOnDrag) {
+            state.hideCategoryIconsOnDrag = changes.hideCategoryIconsOnDrag.newValue;
             updateSettingsUI();
         }
         render();
@@ -219,6 +225,7 @@ async function render() {
         onSettingsClick: () => {
             chrome.storage.local.set({ isSettingsOpen: true, isAddPageOpen: false });
         },
+        hideCategoryIconsOnDrag: state.hideCategoryIconsOnDrag,
         getIconOpacity: (site) => (site.id === state.activeSiteId || document.getElementById('iframe-' + site.id)) ? '1' : '0.5'
     };
 
@@ -250,6 +257,7 @@ let currentTabInfo = null;
 function refreshCurrentTab() {
     const faviconImg = document.getElementById('current-tab-favicon');
     const titleSpan = document.getElementById('current-tab-title');
+    const urlSpan = document.getElementById('current-tab-url');
     const tabItem = document.getElementById('add-current-tab-item');
     if (!faviconImg || !titleSpan) return;
 
@@ -257,14 +265,30 @@ function refreshCurrentTab() {
         const tab = tabs[0];
         if (tab && tab.url && tab.url.startsWith('http')) {
             currentTabInfo = tab;
+            
+            let cleanedUrl = tab.url;
+            try {
+                const u = new URL(tab.url);
+                cleanedUrl = u.origin + u.pathname;
+            } catch (e) { }
+
             faviconImg.src = tab.favIconUrl || 'assets/pin_icon.svg';
             titleSpan.innerText = tab.title;
-            if (tabItem) { tabItem.style.opacity = '1'; tabItem.style.pointerEvents = ''; }
+            if (urlSpan) urlSpan.innerText = cleanedUrl;
+            
+            if (tabItem) { 
+                tabItem.style.opacity = '1'; 
+                tabItem.style.pointerEvents = ''; 
+            }
         } else {
             currentTabInfo = null;
             faviconImg.src = 'assets/pin_icon.svg';
             titleSpan.innerText = 'Internal Page (Cannot Add)';
-            if (tabItem) { tabItem.style.opacity = '0.4'; tabItem.style.pointerEvents = 'none'; }
+            if (urlSpan) urlSpan.innerText = '';
+            if (tabItem) { 
+                tabItem.style.opacity = '0.4'; 
+                tabItem.style.pointerEvents = 'none'; 
+            }
         }
     });
 }
@@ -340,7 +364,6 @@ async function updateAddPageUI() {
                 e.dataTransfer.setData('text/plain', site.id);
                 item.classList.add('dragging');
                 if (pinnedTrash) pinnedTrash.classList.add('visible');
-                // Ensure the drag image doesn't show the trash overlay if there was one
             };
             
             item.ondragend = () => {
@@ -349,6 +372,9 @@ async function updateAddPageUI() {
                     pinnedTrash.classList.remove('visible');
                     pinnedTrash.classList.remove('trash-hover');
                 }
+                pinnedGrid.querySelectorAll('.drop-target-left, .drop-target-right').forEach(el => {
+                    el.classList.remove('drop-target-left', 'drop-target-right');
+                });
             };
 
             pinnedGrid.appendChild(item);
@@ -356,47 +382,57 @@ async function updateAddPageUI() {
 
         pinnedGrid.ondragover = (e) => {
             e.preventDefault();
-            const draggingItem = pinnedGrid.querySelector('.dragging');
-            if (!draggingItem) return;
-            
-            const afterElement = (function() {
-                const draggables = [...pinnedGrid.querySelectorAll('.pinned-app-item:not(.dragging)')];
-                return draggables.reduce((closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const centerX = box.left + box.width / 2;
-                    const centerY = box.top + box.height / 2;
-                    const distance = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2));
-                    if (distance < closest.offset) {
-                        return { offset: distance, element: child };
-                    } else {
-                        return closest;
-                    }
-                }, { offset: Number.POSITIVE_INFINITY }).element;
-            })();
-            
-            if (afterElement) {
-                // If we're closer to the right side of the element, insert after it
-                const rect = afterElement.getBoundingClientRect();
-                if (e.clientX > rect.left + rect.width / 2) {
-                    pinnedGrid.insertBefore(draggingItem, afterElement.nextSibling);
-                } else {
-                    pinnedGrid.insertBefore(draggingItem, afterElement);
+            const draggables = [...pinnedGrid.querySelectorAll('.pinned-app-item:not(.dragging)')];
+            if (draggables.length === 0) return;
+
+            let closest = { offset: Number.POSITIVE_INFINITY, element: null, side: 'left' };
+            draggables.forEach(child => {
+                const box = child.getBoundingClientRect();
+                const centerX = box.left + box.width / 2;
+                const centerY = box.top + box.height / 2;
+                const distance = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2));
+                if (distance < closest.offset) {
+                    const side = e.clientX > centerX ? 'right' : 'left';
+                    closest = { offset: distance, element: child, side: side };
                 }
-            } else {
-                pinnedGrid.appendChild(draggingItem);
+            });
+
+            pinnedGrid.querySelectorAll('.drop-target-left, .drop-target-right').forEach(el => {
+                el.classList.remove('drop-target-left', 'drop-target-right');
+            });
+
+            if (closest.element) {
+                closest.element.classList.add(closest.side === 'left' ? 'drop-target-left' : 'drop-target-right');
+            }
+        };
+
+        pinnedGrid.ondragleave = (e) => {
+            if (e.target === pinnedGrid) {
+                pinnedGrid.querySelectorAll('.drop-target-left, .drop-target-right').forEach(el => {
+                    el.classList.remove('drop-target-left', 'drop-target-right');
+                });
             }
         };
 
         pinnedGrid.ondrop = (e) => {
             e.preventDefault();
-            const newOrder = [...pinnedGrid.querySelectorAll('.pinned-app-item')].map(el => {
-                return state.sites.find(s => s.id === el.dataset.id);
-            }).filter(Boolean);
+            const siteId = e.dataTransfer.getData('text/plain');
+            const targetEl = pinnedGrid.querySelector('.drop-target-left, .drop-target-right');
+            if (!siteId || !targetEl) return;
+
+            const isLeft = targetEl.classList.contains('drop-target-left');
+            const targetId = targetEl.dataset.id;
             
-            // Only update if order changed
-            if (JSON.stringify(newOrder.map(s => s.id)) !== JSON.stringify(state.sites.map(s => s.id))) {
-                chrome.storage.local.set({ sites: newOrder });
-            }
+            const sites = [...state.sites];
+            const fromIndex = sites.findIndex(s => s.id === siteId);
+            if (fromIndex === -1) return;
+            const [moved] = sites.splice(fromIndex, 1);
+            
+            let toIndex = sites.findIndex(s => s.id === targetId);
+            if (!isLeft) toIndex++;
+            
+            sites.splice(toIndex, 0, moved);
+            chrome.storage.local.set({ sites });
         };
     }
 
@@ -609,6 +645,9 @@ function updateSettingsUI() {
 
     const autoHideChk = document.getElementById('settings-auto-hide');
     if (autoHideChk) autoHideChk.checked = state.autoHideEnabled;
+
+    const hideCatDragChk = document.getElementById('settings-hide-category-drag');
+    if (hideCatDragChk) hideCatDragChk.checked = state.hideCategoryIconsOnDrag;
 }
 
 // Collapsible section toggle
@@ -698,6 +737,11 @@ document.getElementById('theme-panel-blur').addEventListener('input', (e) => {
 document.getElementById('settings-auto-hide').addEventListener('change', (e) => {
     state.autoHideEnabled = e.target.checked;
     chrome.storage.local.set({ autoHideEnabled: state.autoHideEnabled });
+});
+
+document.getElementById('settings-hide-category-drag').addEventListener('change', (e) => {
+    state.hideCategoryIconsOnDrag = e.target.checked;
+    chrome.storage.local.set({ hideCategoryIconsOnDrag: state.hideCategoryIconsOnDrag });
 });
 
 document.getElementById('settings-scroll-blocklist').addEventListener('input', (e) => {
