@@ -72,18 +72,24 @@
 
     // Viewport width proxy — report the real viewport width so sites like
     // Bing Images don't detect our CSS offset as a resize (preventing cw= loops).
-    const getRealInnerWidth = () => originalInnerWidth ? originalInnerWidth.get.call(window) : window.outerWidth;
+    const getRealInnerWidth = () => {
+        const rawWidth = originalInnerWidth ? originalInnerWidth.get.call(window) : window.outerWidth;
+        if (isFaking()) {
+            const sidebarWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--revived-sidebar-width')) || 48;
+            return rawWidth + sidebarWidth;
+        }
+        return rawWidth;
+    };
 
     Object.defineProperty(window, 'innerWidth', {
         get: function() {
             return getRealInnerWidth();
-        }
+        },
+        configurable: true
     });
 
     // clientWidth proxies — these are what most sites (including Bing Images)
     // actually read to compute viewport-dependent parameters like cw=.
-    // Our CSS offset narrows clientWidth by 48px; spoofing it back prevents
-    // reactive navigations while the visual layout offset still works.
     if (originalClientWidth) {
         Object.defineProperty(document.documentElement, 'clientWidth', {
             get: function() {

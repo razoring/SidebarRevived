@@ -2,66 +2,88 @@ importScripts('shared.js');
 
 let openSidePanels = 0;
 
+async function injectIntoTab(tabId) {
+    try {
+        const tab = await chrome.tabs.get(tabId);
+        if (!tab.url || !tab.url.startsWith('http')) return;
+
+        // Try to ping first
+        try {
+            await chrome.tabs.sendMessage(tabId, { type: 'PING' });
+            // If it responds, it's not stale (or already updated)
+            return;
+        } catch (e) {
+            // Failed to ping, likely stale or missing. Inject.
+        }
+
+        await chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['shared.js', 'content.js']
+        });
+        await chrome.scripting.executeScript({
+            target: { tabId: tabId, allFrames: true },
+            files: ['persistence.js']
+        });
+    } catch (e) { }
+}
+
 chrome.runtime.onInstalled.addListener(async (details) => {
     const defaults = {
-    sites: [],
-    tempSites: [],
-    activeSiteId: null,
-    activeSiteOwner: null,
-    isSettingsOpen: false,
-    isAddPageOpen: false,
-    isSidePanelOpen: false,
-    autoHideEnabled: false,
-    showCategoryIcons: false,
-    scrollBlocklist: [],
-    sidepanelBlocklist: [],
-    autoHideBlocklist: [],
-    customTheme: __SidebarRevived.getThemeDefaults()
-  };
+        sites: [],
+        tempSites: [],
+        activeSiteId: null,
+        activeSiteOwner: null,
+        isSettingsOpen: false,
+        isAddPageOpen: false,
+        isSidePanelOpen: false,
+        autoHideEnabled: false,
+        showCategoryIcons: false,
+        scrollBlocklist: [],
+        sidepanelBlocklist: [],
+        autoHideBlocklist: [],
+        customTheme: __SidebarRevived.getThemeDefaults()
+    };
 
-  await new Promise(resolve => {
-    chrome.storage.local.get(Object.keys(defaults), (result) => {
-      const toSet = {};
-      for (const key in defaults) {
-        if (result[key] === undefined) {
-          toSet[key] = defaults[key];
-        }
-      }
-      if (Object.keys(toSet).length > 0) {
-        chrome.storage.local.set(toSet, resolve);
-      } else {
-        resolve();
-      }
+    await new Promise(resolve => {
+        chrome.storage.local.get(Object.keys(defaults), (result) => {
+            const toSet = {};
+            for (const key in defaults) {
+                if (result[key] === undefined) {
+                    toSet[key] = defaults[key];
+                }
+            }
+            if (Object.keys(toSet).length > 0) {
+                chrome.storage.local.set(toSet, resolve);
+            } else {
+                resolve();
+            }
+        });
     });
-  });
 
-  chrome.contextMenus.create({
-    id: "send_to_sidebar",
-    title: "Send to Sidebar",
-    contexts: ["page"]
-  });
+    chrome.contextMenus.create({
+        id: "send_to_sidebar",
+        title: "Send to Sidebar",
+        contexts: ["page"]
+    });
 
-  // Inject into existing tabs
-  const tabs = await chrome.tabs.query({});
-  for (const tab of tabs) {
-    if (!tab.url || !tab.url.startsWith('http')) continue;
-    chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['shared.js', 'content.js']
-    }).catch(() => { });
-
-    chrome.scripting.executeScript({
-      target: { tabId: tab.id, allFrames: true },
-      files: ['persistence.js']
-    }).catch(() => { });
-  }
-
-  if (details.reason === 'install') {
-    const windows = await chrome.windows.getAll({ populate: false });
-    if (windows.length > 0) {
-      chrome.sidePanel.open({ windowId: windows[0].id }).catch(() => {});
+    // Inject into existing tabs
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+        injectIntoTab(tab.id);
     }
-  }
+
+    if (details.reason === 'install') {
+        const windows = await chrome.windows.getAll({ populate: false });
+        if (windows.length > 0) {
+            chrome.sidePanel.open({ windowId: windows[0].id }).catch(() => { });
+        }
+    }
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith('http')) {
+        injectIntoTab(tabId);
+    }
 });
 
 // Reset state on worker startup. Since the worker is kept alive while the panel is open, 
@@ -89,17 +111,25 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => console.error(error));
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'open_side_panel') {
-    chrome.sidePanel.open({ windowId: sender.tab.windowId });
-  } else if (message.ping) {
-    // Re-affirm open state if background woke up and panel is actually active
-    if (openSidePanels > 0) chrome.storage.local.set({ isSidePanelOpen: true });
-    sendResponse({ status: 'alive' });
-  } else if (message.action === 'add_current_tab') {
-    chrome.sidePanel.open({ windowId: sender.tab.windowId }).then(() => {
-      chrome.storage.local.set({ isAddPageOpen: true, isSettingsOpen: false });
-    });
-  }
+    if (message.action === 'open_side_panel') {
+        if (sender.tab && sender.tab.windowId) {
+            chrome.sidePanel.open({ windowId: sender.tab.windowId }).catch(() => { });
+        }
+    } else if (message.action === 'add_current_tab') {
+        if (sender.tab) {
+            const newSite = __SidebarRevived.createSiteFromTab(sender.tab);
+            chrome.storage.local.get(['sites'], (result) => {
+                const sites = result.sites || [];
+                if (!sites.find(s => s.url === newSite.url)) {
+                    sites.push(newSite);
+                    chrome.storage.local.set({ sites });
+                }
+            });
+        }
+    } else if (message.ping) {
+        sendResponse({ status: 'alive' });
+    }
+    return true;
 });
 
 // Track side panel lifecycle via port connection

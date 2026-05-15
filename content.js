@@ -17,7 +17,18 @@
     let isResizing = false;
     let autoHideEnabled = false;
 
-    let state = {
+    // Cleanup previous instance listeners
+    if (globalThis.__SidebarRevived_Cleanup_Active) {
+        globalThis.__SidebarRevived_Cleanup_Active();
+    }
+    const abortController = new AbortController();
+    const { signal } = abortController;
+    globalThis.__SidebarRevived_Cleanup_Active = () => abortController.abort();
+
+    var SR = globalThis.__SidebarRevived;
+    if (!SR) return;
+
+    var state = {
         sites: [],
         tempSites: [],
         activeSiteId: null,
@@ -28,11 +39,9 @@
         autoHideBlocklist: [],
         isSidePanelOpen: false,
         isSettingsOpen: false,
-        customTheme: null
+        customTheme: SR.getThemeDefaults(),
+        initialized: false
     };
-
-    const SR = globalThis.__SidebarRevived;
-    if (!SR) return;
     let currentTheme = null;
 
     function applyTheme() {
@@ -48,11 +57,7 @@
     }
 
     function isOrphaned() {
-        try {
-            return typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id;
-        } catch (e) {
-            return true;
-        }
+        return SR.isOrphaned();
     }
 
     function selfDestruct() {
@@ -99,7 +104,7 @@
         document.documentElement.appendChild(style);
     }
 
-    function init() {
+    async function init() {
         // Cleanup any existing instances (from previous script injections)
         document.querySelectorAll('#revived-edge-sidebar-host').forEach(el => el.remove());
         document.querySelectorAll('#revived-sidebar-host-styles').forEach(el => el.remove());
@@ -133,7 +138,7 @@
         resizer.className = 'edge-sidebar-resizer';
 
         resizer.onmousedown = (e) => {
-            if (isOrphaned()) { selfDestruct(); return; }
+            if (isOrphaned()) { return; }
             isResizing = true;
             document.body.style.userSelect = 'none';
             iframe.style.pointerEvents = 'none';
@@ -150,8 +155,11 @@
         closeBtn.className = 'edge-sidebar-header-close';
         closeBtn.innerText = "✕";
         closeBtn.onclick = () => {
-            if (isOrphaned()) { selfDestruct(); return; }
+            if (isOrphaned()) { /* handle via bridge if possible */ }
+            state.activeSiteId = null;
+            state.activeSiteOwner = null;
             SR.safeStorage.set({ activeSiteId: null, activeSiteOwner: null });
+            render();
         };
 
         header.appendChild(headerTitle);
@@ -182,7 +190,7 @@
             if (newWidth > 200 && newWidth < 800) {
                 contentArea.style.width = newWidth + 'px';
             }
-        });
+        }, { signal });
 
         window.addEventListener('mouseup', async (e) => {
             if (isResizing) {
@@ -234,20 +242,22 @@
                         SR.safeStorage.set({ sidebarWidth: newWidth });
                 }
             }
-        });
+        }, { signal });
 
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-            chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-                if (isOrphaned()) { selfDestruct(); return; }
-                if (msg.type === 'PING') {
-                    sendResponse({ type: 'PONG' });
-                }
-            });
+            try {
+                chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+                    if (isOrphaned()) { return; }
+                    if (msg.type === 'PING') {
+                        sendResponse({ type: 'PONG' });
+                    }
+                });
+            } catch (e) {}
         }
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
-                if (isOrphaned()) { selfDestruct(); return; }
+                if (isOrphaned()) { /* Wait for new script to take over */ return; }
                 SR.safeStorage.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
                     state = { ...state, ...result };
                     if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
@@ -255,17 +265,52 @@
                     render();
                 });
             }
+        }, { signal });
+
+        host.addEventListener('mouseenter', () => {
+            if (isOrphaned()) { /* Bridge will handle interactions */ return; }
+            SR.safeStorage.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
+                state = { ...state, ...result };
+                if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
+                applyTheme();
+                render();
+            });
+        }, { signal });
+
+        // Coordinated Handover + Storage
+        const handoverPromise = new Promise(resolve => {
+            const hHandler = (e) => {
+                if (!state.initialized && e.detail && e.detail.block1) {
+                    state = { ...state, ...e.detail.block1, initialized: true };
+                    window.removeEventListener('REVIVED_HANDOVER_RES', hHandler);
+                    resolve(true);
+                }
+            };
+            window.addEventListener('REVIVED_HANDOVER_RES', hHandler, { signal });
+            setTimeout(() => resolve(false), 80);
+            window.dispatchEvent(new CustomEvent('REVIVED_HANDOVER_REQ'));
         });
 
-        SR.safeStorage.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
-            state = { ...state, ...result };
-            if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
-            applyTheme();
-            render();
+        const storagePromise = new Promise(resolve => {
+            SR.safeStorage.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
+                state = { ...state, ...result, initialized: true };
+                if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
+                globalThis.__SidebarRevived_CurrentState = globalThis.__SidebarRevived_CurrentState || {};
+                globalThis.__SidebarRevived_CurrentState.block1 = { ...state, initialized: true };
+                resolve(true);
+            });
         });
+
+        await handoverPromise;
+        applyTheme();
+        render();
+        await storagePromise;
+        applyTheme();
+        render();
+    }
 
         SR.safeStorage.onChanged((changes) => {
-            if (isOrphaned()) { selfDestruct(); return; }
+            if (isOrphaned()) { return; }
             let needsRender = false;
             if (changes.sites !== undefined) {
                 state.sites = changes.sites.newValue;
@@ -318,9 +363,12 @@
                 lastRenderState = null;
                 needsRender = true;
             }
-            if (needsRender) render();
+            if (needsRender) {
+                render();
+                globalThis.__SidebarRevived_CurrentState = globalThis.__SidebarRevived_CurrentState || {};
+                globalThis.__SidebarRevived_CurrentState.block1 = { ...state, initialized: true };
+            }
         });
-    }
 
     let autoHide = null;
     let autoHideArmed = false;
@@ -360,18 +408,25 @@
             getSites: () => state.sites,
             getTempSites: () => state.tempSites || [],
             onSiteClick: (siteId) => {
-                if (isOrphaned()) { selfDestruct(); return; }
+                if (isOrphaned()) { /* bridged */ }
                 const newActiveId = (state.activeSiteId === siteId) ? null : siteId;
-                SR.safeStorage.set({ activeSiteId: newActiveId, activeSiteOwner: newActiveId ? 'inpage' : null, isSettingsOpen: false });
+                const newOwner = newActiveId ? 'inpage' : null;
+                state.activeSiteId = newActiveId;
+                state.activeSiteOwner = newOwner;
+                state.isSettingsOpen = false;
+                SR.safeStorage.set({ activeSiteId: newActiveId, activeSiteOwner: newOwner, isSettingsOpen: false });
+                render();
             },
             onAddSite: () => {
-                if (isOrphaned()) { selfDestruct(); return; }
-                try { chrome.runtime.sendMessage({ action: 'add_current_tab' }); } catch (e) {}
+                if (isOrphaned()) { /* SR.safeSendMessage will bridge */ }
+                SR.safeSendMessage({ action: 'add_current_tab' });
             },
             onSettingsClick: () => {
-                if (isOrphaned()) { selfDestruct(); return; }
+                if (isOrphaned()) { /* bridged */ }
+                state.isSettingsOpen = true;
                 SR.safeStorage.set({ isSettingsOpen: true });
-                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) {}
+                SR.safeSendMessage({ action: 'open_side_panel' });
+                render();
             },
             getIconOpacity: (site) => (site.id === state.activeSiteId) ? '1' : '0.8'
         });
@@ -379,6 +434,11 @@
 
     function render() {
         if (!container) return;
+        
+        // Apply theme even if not fully initialized to prevent "black icons"
+        applyTheme();
+        
+        if (!state.initialized && !state.sites.length) return;
 
         const ah = getAutoHide();
         const hostname = window.location.hostname;
@@ -529,10 +589,19 @@
     let sidepanelBlocklist = [];
     let autoHideBlocklist = [];
 
+    // Cleanup previous instance listeners
+    if (globalThis.__SidebarRevived_Cleanup_Idle) {
+        globalThis.__SidebarRevived_Cleanup_Idle();
+    }
+    const abortController = new AbortController();
+    const { signal } = abortController;
+    globalThis.__SidebarRevived_Cleanup_Idle = () => abortController.abort();
+
     let autoHideEnabled = false;
-    let currentTheme = null;
-    const SR = globalThis.__SidebarRevived;
+    var SR = globalThis.__SidebarRevived;
     if (!SR) return;
+    let currentTheme = SR.getThemeDefaults();
+    let initialized = false;
     const { applyThemeStyles, AutoHideManager } = SR;
 
     const FixedElementManager = {
@@ -550,7 +619,7 @@
                 this.timeout = setTimeout(() => this.scan(), 500);
             });
             this.observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
-            window.addEventListener('resize', this.handleResize);
+            window.addEventListener('resize', this.handleResize, { signal });
         },
 
         stop() {
@@ -631,11 +700,7 @@
 
 
     function isOrphaned() {
-        try {
-            return typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id;
-        } catch (e) {
-            return true;
-        }
+        return SR.isOrphaned();
     }
 
     function selfDestruct() {
@@ -689,7 +754,7 @@
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
-                if (isOrphaned()) { selfDestruct(); return; }
+                if (isOrphaned()) { return; }
                 SR.safeStorage.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled'], (result) => {
                     sites = result.sites || [];
                     tempSites = result.tempSites || [];
@@ -697,10 +762,40 @@
                     activeSiteId = result.activeSiteId;
                     activeSiteOwner = result.activeSiteOwner || null;
                     if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
+                    initialized = true;
                     render();
                 });
             }
-        });
+        }, { signal });
+
+        host.addEventListener('mouseenter', () => {
+            if (isOrphaned()) { return; }
+            SR.safeStorage.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled'], (result) => {
+                sites = result.sites || [];
+                tempSites = result.tempSites || [];
+                isSidePanelOpen = !!result.isSidePanelOpen;
+                activeSiteId = result.activeSiteId;
+                activeSiteOwner = result.activeSiteOwner || null;
+                if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
+                initialized = true;
+                render();
+            });
+        }, { signal });
+
+        const onHandover = (e) => {
+            if (!initialized && e.detail && e.detail.block2) {
+                const s = e.detail.block2;
+                sites = s.sites; tempSites = s.tempSites;
+                isSidePanelOpen = s.isSidePanelOpen; activeSiteId = s.activeSiteId;
+                activeSiteOwner = s.activeSiteOwner; autoHideEnabled = s.autoHideEnabled;
+                currentTheme = s.currentTheme;
+                initialized = true;
+                applyTheme(currentTheme);
+                render();
+            }
+        };
+        window.addEventListener('REVIVED_HANDOVER_RES', onHandover, { signal });
+        window.dispatchEvent(new CustomEvent('REVIVED_HANDOVER_REQ'));
 
         SR.safeStorage.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled'], (result) => {
             sites = result.sites || [];
@@ -716,11 +811,15 @@
                 currentTheme = result.customTheme;
                 applyTheme(currentTheme);
             }
+            initialized = true;
             render();
+            // Store for next handover
+            globalThis.__SidebarRevived_CurrentState = globalThis.__SidebarRevived_CurrentState || {};
+            globalThis.__SidebarRevived_CurrentState.block2 = { sites, tempSites, isSidePanelOpen, activeSiteId, activeSiteOwner, autoHideEnabled, currentTheme };
         });
 
         SR.safeStorage.onChanged((changes) => {
-            if (isOrphaned()) { selfDestruct(); return; }
+            if (isOrphaned()) { return; }
             if (changes.sites) sites = changes.sites.newValue;
             if (changes.tempSites) tempSites = changes.tempSites.newValue;
             if (changes.isSidePanelOpen) isSidePanelOpen = changes.isSidePanelOpen.newValue;
@@ -743,6 +842,8 @@
                 idleAutoHideArmed = false;
             }
             render();
+            globalThis.__SidebarRevived_CurrentState = globalThis.__SidebarRevived_CurrentState || {};
+            globalThis.__SidebarRevived_CurrentState.block2 = { sites, tempSites, isSidePanelOpen, activeSiteId, activeSiteOwner, autoHideEnabled, currentTheme };
         });
     }
 
@@ -785,25 +886,27 @@
             getSites: () => sites,
             getTempSites: () => tempSites,
             onSiteClick: (siteId) => {
-                if (isOrphaned()) { selfDestruct(); return; }
+                if (isOrphaned()) { /* bridged */ }
+                activeSiteId = siteId;
+                activeSiteOwner = 'sidepanel';
                 SR.safeStorage.set({ activeSiteId: siteId, activeSiteOwner: 'sidepanel' });
-                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) {}
+                SR.safeSendMessage({ action: 'open_side_panel' });
+                render();
             },
             onAddSite: () => {
-                if (isOrphaned()) { selfDestruct(); return; }
-                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                    chrome.runtime.sendMessage({ action: 'add_current_tab' });
-                }
+                if (isOrphaned()) { /* bridged */ }
+                SR.safeSendMessage({ action: 'add_current_tab' });
             },
             onSettingsClick: () => {
-                if (isOrphaned()) { selfDestruct(); return; }
+                if (isOrphaned()) { /* bridged */ }
                 SR.safeStorage.set({ isSettingsOpen: true });
-                try { chrome.runtime.sendMessage({ action: 'open_side_panel' }); } catch (e) {}
+                SR.safeSendMessage({ action: 'open_side_panel' });
             }
         });
     }
 
     async function render() {
+        if (!initialized) return;
         const ah = getAutoHide();
         const hostname = window.location.hostname;
         const isSidepanelBlocked = sidepanelBlocklist.some(d => hostname.includes(d));

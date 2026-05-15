@@ -1,29 +1,54 @@
 (() => {
-    if (globalThis.__SidebarRevived) return;
+    if (globalThis.__SidebarRevived && !globalThis.__SidebarRevived.isOrphaned()) return;
     const S = {};
-    S.isOrphaned = () => typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id;
+    S.isOrphaned = () => {
+        try {
+            return !chrome.runtime || !chrome.runtime.id || !chrome.runtime.getURL;
+        } catch (e) {
+            return true;
+        }
+    };
+
     S.safeStorage = {
         get: (keys, cb) => {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            if (!S.isOrphaned()) {
                 try {
                     chrome.storage.local.get(keys, (res) => {
-                        if (chrome.runtime.lastError) { if (cb) cb({}); }
-                        else if (cb) cb(res);
+                        if (chrome.runtime.lastError) return;
+                        if (cb) cb(res);
                     });
                     return;
                 } catch (e) { }
             }
-            if (cb) cb({});
+            // Orphaned! Try to bridge to a healthy script instance on the same page
+            if (typeof window !== 'undefined') {
+                const requestId = 'req_' + Math.random();
+                const handler = (e) => {
+                    if (e.data && e.data.type === 'REVIVED_BRIDGE_RES' && e.data.requestId === requestId) {
+                        window.removeEventListener('message', handler);
+                        if (cb) cb(e.data.result);
+                    }
+                };
+                window.addEventListener('message', handler);
+                window.postMessage({ type: 'REVIVED_BRIDGE_REQ', requestId, action: 'get', keys }, '*');
+            } else if (cb) {
+                cb({});
+            }
         },
         set: (obj, cb) => {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            if (!S.isOrphaned()) {
                 try {
                     chrome.storage.local.set(obj, cb);
+                    return;
                 } catch (e) { }
+            }
+            // Orphaned! Bridge the set request
+            if (typeof window !== 'undefined') {
+                window.postMessage({ type: 'REVIVED_BRIDGE_REQ', action: 'set', obj }, '*');
             }
         },
         onChanged: (cb) => {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+            if (!S.isOrphaned()) {
                 try {
                     const wrapper = (changes, namespace) => {
                         if (namespace === 'local') cb(changes);
@@ -35,7 +60,7 @@
             return null;
         },
         removeChanged: (wrapper) => {
-            if (wrapper && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+            if (wrapper && !S.isOrphaned()) {
                 try {
                     chrome.storage.onChanged.removeListener(wrapper);
                 } catch (e) { }
@@ -43,18 +68,81 @@
         }
     };
 
+    // Cleanup previous shared instance listeners
+    if (globalThis.__SidebarRevived_Cleanup_Shared && typeof window !== 'undefined') {
+        globalThis.__SidebarRevived_Cleanup_Shared();
+    }
+    const sharedAbort = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    if (sharedAbort && typeof window !== 'undefined') {
+        globalThis.__SidebarRevived_Cleanup_Shared = () => sharedAbort.abort();
+    }
+    const sharedSignal = sharedAbort ? sharedAbort.signal : null;
+
+    S.safeSendMessage = (msg) => {
+        if (!S.isOrphaned()) {
+            try {
+                chrome.runtime.sendMessage(msg);
+                return;
+            } catch (e) { }
+        }
+        if (typeof window !== 'undefined') {
+            window.postMessage({ type: 'REVIVED_BRIDGE_REQ', action: 'sendMessage', message: msg }, '*');
+        }
+    };
+
+    // Bridge Listener (for healthy scripts to help orphans)
+    if (typeof window !== 'undefined') {
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'REVIVED_BRIDGE_REQ') {
+                try {
+                    if (!S.isOrphaned()) {
+                        if (e.data.action === 'get') {
+                            try {
+                                chrome.storage.local.get(e.data.keys, (result) => {
+                                    try {
+                                        window.postMessage({ type: 'REVIVED_BRIDGE_RES', requestId: e.data.requestId, result }, '*');
+                                    } catch (e) { }
+                                });
+                            } catch (e) { }
+                        } else if (e.data.action === 'set') {
+                            try {
+                                chrome.storage.local.set(e.data.obj);
+                            } catch (e) { }
+                        } else if (e.data.action === 'sendMessage') {
+                            try { chrome.runtime.sendMessage(e.data.message); } catch (err) { }
+                        }
+                    }
+                } catch (err) { }
+            }
+        }, { signal: sharedSignal });
+
+        // Handover Mechanism: New scripts can request state from old (stale) ones
+        window.addEventListener('REVIVED_HANDOVER_REQ', (e) => {
+            if (globalThis.__SidebarRevived_CurrentState) {
+                window.dispatchEvent(new CustomEvent('REVIVED_HANDOVER_RES', { 
+                    detail: globalThis.__SidebarRevived_CurrentState 
+                }));
+            }
+        }, { signal: sharedSignal });
+    }
+
     // ============ SVG ICONS ============
 
     const fetchSvg = (path, fallback) => {
-        if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getURL) {
+        if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getURL || S.isOrphaned()) {
             return Promise.resolve(fallback || '<svg viewBox="0 0 24 24"></svg>');
         }
-        return fetch(chrome.runtime.getURL(path))
-            .then(r => r.text())
-            .catch(err => {
-                console.error(`Failed to load SVG: ${path}`, err);
-                return fallback || '<svg viewBox="0 0 24 24"></svg>';
-            });
+        try {
+            const url = chrome.runtime.getURL(path);
+            return fetch(url)
+                .then(r => r.text())
+                .catch(err => {
+                    console.error(`Failed to load SVG: ${path}`, err);
+                    return fallback || '<svg viewBox="0 0 24 24"></svg>';
+                });
+        } catch (e) {
+            return Promise.resolve(fallback || '<svg viewBox="0 0 24 24"></svg>');
+        }
     };
 
     S.svgReady = Promise.all([
@@ -74,11 +162,11 @@
     // ============ DEFAULT THEME ============
 
     S.detectBrowserState = function () {
-        const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+        const ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
         return {
             isEdge: ua.includes('Edg'),
-            isDark: typeof matchMedia !== 'undefined'
-                ? matchMedia('(prefers-color-scheme: dark)').matches
+            isDark: (typeof window !== 'undefined' && typeof window.matchMedia !== 'undefined')
+                ? window.matchMedia('(prefers-color-scheme: dark)').matches
                 : true
         };
     };
