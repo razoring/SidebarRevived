@@ -1,6 +1,47 @@
 (() => {
     if (globalThis.__SidebarRevived) return;
     const S = {};
+    S.isOrphaned = () => typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id;
+    S.safeStorage = {
+        get: (keys, cb) => {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                try {
+                    chrome.storage.local.get(keys, (res) => {
+                        if (chrome.runtime.lastError) { if (cb) cb({}); }
+                        else if (cb) cb(res);
+                    });
+                    return;
+                } catch (e) { }
+            }
+            if (cb) cb({});
+        },
+        set: (obj, cb) => {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                try {
+                    chrome.storage.local.set(obj, cb);
+                } catch (e) { }
+            }
+        },
+        onChanged: (cb) => {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+                try {
+                    const wrapper = (changes, namespace) => {
+                        if (namespace === 'local') cb(changes);
+                    };
+                    chrome.storage.onChanged.addListener(wrapper);
+                    return wrapper;
+                } catch (e) { }
+            }
+            return null;
+        },
+        removeChanged: (wrapper) => {
+            if (wrapper && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+                try {
+                    chrome.storage.onChanged.removeListener(wrapper);
+                } catch (e) { }
+            }
+        }
+    };
 
     // ============ SVG ICONS ============
 
@@ -340,9 +381,9 @@
                         targetArr.push(moved);
                     }
                     if (data.isTemp) {
-                        chrome.storage.local.set({ tempSites: sourceList, sites: targetArr });
+                        S.safeStorage.set({ tempSites: sourceList, sites: targetArr });
                     } else {
-                        chrome.storage.local.set({ sites: sourceList, tempSites: targetArr });
+                        S.safeStorage.set({ sites: sourceList, tempSites: targetArr });
                     }
                 } else {
                     if (isBeginning) {
@@ -350,7 +391,7 @@
                     } else {
                         sourceList.push(moved);
                     }
-                    chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: sourceList });
+                    S.safeStorage.set({ [isTempList ? 'tempSites' : 'sites']: sourceList });
                 }
             } catch (e) { }
         }
@@ -471,15 +512,15 @@
                                 const toIndex = targetList.findIndex(s => s.id === site.id);
                                 targetList.splice(toIndex, 0, moved);
                                 if (data.isTemp) {
-                                    chrome.storage.local.set({ tempSites: sourceList, sites: targetList });
+                                    S.safeStorage.set({ tempSites: sourceList, sites: targetList });
                                 } else {
-                                    chrome.storage.local.set({ sites: sourceList, tempSites: targetList });
+                                    S.safeStorage.set({ sites: sourceList, tempSites: targetList });
                                 }
                             } else {
                                 let toIndex = sourceList.findIndex(s => s.id === site.id);
                                 if (fromIndex < toIndex) toIndex--;
                                 sourceList.splice(toIndex, 0, moved);
-                                chrome.storage.local.set({ [isTempList ? 'tempSites' : 'sites']: sourceList });
+                                S.safeStorage.set({ [isTempList ? 'tempSites' : 'sites']: sourceList });
                             }
                         }
                     } catch (e) { }
@@ -560,12 +601,12 @@
                     const data = JSON.parse(e.dataTransfer.getData('application/json'));
                     if (data.id) {
                         if (data.isTemp) {
-                            chrome.storage.local.set({ tempSites: getTempSites().filter(s => s.id !== data.id) });
+                            S.safeStorage.set({ tempSites: getTempSites().filter(s => s.id !== data.id) });
                         } else {
-                            chrome.storage.local.set({ sites: getSites().filter(s => s.id !== data.id) });
+                            S.safeStorage.set({ sites: getSites().filter(s => s.id !== data.id) });
                         }
                         if (activeSiteId === data.id) {
-                            chrome.storage.local.set({ activeSiteId: null, activeSiteOwner: null });
+                            S.safeStorage.set({ activeSiteId: null, activeSiteOwner: null });
                         }
                     }
                 } catch (evt) { }
