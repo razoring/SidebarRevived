@@ -354,9 +354,14 @@ async function updateAddPageUI() {
 
     if (pinnedGrid) {
         const oldRects = new Map();
-        pinnedGrid.querySelectorAll('.pinned-app-item').forEach(el => {
-            if (el.dataset.id) oldRects.set(el.dataset.id, el.getBoundingClientRect());
-        });
+        const gridRect = pinnedGrid.getBoundingClientRect();
+        
+        // Only capture positions if the grid was already visible (prevents animation on open)
+        if (gridRect.width > 0 && gridRect.height > 0) {
+            pinnedGrid.querySelectorAll('.pinned-app-item').forEach(el => {
+                if (el.dataset.id) oldRects.set(el.dataset.id, el.getBoundingClientRect());
+            });
+        }
 
         pinnedGrid.innerHTML = '';
         state.sites.forEach((site) => {
