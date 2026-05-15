@@ -469,6 +469,8 @@ async function updateAddPageUI() {
         }
     }
 
+    renderMostVisited();
+
     // Load close_icon.svg for back button (same as settings panel)
     const backBtn = document.getElementById('add-page-back-btn');
     if (backBtn && !backBtn.dataset.iconLoaded) {
@@ -860,3 +862,45 @@ document.getElementById('import-theme-file').addEventListener('change', (e) => {
 document.getElementById('reset-theme-btn').addEventListener('click', () => {
     chrome.storage.local.set({ customTheme: getThemeDefaults() });
 });
+
+function renderMostVisited() {
+    const list = document.getElementById('most-visited-list');
+    if (!list) return;
+
+    chrome.topSites.get((topSites) => {
+        if (!topSites || topSites.length === 0) {
+            list.innerHTML = '<div class="search-status">No frequent sites found</div>';
+            return;
+        }
+        list.innerHTML = '';
+        topSites.slice(0, 10).forEach(site => {
+            const item = document.createElement('div');
+            item.className = 'search-result-item'; 
+            const faviconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(site.url)}`;
+            const displayTitle = site.title || new URL(site.url).hostname.replace('www.', '');
+
+            item.innerHTML = `
+                <img src="${faviconUrl}" alt="" />
+                <div style="display:flex; flex-direction:column; min-width:0; flex:1;">
+                    <span class="result-title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayTitle}</span>
+                    <span class="result-domain" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; opacity:0.7;">${site.url}</span>
+                </div>
+                <div class="result-add-btn"></div>
+            `;
+            const addBtn = item.querySelector('.result-add-btn');
+            addBtn.innerHTML = __SidebarRevived.ADD_ICON_SVG;
+
+            item.onclick = () => {
+                const newSite = {
+                    id: 'site-' + Date.now() + Math.random().toString(36).substr(2, 5),
+                    title: displayTitle,
+                    url: site.url,
+                    faviconUrl,
+                    initial: displayTitle.charAt(0).toUpperCase()
+                };
+                chrome.storage.local.set({ sites: [...state.sites, newSite] });
+            };
+            list.appendChild(item);
+        });
+    });
+}

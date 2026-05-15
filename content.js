@@ -53,10 +53,12 @@
     }
 
     function loadCSS() {
-        const sharedLink = document.createElement('link');
-        sharedLink.rel = 'stylesheet';
-        sharedLink.href = chrome.runtime.getURL('sidepanel.css');
-        shadow.appendChild(sharedLink);
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+            const sharedLink = document.createElement('link');
+            sharedLink.rel = 'stylesheet';
+            sharedLink.href = chrome.runtime.getURL('sidepanel.css');
+            shadow.appendChild(sharedLink);
+        }
     }
 
     function injectHostStyles() {
@@ -127,7 +129,9 @@
         closeBtn.className = 'edge-sidebar-header-close';
         closeBtn.innerText = "✕";
         closeBtn.onclick = () => {
-            chrome.storage.local.set({ activeSiteId: null, activeSiteOwner: null });
+            if (typeof chrome !== 'undefined' && chrome.storage) {
+                chrome.storage.local.set({ activeSiteId: null, activeSiteOwner: null });
+            }
         };
 
         header.appendChild(headerTitle);
@@ -207,77 +211,83 @@
                                 document.documentElement.style.removeProperty('--revived-sidebar-width');
                             }
                         }
-                        chrome.storage.local.set({ sidebarWidth: newWidth });
+                        if (typeof chrome !== 'undefined' && chrome.storage) {
+                            chrome.storage.local.set({ sidebarWidth: newWidth });
+                        }
                 }
             }
         });
 
-        chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-            if (msg.type === 'PING') {
-                sendResponse({ type: 'PONG' });
-            }
-        });
-
-        chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
-            state = { ...state, ...result };
-            if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
-            applyTheme();
-            render();
-        });
-
-        chrome.storage.onChanged.addListener((changes, namespace) => {
-            if (namespace === 'local') {
-                let needsRender = false;
-                if (changes.sites !== undefined) {
-                    state.sites = changes.sites.newValue;
-                    lastRenderState = null;
-                    needsRender = true;
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+            chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+                if (msg.type === 'PING') {
+                    sendResponse({ type: 'PONG' });
                 }
-                if (changes.tempSites !== undefined) {
-                    state.tempSites = changes.tempSites.newValue;
-                    lastRenderState = null;
-                    needsRender = true;
-                }
-                if (changes.autoHideEnabled !== undefined) {
-                    autoHideEnabled = changes.autoHideEnabled.newValue;
-                    if (autoHide) {
-                        autoHide.cleanup();
-                        autoHideArmed = false;
+            });
+        }
+
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+            chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
+                state = { ...state, ...result };
+                if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
+                applyTheme();
+                render();
+            });
+
+            chrome.storage.onChanged.addListener((changes, namespace) => {
+                if (namespace === 'local') {
+                    let needsRender = false;
+                    if (changes.sites !== undefined) {
+                        state.sites = changes.sites.newValue;
+                        lastRenderState = null;
+                        needsRender = true;
                     }
-                    needsRender = true;
+                    if (changes.tempSites !== undefined) {
+                        state.tempSites = changes.tempSites.newValue;
+                        lastRenderState = null;
+                        needsRender = true;
+                    }
+                    if (changes.autoHideEnabled !== undefined) {
+                        autoHideEnabled = changes.autoHideEnabled.newValue;
+                        if (autoHide) {
+                            autoHide.cleanup();
+                            autoHideArmed = false;
+                        }
+                        needsRender = true;
+                    }
+                    if (changes.isSidePanelOpen !== undefined) {
+                        state.isSidePanelOpen = changes.isSidePanelOpen.newValue;
+                        lastRenderState = null;
+                        needsRender = true;
+                    }
+                    if (changes.activeSiteOwner !== undefined) {
+                        state.activeSiteOwner = changes.activeSiteOwner.newValue;
+                        lastRenderState = null;
+                        needsRender = true;
+                    }
+                    if (changes.activeSiteId !== undefined) {
+                        state.activeSiteId = changes.activeSiteId.newValue;
+                        lastRenderState = null;
+                        needsRender = true;
+                    }
+                    if (changes.sidepanelBlocklist !== undefined) {
+                        state.sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
+                        needsRender = true;
+                    }
+                    if (changes.customTheme !== undefined) {
+                        state.customTheme = changes.customTheme.newValue;
+                        applyTheme();
+                        needsRender = true;
+                    }
+                    if (changes.isSettingsOpen !== undefined) {
+                        state.isSettingsOpen = changes.isSettingsOpen.newValue;
+                        lastRenderState = null;
+                        needsRender = true;
+                    }
+                    if (needsRender) render();
                 }
-                if (changes.isSidePanelOpen !== undefined) {
-                    state.isSidePanelOpen = changes.isSidePanelOpen.newValue;
-                    lastRenderState = null;
-                    needsRender = true;
-                }
-                if (changes.activeSiteOwner !== undefined) {
-                    state.activeSiteOwner = changes.activeSiteOwner.newValue;
-                    lastRenderState = null;
-                    needsRender = true;
-                }
-                if (changes.activeSiteId !== undefined) {
-                    state.activeSiteId = changes.activeSiteId.newValue;
-                    lastRenderState = null;
-                    needsRender = true;
-                }
-                if (changes.sidepanelBlocklist !== undefined) {
-                    state.sidepanelBlocklist = changes.sidepanelBlocklist.newValue;
-                    needsRender = true;
-                }
-                if (changes.customTheme !== undefined) {
-                    state.customTheme = changes.customTheme.newValue;
-                    applyTheme();
-                    needsRender = true;
-                }
-                if (changes.isSettingsOpen !== undefined) {
-                    state.isSettingsOpen = changes.isSettingsOpen.newValue;
-                    lastRenderState = null;
-                    needsRender = true;
-                }
-                if (needsRender) render();
-            }
-        });
+            });
+        }
 
     }
 
@@ -595,10 +605,12 @@
         applyThemeStyles(host, __SidebarRevived.getThemeDefaults());
         shadow = host.attachShadow({ mode: 'closed' });
 
-        const sharedLink = document.createElement('link');
-        sharedLink.rel = 'stylesheet';
-        sharedLink.href = chrome.runtime.getURL('sidepanel.css');
-        shadow.appendChild(sharedLink);
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+            const sharedLink = document.createElement('link');
+            sharedLink.rel = 'stylesheet';
+            sharedLink.href = chrome.runtime.getURL('sidepanel.css');
+            shadow.appendChild(sharedLink);
+        }
 
         sidebarContainer = document.createElement('div');
         sidebarContainer.id = 'revived-idle-sidebar';

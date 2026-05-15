@@ -301,7 +301,7 @@ html {
 }
 
 .edge-sidebar-icon img {
-    border-radius: 50%;
+    border-radius: 3px;
     object-fit: contain;
 }
 
@@ -1032,7 +1032,7 @@ html {
 .pinned-app-item img {
     width: 28px;
     height: 28px;
-    border-radius: 50%;
+    border-radius: 6px;
     object-fit: contain;
     pointer-events: none;
 }
@@ -1301,4 +1301,22 @@ html {
     display: block;
     fill: currentColor;
     stroke: none;
+}
+
+.most-visited-container {
+    margin-top: 24px;
+}
+
+.most-visited-header {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--theme-font-color, #d6d6d6);
+    margin-bottom: 12px;
+    padding-left: 4px;
+}
+
+.most-visited-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }

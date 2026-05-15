@@ -9,7 +9,8 @@
     "sidePanel",
     "tabs",
     "contextMenus",
-    "scripting"
+    "scripting",
+    "topSites"
   ],
   "declarative_net_request": {
     "rule_resources": [
