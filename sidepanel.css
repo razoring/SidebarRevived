@@ -976,6 +976,28 @@ html {
     border-right: 2px solid var(--theme-accent-color, #0078D7);
 }
 
+/* Supplemental line like the sidepanel indicator */
+.pinned-app-item.drop-target-left::before,
+.pinned-app-item.drop-target-right::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: var(--theme-accent-color, #0078D7);
+    border-radius: 1px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.pinned-app-item.drop-target-left::before {
+    left: -6px;
+}
+
+.pinned-app-item.drop-target-right::after {
+    right: -6px;
+}
+
 @keyframes drop-glow-in {
     0% {
         opacity: 0;
