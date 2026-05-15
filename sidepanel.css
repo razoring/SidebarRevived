@@ -717,6 +717,12 @@ html {
     background: rgba(128, 128, 128, 0.2);
 }
 
+.settings-actions button.danger:hover {
+    background: #ff4d4d;
+    color: white;
+    border-color: #ff4d4d;
+}
+
 .settings-category {
     border: 1px solid var(--theme-divider-bg, rgba(128, 128, 128, 0.15));
     border-radius: 8px;

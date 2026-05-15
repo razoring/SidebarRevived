@@ -75,8 +75,13 @@
     const getRealInnerWidth = () => {
         const rawWidth = originalInnerWidth ? originalInnerWidth.get.call(window) : window.outerWidth;
         if (isFaking()) {
-            const sidebarWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--revived-sidebar-width')) || 48;
-            return rawWidth + sidebarWidth;
+            const style = getComputedStyle(document.documentElement);
+            const margin = parseInt(style.marginRight) || 0;
+            // Only add the width if the sidebar is actually pushing the layout (non-overlay)
+            if (margin > 0) {
+                const sidebarWidth = parseInt(style.getPropertyValue('--revived-sidebar-width')) || 48;
+                return rawWidth + sidebarWidth;
+            }
         }
         return rawWidth;
     };

@@ -981,3 +981,11 @@ document.getElementById('import-all-file').addEventListener('change', (e) => {
     };
     reader.readAsText(file);
 });
+
+document.getElementById('clear-all-data-btn').addEventListener('click', () => {
+    if (confirm("Are you sure you want to clear ALL data? This will reset your pinned sites, theme, and all settings. This action cannot be undone.")) {
+        chrome.storage.local.clear(() => {
+            window.location.reload();
+        });
+    }
+});
