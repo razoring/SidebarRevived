@@ -47,9 +47,15 @@
 
     function applyTheme() {
         currentTheme = state.customTheme || SR.getThemeDefaults();
-        SR.applyThemeStyles(host, currentTheme);
-        if (currentTheme?.accentColor && autoHide) {
-            autoHide.updateAccentColor(currentTheme.accentColor);
+        if (host) SR.applyThemeStyles(host, currentTheme);
+        if (container) SR.applyThemeStyles(container, currentTheme);
+        
+        // Sync background and font color for tapers and global overrides
+        if (currentTheme?.sidebarBackground) {
+            document.documentElement.style.setProperty('--theme-sidebar-bg', currentTheme.sidebarBackground);
+        }
+        if (currentTheme?.fontColor) {
+            document.documentElement.style.setProperty('--theme-font-color', currentTheme.fontColor);
         }
     }
 
@@ -100,6 +106,26 @@
                 max-width: 100% !important;
                 min-width: 0 !important;
             }
+            .revived-taper {
+                position: fixed;
+                right: var(--revived-sidebar-width, 48px);
+                width: 12px;
+                height: 12px;
+                pointer-events: none;
+                z-index: 2147483647;
+                display: none;
+            }
+            html.revived-taper-active .revived-taper {
+                display: block;
+            }
+            .revived-taper-top {
+                top: 0;
+                background: radial-gradient(circle at 0 0, transparent 12px, var(--theme-sidebar-bg, #f3f3f3) 12px);
+            }
+            .revived-taper-bottom {
+                bottom: 0;
+                background: radial-gradient(circle at 0 100%, transparent 12px, var(--theme-sidebar-bg, #f3f3f3) 12px);
+            }
     `;
         if (window.location.hostname.includes('bing.com')) {
             style.textContent += `
@@ -142,6 +168,14 @@
         host.style.height = '100vh';
         host.style.zIndex = '2147483647';
         host.style.pointerEvents = 'none';
+
+        // Tapers - Injected into main page to avoid shadow DOM clipping
+        taperTop = document.createElement('div');
+        taperTop.className = 'revived-taper revived-taper-top';
+        taperBottom = document.createElement('div');
+        taperBottom.className = 'revived-taper revived-taper-bottom';
+        document.documentElement.appendChild(taperTop);
+        document.documentElement.appendChild(taperBottom);
 
         shadow = host.attachShadow({ mode: 'closed' });
 
@@ -277,7 +311,7 @@
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 if (isOrphaned()) { /* Wait for new script to take over */ return; }
-                SR.safeStorage.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
+                SR.safeStorage.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen', 'enableTaper'], (result) => {
                     state = { ...state, ...result };
                     if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
                     applyTheme();
@@ -288,7 +322,7 @@
 
         host.addEventListener('mouseenter', () => {
             if (isOrphaned()) { /* Bridge will handle interactions */ return; }
-            SR.safeStorage.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
+            SR.safeStorage.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen', 'enableTaper'], (result) => {
                 state = { ...state, ...result };
                 if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
                 applyTheme();
@@ -311,7 +345,7 @@
         });
 
         const storagePromise = new Promise(resolve => {
-            SR.safeStorage.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen'], (result) => {
+            SR.safeStorage.get(['sites', 'tempSites', 'activeSiteId', 'activeSiteOwner', 'sidebarWidth', 'currentUrls', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'customTheme', 'isSidePanelOpen', 'isSettingsOpen', 'enableTaper'], (result) => {
                 state = { ...state, ...result, initialized: true };
                 if (result.autoHideEnabled !== undefined) autoHideEnabled = result.autoHideEnabled;
                 globalThis.__SidebarRevived_CurrentState = globalThis.__SidebarRevived_CurrentState || {};
@@ -370,6 +404,10 @@
             }
             if (changes.autoHideBlocklist !== undefined) {
                 state.autoHideBlocklist = changes.autoHideBlocklist.newValue;
+                needsRender = true;
+            }
+            if (changes.enableTaper !== undefined) {
+                state.enableTaper = changes.enableTaper.newValue;
                 needsRender = true;
             }
             if (changes.customTheme !== undefined) {
@@ -454,22 +492,12 @@
     function render() {
         if (!container) return;
         
-        // Apply theme even if not fully initialized to prevent "black icons"
         applyTheme();
-        
-        if (!state.initialized && !state.sites.length) return;
 
         const ah = getAutoHide();
-        const isBlocked = (state.sidepanelBlocklist || []).some(d => hostname.includes(d)) && !state.activeSiteId;
+        const isBlocked = (state.sidepanelBlocklist || []).some(d => hostname.includes(d));
 
-        if (state.activeSiteId && state.activeSiteOwner === 'inpage') {
-            ah.cleanup();
-            autoHideArmed = false;
-            renderInternal();
-            return;
-        }
-
-        if (state.isSidePanelOpen || isBlocked || !state.activeSiteId) {
+        if (isBlocked && !state.activeSiteId) {
             ah.cleanup();
             autoHideArmed = false;
             hideSidebarCompletely();
@@ -484,19 +512,22 @@
             } else {
                 hideSidebarCompletely();
                 if (!autoHideArmed) {
-                    ah.setup();
+                    ah.arm();
                     autoHideArmed = true;
                 }
             }
-            return;
+        } else {
+            ah.cleanup();
+            autoHideArmed = false;
+            renderInternal();
         }
-
-        renderInternal();
     }
 
     function hideSidebarCompletely() {
         if (!container) return;
         container.style.display = 'none';
+        host.style.width = '0';
+        host.style.pointerEvents = 'none';
         document.documentElement.classList.remove('revived-sidebar-active');
         document.documentElement.classList.remove('revived-sidebar-safe-mode');
         document.documentElement.style.removeProperty('--revived-sidebar-width');
@@ -507,6 +538,15 @@
         
         // Show container immediately to avoid perceived lag
         container.style.display = '';
+        host.style.pointerEvents = 'auto';
+
+        const isAutoHideForced = state.autoHideBlocklist && state.autoHideBlocklist.some(d => hostname.includes(d));
+        const showTaper = state.enableTaper && !autoHideEnabled && !isAutoHideForced;
+        if (showTaper) {
+            document.documentElement.classList.add('revived-taper-active');
+        } else {
+            document.documentElement.classList.remove('revived-taper-active');
+        }
 
         const isFullSidebar = state.activeSiteId && state.activeSiteOwner === 'inpage';
 
@@ -526,16 +566,16 @@
             contentArea.classList.remove('active');
         }
 
-        // Now populate icons (this might be async if SVGs are still fetching)
         await populateIcons();
-
-        const isAutoHideForced = state.autoHideBlocklist && state.autoHideBlocklist.some(d => hostname.includes(d));
+        const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
 
         if (autoHideEnabled || isAutoHideForced) {
             document.documentElement.classList.remove('revived-sidebar-active');
             document.documentElement.style.removeProperty('--revived-sidebar-width');
+            // In auto-hide mode, if triggered, we should show the full width
+            host.style.width = totalWidth + 'px';
         } else {
-            const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
+            host.style.width = totalWidth + 'px';
             if (isSafeModeSite()) {
                 try {
                     document.documentElement.classList.add('revived-sidebar-safe-mode');
@@ -774,7 +814,7 @@
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 if (isOrphaned()) { return; }
-                SR.safeStorage.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled'], (result) => {
+                SR.safeStorage.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'enableTaper'], (result) => {
                     sites = result.sites || [];
                     tempSites = result.tempSites || [];
                     isSidePanelOpen = !!result.isSidePanelOpen;
@@ -789,7 +829,7 @@
 
         host.addEventListener('mouseenter', () => {
             if (isOrphaned()) { return; }
-            SR.safeStorage.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled'], (result) => {
+            SR.safeStorage.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'enableTaper'], (result) => {
                 sites = result.sites || [];
                 tempSites = result.tempSites || [];
                 isSidePanelOpen = !!result.isSidePanelOpen;
@@ -816,7 +856,7 @@
         window.addEventListener('REVIVED_HANDOVER_RES', onHandover, { signal });
         window.dispatchEvent(new CustomEvent('REVIVED_HANDOVER_REQ'));
 
-        SR.safeStorage.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled'], (result) => {
+        SR.safeStorage.get(['sites', 'tempSites', 'isSidePanelOpen', 'customTheme', 'activeSiteId', 'activeSiteOwner', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'enableTaper'], (result) => {
             sites = result.sites || [];
             tempSites = result.tempSites || [];
             isSidePanelOpen = !!result.isSidePanelOpen;

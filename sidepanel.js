@@ -53,7 +53,7 @@ iconBar.ondragenter = (e) => {
 };
 
 // Initial load
-chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', 'customTheme', 'isSettingsOpen', 'isAddPageOpen', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'activeSiteOwner'], async (result) => {
+chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', 'customTheme', 'isSettingsOpen', 'isAddPageOpen', 'scrollBlocklist', 'sidepanelBlocklist', 'autoHideBlocklist', 'autoHideEnabled', 'showCategoryIcons', 'enableTaper', 'activeSiteOwner'], async (result) => {
     if (state._loaded) { 
         await __SidebarRevived.svgReady;
         render(); 
@@ -72,6 +72,7 @@ chrome.storage.local.get(['sites', 'tempSites', 'activeSiteId', 'currentUrls', '
     if (result.autoHideBlocklist) state.autoHideBlocklist = result.autoHideBlocklist;
     if (result.autoHideEnabled !== undefined) state.autoHideEnabled = result.autoHideEnabled;
     if (result.showCategoryIcons !== undefined) state.showCategoryIcons = result.showCategoryIcons;
+    if (result.enableTaper !== undefined) state.enableTaper = result.enableTaper;
     if (result.activeSiteOwner !== undefined) state.activeSiteOwner = result.activeSiteOwner;
     
     applyTheme();
@@ -120,6 +121,10 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
         }
         if (changes.showCategoryIcons) {
             state.showCategoryIcons = changes.showCategoryIcons.newValue;
+            updateSettingsUI();
+        }
+        if (changes.enableTaper) {
+            state.enableTaper = changes.enableTaper.newValue;
             updateSettingsUI();
         }
         render();
@@ -719,6 +724,9 @@ function updateSettingsUI() {
 
     const showCatChk = document.getElementById('settings-show-category-drag');
     if (showCatChk) showCatChk.checked = state.showCategoryIcons;
+
+    const taperChk = document.getElementById('settings-enable-taper');
+    if (taperChk) taperChk.checked = state.enableTaper;
 }
 
 // Collapsible section toggle
@@ -815,6 +823,11 @@ document.getElementById('settings-auto-hide').addEventListener('change', (e) => 
 document.getElementById('settings-show-category-drag').addEventListener('change', (e) => {
     state.showCategoryIcons = e.target.checked;
     chrome.storage.local.set({ showCategoryIcons: state.showCategoryIcons });
+});
+
+document.getElementById('settings-enable-taper').addEventListener('change', (e) => {
+    state.enableTaper = e.target.checked;
+    chrome.storage.local.set({ enableTaper: state.enableTaper });
 });
 
 document.getElementById('settings-scroll-blocklist').addEventListener('input', (e) => {

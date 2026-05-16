@@ -172,24 +172,14 @@
     };
 
     S.getThemeDefaults = function () {
-        const { isEdge, isDark } = S.detectBrowserState();
-        if (isEdge) {
-            return {
-                fontColor: isDark ? '#ffffff' : '#1a1a1a',
-                sidebarBackground: isDark ? '#3b3b3b' : '#dddfe2',
-                dividerBackground: isDark ? '#555555' : '#c0c0c0',
-                midtoneBackground: isDark ? '#292929' : '#f0f0f0',
-                accentColor: isDark ? '#249ef0' : '#249ef0',
-                panelOpacity: 1,
-                panelBlur: 0
-            };
-        }
+        const { isDark } = S.detectBrowserState();
+        // Standardized high-contrast colors for all browsers
         return {
             fontColor: isDark ? '#ffffff' : '#1a1a1a',
-            sidebarBackground: isDark ? '#3c3c3c' : '#ffffff',
-            dividerBackground: isDark ? '#555555' : '#c0c0c0',
+            sidebarBackground: isDark ? '#3b3b3b' : '#f3f3f3',
+            dividerBackground: isDark ? '#444444' : '#e0e0e0',
             midtoneBackground: isDark ? '#292929' : '#f0f0f0',
-            accentColor: isDark ? '#249ef0' : '#249ef0',
+            accentColor: '#249ef0',
             panelOpacity: 1,
             panelBlur: 0
         };
@@ -761,6 +751,7 @@
         settingsBtn.className = 'edge-sidebar-icon edge-sidebar-add-btn';
         settingsBtn.title = "Settings";
         settingsBtn.style.marginTop = 'auto';
+        settingsBtn.style.marginBottom = '12px';
         settingsBtn.innerHTML = S.SETTINGS_ICON_SVG;
         settingsBtn.onclick = () => {
             if (onSettingsClick) onSettingsClick();

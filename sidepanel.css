@@ -106,14 +106,19 @@ html {
    ============================================================ */
 
 #revived-edge-sidebar-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: auto;
+    height: 100vh !important;
     display: flex;
     flex-direction: row-reverse;
-    height: 100vh;
+    z-index: 2147483647;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #333;
     pointer-events: none;
     background: transparent;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 #revived-edge-sidebar-container>* {
@@ -123,18 +128,20 @@ html {
 .edge-sidebar-icon-bar,
 .sidebar-icon-bar {
     width: 48px;
-    height: 100%;
+    height: 100% !important;
     background: var(--theme-sidebar-bg-rgba, rgba(243, 243, 243, 0.95));
     backdrop-filter: blur(var(--theme-panel-blur, 10px));
     border-left: 1px solid var(--theme-divider-bg, #e0e0e0);
-    display: flex;
+    display: flex !important;
     flex-direction: column;
     align-items: center;
     padding-top: 10px;
+    padding-bottom: 12px;
     box-sizing: border-box;
     box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
     flex-shrink: 0;
-    color: var(--theme-font-color, #333);
+    color: var(--theme-font-color, #ffffff) !important;
+    pointer-events: auto;
 }
 
 .edge-sidebar-content-area,
@@ -276,8 +283,6 @@ html {
         background: var(--theme-sidebar-bg-rgba, rgba(28, 28, 28, 0.95));
         border-left: 1px solid var(--theme-divider-bg, #444);
     }
-}
-
 
 /* ============================================================
    4. SHARED ICON BAR COMPONENTS (all sidebar contexts)
@@ -860,15 +865,15 @@ html {
     display: none;
     flex-direction: column;
     padding: 20px 24px 32px;
-    background: #1c1c1c;
-    background: var(--theme-settings-bg, rgba(28, 28, 28, 0.95));
-    color: var(--theme-font-color, #d6d6d6);
+    background: var(--theme-midtone-bg, #292929);
+    color: var(--theme-font-color, #ffffff);
     font-family: inherit;
     box-sizing: border-box;
     overflow-y: auto;
     width: 100%;
     height: 100%;
-    backdrop-filter: blur(var(--theme-panel-blur, 0px));
+    pointer-events: auto;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .add-page-form {
