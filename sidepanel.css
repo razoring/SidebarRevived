@@ -578,6 +578,22 @@ html {
         color: var(--theme-font-color, inherit);
     }
 
+    .theme-color-label-group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+        padding-right: 12px;
+    }
+
+    .settings-description-sub {
+        font-size: 10px;
+        opacity: 0.55;
+        color: var(--theme-font-color, inherit);
+        line-height: 1.35;
+    }
+
     .theme-color-picker-wrapper {
         display: flex;
         align-items: center;

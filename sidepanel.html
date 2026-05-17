@@ -65,49 +65,75 @@
             <span class="collapse-arrow">&#9660;</span>
           </div>
           <div class="settings-category-body" id="theme-section">
+            <p class="settings-description" style="margin-bottom: 12px;">Customize the styling, transparency, and hardware-accelerated blur filters of the sidebar.</p>
+            
             <div class="theme-color-row">
-              <span class="theme-color-label">Contrast</span>
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Contrast</span>
+                <span class="settings-description-sub">Primary foreground color for text, SVGs, and control highlights.</span>
+              </div>
               <div class="theme-color-picker-wrapper">
                 <input type="text" class="theme-hex-input" id="hex-font-color" value="#ffffff" spellcheck="false" />
                 <input type="color" id="theme-font-color" />
               </div>
             </div>
+            
             <div class="theme-color-row">
-              <span class="theme-color-label">Background</span>
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Background</span>
+                <span class="settings-description-sub">Background solid fill color of both sidebar panels.</span>
+              </div>
               <div class="theme-color-picker-wrapper">
                 <input type="text" class="theme-hex-input" id="hex-sidebar-bg" value="#2b2b2b" spellcheck="false" />
                 <input type="color" id="theme-sidebar-bg" />
               </div>
             </div>
+            
             <div class="theme-color-row">
-              <span class="theme-color-label">Divider</span>
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Divider</span>
+                <span class="settings-description-sub">Tint of vertical separators separating categories and utilities.</span>
+              </div>
               <div class="theme-color-picker-wrapper">
                 <input type="text" class="theme-hex-input" id="hex-divider-bg" value="#555555" spellcheck="false" />
                 <input type="color" id="theme-divider-bg" />
               </div>
             </div>
+            
             <div class="theme-color-row">
-              <span class="theme-color-label">Accent</span>
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Accent</span>
+                <span class="settings-description-sub">Highlight color for selected items, toggles, and button states.</span>
+              </div>
               <div class="theme-color-picker-wrapper">
                 <input type="text" class="theme-hex-input" id="hex-accent-color" value="#0078d7" spellcheck="false" />
                 <input type="color" id="theme-accent-color" />
               </div>
             </div>
+            
             <div class="theme-color-row">
-              <span class="theme-color-label">Opacity</span>
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Opacity</span>
+                <span class="settings-description-sub">Overall transparency percentage of the sidebar background (10% - 100%).</span>
+              </div>
               <div class="theme-slider-wrapper">
                 <span class="theme-slider-value" id="val-panel-opacity">100%</span>
                 <input type="range" id="theme-panel-opacity" min="0.1" max="1" step="0.05" value="1" />
               </div>
             </div>
+            
             <div class="theme-color-row">
-              <span class="theme-color-label">Blur</span>
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Blur</span>
+                <span class="settings-description-sub">Hardware-accelerated glassmorphism blur radius (0px - 20px).</span>
+              </div>
               <div class="theme-slider-wrapper">
                 <span class="theme-slider-value" id="val-panel-blur">0px</span>
                 <input type="range" id="theme-panel-blur" min="0" max="20" step="1" value="0" />
               </div>
             </div>
-            <div class="settings-actions">
+            
+            <div class="settings-actions" style="margin-top: 16px;">
               <button id="export-theme-btn">Export JSON</button>
               <button id="import-theme-btn">Import JSON</button>
               <input type="file" id="import-theme-file" style="display:none" accept=".json" />
@@ -115,6 +141,7 @@
             </div>
           </div>
         </div>
+        
         <div class="settings-category">
           <div class="settings-category-header collapsible" data-target="functionality-section">
             <span>Functionality</span>
@@ -128,34 +155,40 @@
                 <div class="toggle-thumb"></div>
               </div>
             </label>
-            <p class="settings-description">Hide the in-page sidebar until you hold the cursor on the right edge of the
-              page for 2 seconds.</p>
+            <p class="settings-description">Keep the in-page sidebar completely hidden, automatically sliding it into view only when you hover your cursor near the right edge of the window.</p>
           </div>
         </div>
+        
         <div class="settings-category">
           <div class="settings-category-header collapsible" data-target="appearance-section">
             <span>Appearance</span>
             <span class="collapse-arrow">&#9660;</span>
           </div>
           <div class="settings-category-body" id="appearance-section">
-            <label class="toggle-row">
-              <span>Show Category Icons</span>
-              <div class="toggle-track">
-                <input type="checkbox" id="settings-show-category-drag" />
-                <div class="toggle-thumb"></div>
-              </div>
-            </label>
-            <label class="toggle-row">
-              <span>Enable Taper</span>
-              <div class="toggle-track">
-                <input type="checkbox" id="settings-enable-taper" />
-                <div class="toggle-thumb"></div>
-              </div>
-            </label>
-            <p class="settings-description">Add concave rounded corners to the sidebar to blend seamlessly with Edge's
-              UI (disabled during Auto-Hide).</p>
+            <div class="settings-option-group">
+              <label class="toggle-row">
+                <span>Show Category Icons</span>
+                <div class="toggle-track">
+                  <input type="checkbox" id="settings-show-category-drag" />
+                  <div class="toggle-thumb"></div>
+                </div>
+              </label>
+              <p class="settings-description" style="margin-top: 4px; margin-bottom: 12px;">Display section icons ("Pinned" pins and "Temporary" clocks) to keep site groups organized.</p>
+            </div>
+            
+            <div class="settings-option-group">
+              <label class="toggle-row">
+                <span>Enable Taper</span>
+                <div class="toggle-track">
+                  <input type="checkbox" id="settings-enable-taper" />
+                  <div class="toggle-thumb"></div>
+                </div>
+              </label>
+              <p class="settings-description" style="margin-top: 4px;">Incorporate seamless concave rounded tapers on the top and bottom edges of the idle sidebar to blend naturally with Edge's UI style (disabled during Auto-Hide).</p>
+            </div>
           </div>
         </div>
+        
         <div class="settings-category">
           <div class="settings-category-header collapsible" data-target="blocklists-section">
             <span>Blocklists</span>
@@ -164,29 +197,23 @@
           <div class="settings-category-body" id="blocklists-section">
             <div class="settings-subsection">
               <div class="settings-subsection-title">Scrollbar Blocklist</div>
-              <p class="settings-description">Sites like YouTube need custom scrollbars, but some (e.g.
-                scrolller.com) break with aggressive fixes. Add them here to keep default right-side scrollbars.</p>
+              <p class="settings-description">Prevent the sidebar's aggressive scrollbar and infinite-scroll patches from running on specific domains. Useful for sites that experience scroll glitches.</p>
               <button id="add-to-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
-              <textarea id="settings-scroll-blocklist" placeholder="example.com&#10;anotherdomain.org"
-                spellcheck="false"></textarea>
+              <textarea id="settings-scroll-blocklist" placeholder="example.com&#10;anotherdomain.org" spellcheck="false"></textarea>
             </div>
-            <div class="settings-subsection">
+            
+            <div class="settings-subsection" style="margin-top: 16px;">
               <div class="settings-subsection-title">Sidepanel Blocklist</div>
-              <p class="settings-description">Hide the in-page sidebar on certain sites. The sidebar can still be
-                activated by opening the sidepanel via the extension icon and selecting a site.</p>
-              <button id="add-to-sidepanel-blocklist-btn" class="settings-accent-btn">Add Current Site to
-                Blocklist</button>
-              <textarea id="settings-sidepanel-blocklist" placeholder="example.com&#10;anotherdomain.org"
-                spellcheck="false"></textarea>
+              <p class="settings-description">Completely disable and block the in-page sidebar from rendering on specified domains. Pinned apps can still be launched via the native sidepanel.</p>
+              <button id="add-to-sidepanel-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
+              <textarea id="settings-sidepanel-blocklist" placeholder="example.com&#10;anotherdomain.org" spellcheck="false"></textarea>
             </div>
-            <div class="settings-subsection">
+            
+            <div class="settings-subsection" style="margin-top: 16px;">
               <div class="settings-subsection-title">Auto-Hide Blocklist</div>
-              <p class="settings-description">Force the in-page sidebar to use Auto-Hide on these sites, even if it is
-                globally disabled. Useful for sites where the sidebar overlaps content.</p>
-              <button id="add-to-autohide-blocklist-btn" class="settings-accent-btn">Add Current Site to
-                Blocklist</button>
-              <textarea id="settings-autohide-blocklist" placeholder="example.com&#10;anotherdomain.org"
-                spellcheck="false"></textarea>
+              <p class="settings-description">Enforce auto-hide sliding behavior on these specific domains, even if auto-hide is globally disabled. Perfect for pages where the sidebar overlaps important content.</p>
+              <button id="add-to-autohide-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
+              <textarea id="settings-autohide-blocklist" placeholder="example.com&#10;anotherdomain.org" spellcheck="false"></textarea>
             </div>
           </div>
         </div>
@@ -197,9 +224,8 @@
             <span class="collapse-arrow">&#9660;</span>
           </div>
           <div class="settings-category-body" id="backup-section">
-            <p class="settings-description">Export your entire sidebar configuration, including all pinned apps,
-              blocklists, and theme settings.</p>
-            <div class="settings-actions">
+            <p class="settings-description">Create an offline backup of your setup—including pinned apps, custom theme parameters, blocklists, and settings—or restore them instantly.</p>
+            <div class="settings-actions" style="margin-top: 12px;">
               <button id="export-all-btn">Export All Settings</button>
               <button id="import-all-btn">Import All Settings</button>
               <button id="clear-all-data-btn" class="danger">Clear All Data</button>
