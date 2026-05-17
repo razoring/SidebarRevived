@@ -68,7 +68,7 @@ html {
 
 .inpage-note-content svg,
 .sidebar-note-content svg {
-    opacity: 0.4;
+    color: var(--theme-midtone-color, #a4a4a4);
     margin-bottom: 16px;
 }
 
@@ -82,7 +82,7 @@ html {
 .inpage-note-sub,
 .sidebar-note-sub {
     font-size: 12px !important;
-    opacity: 0.6;
+    color: var(--theme-midtone-color, #a4a4a4);
     font-weight: 400 !important;
 }
 
@@ -131,7 +131,7 @@ html {
     height: 100% !important;
     background: var(--theme-sidebar-bg-rgba, rgba(243, 243, 243, 0.95));
     backdrop-filter: blur(var(--theme-panel-blur, 10px));
-    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    border-left: 1px solid var(--theme-divider-bg, #ccc);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -149,7 +149,7 @@ html {
     height: 100%;
     background: var(--theme-sidebar-bg-rgba, rgba(255, 255, 255, 0.95));
     backdrop-filter: blur(var(--theme-panel-blur, 10px));
-    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    border-left: 1px solid var(--theme-divider-bg, #ccc);
     display: none;
     flex-direction: column;
     box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
@@ -191,7 +191,7 @@ html {
     justify-content: space-between;
     padding: 0 16px;
     background: rgba(0, 0, 0, 0.03);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid var(--theme-divider-bg, #ccc);
     font-weight: 600;
     font-size: 14px;
     color: var(--theme-font-color, #333);
@@ -273,7 +273,7 @@ html {
     left: 0;
     bottom: 0;
     width: 1px;
-    background: var(--theme-divider-bg, rgba(0, 0, 0, 0.1));
+    background: var(--theme-divider-bg, #ccc);
     pointer-events: none;
     z-index: 10;
 }
@@ -289,19 +289,19 @@ html {
     }
 
     #revived-idle-sidebar::before {
-        background: var(--theme-divider-bg, rgba(255, 255, 255, 0.1));
+        background: var(--theme-divider-bg, #555);
     }
 
     .edge-sidebar-icon-bar,
     .sidebar-icon-bar {
         background: var(--theme-sidebar-bg-rgba, rgba(56, 57, 60, 0.95));
-        border-left: 1px solid rgba(255, 255, 255, 0.1);
+        border-left: 1px solid var(--theme-divider-bg, #555);
     }
 
     .edge-sidebar-content-area,
     .sidebar-content-area {
         background: var(--theme-sidebar-bg-rgba, rgba(28, 28, 28, 0.95));
-        border-left: 1px solid rgba(255, 255, 255, 0.1);
+        border-left: 1px solid var(--theme-divider-bg, #555);
     }
 
     /* ============================================================
@@ -350,7 +350,7 @@ html {
     }
 
     .edge-sidebar-icon:hover {
-        background-color: rgba(128, 128, 128, 0.3) !important;
+        background-color: var(--theme-divider-bg, #ccc) !important;
         border-radius: 10px;
         transform: scale(1.05);
     }
@@ -396,7 +396,7 @@ html {
     }
 
     .edge-sidebar-add-btn:hover {
-        background-color: rgba(128, 128, 128, 0.3) !important;
+        background-color: var(--theme-divider-bg, #ccc) !important;
         border-radius: 10px;
         transform: scale(1.05);
     }
@@ -542,7 +542,7 @@ html {
     }
 
     #settings-back-btn:hover {
-        background: rgba(128, 128, 128, 0.2);
+        background: var(--theme-divider-bg, #ccc);
     }
 
     #settings-back-btn svg {
@@ -570,7 +570,7 @@ html {
     }
 
     .theme-color-row+.theme-color-row {
-        border-top: 1px solid rgba(128, 128, 128, 0.08);
+        border-top: 1px solid var(--theme-divider-bg, #555);
     }
 
     .theme-color-label {
@@ -589,8 +589,7 @@ html {
 
     .settings-description-sub {
         font-size: 10px;
-        opacity: 0.55;
-        color: var(--theme-font-color, inherit);
+        color: var(--theme-midtone-color, #a4a4a4);
         line-height: 1.35;
     }
 
@@ -628,37 +627,51 @@ html {
     .theme-slider-value {
         font-size: 11px;
         font-family: 'Consolas', 'Monaco', monospace;
-        color: var(--theme-font-color, inherit);
+        color: var(--theme-midtone-color, #a4a4a4);
         min-width: 38px;
         text-align: right;
     }
 
     .theme-slider-wrapper input[type="range"] {
         width: 80px;
-        height: 4px;
+        height: 12px;
         -webkit-appearance: none;
         appearance: none;
-        background: rgba(128, 128, 128, 0.3);
-        border-radius: 2px;
+        background: var(--theme-divider-bg, rgba(0, 0, 0, 0.15));
+        border-radius: 6px;
         outline: none;
         cursor: pointer;
         margin: 0;
+        box-sizing: border-box;
     }
 
     .theme-slider-wrapper input[type="range"]::-webkit-slider-thumb {
         -webkit-appearance: none;
         appearance: none;
-        width: 14px;
-        height: 14px;
+        width: 12px;
+        height: 12px;
         border-radius: 50%;
-        background: var(--theme-accent-color, #38b3ff);
-        border: none;
+        background: var(--theme-font-color, #ffffff);
+        border: 3px solid var(--theme-accent-color, #38b3ff);
         cursor: pointer;
-        transition: transform 0.15s;
+        transition: transform 0.1s;
+        box-sizing: border-box;
     }
 
-    .theme-slider-wrapper input[type="range"]::-webkit-slider-thumb:hover {
-        transform: scale(1.2);
+    .theme-slider-wrapper input[type="range"]::-moz-range-thumb {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--theme-font-color, #ffffff);
+        border: 3px solid var(--theme-accent-color, #38b3ff);
+        cursor: pointer;
+        transition: transform 0.1s;
+        box-sizing: border-box;
+    }
+
+    .theme-slider-wrapper input[type="range"]::-webkit-slider-thumb:hover,
+    .theme-slider-wrapper input[type="range"]::-moz-range-thumb:hover {
+        transform: scale(1.15);
     }
 
     .toggle-row {
@@ -688,7 +701,7 @@ html {
     .toggle-thumb {
         position: absolute;
         inset: 0;
-        background: rgba(128, 128, 128, 0.35);
+        background: var(--theme-divider-bg, #ccc);
         border-radius: 10px;
         transition: background 0.2s;
     }
@@ -718,7 +731,7 @@ html {
         width: 28px;
         height: 28px;
         padding: 0;
-        border: 1px solid rgba(128, 128, 128, 0.2);
+        border: 1px solid var(--theme-divider-bg, #ccc);
         border-radius: 50%;
         cursor: pointer;
         background: none;
@@ -743,7 +756,7 @@ html {
         gap: 8px;
         margin-top: 16px;
         padding-top: 12px;
-        border-top: 1px solid rgba(128, 128, 128, 0.1);
+        border-top: 1px solid var(--theme-divider-bg, #ccc);
     }
 
     .settings-actions button {
@@ -752,15 +765,16 @@ html {
         padding: 7px 12px;
         border-radius: 6px;
         border: none;
-        background: rgba(128, 128, 128, 0.1);
+        background: var(--theme-divider-bg, #ccc);
         color: var(--theme-font-color, inherit);
         font-size: 12px;
         cursor: pointer;
-        transition: background 0.15s;
+        transition: all 0.15s;
     }
 
     .settings-actions button:hover {
-        background: rgba(128, 128, 128, 0.2);
+        background: var(--theme-accent-color, #38b3ff);
+        color: #000;
     }
 
     .settings-actions button.danger:hover {
@@ -815,7 +829,7 @@ html {
 
     .settings-description {
         font-size: 11px;
-        opacity: 0.55;
+        color: var(--theme-midtone-color, #a4a4a4);
         margin: 2px 0 6px;
         line-height: 1.5;
     }
@@ -825,7 +839,7 @@ html {
     }
 
     .settings-subsection+.settings-subsection {
-        border-top: 1px solid rgba(128, 128, 128, 0.08);
+        border-top: 1px solid var(--theme-divider-bg, #ccc);
         margin-top: 8px;
         padding-top: 12px;
     }
@@ -834,7 +848,7 @@ html {
         font-size: 12px;
         font-weight: 600;
         margin-bottom: 6px;
-        opacity: 0.8;
+        color: var(--theme-font-color, inherit);
     }
 
     .settings-accent-btn {
@@ -859,7 +873,7 @@ html {
         width: 100%;
         min-height: 54px;
         padding: 8px 10px;
-        border: 1px solid rgba(128, 128, 128, 0.12);
+        border: 1px solid var(--theme-divider-bg, #ccc);
         border-radius: 6px;
         background: rgba(0, 0, 0, 0.25);
         color: var(--theme-font-color, inherit);
@@ -893,16 +907,16 @@ html {
         }
 
         .settings-category {
-            border-color: rgba(128, 128, 128, 0.15);
+            border-color: var(--theme-divider-bg, #555);
         }
 
         .settings-category-header {
-            background: rgba(128, 128, 128, 0.08);
-            border-bottom-color: rgba(128, 128, 128, 0.15);
+            background: var(--theme-sidebar-bg, #38393c);
+            border-bottom-color: var(--theme-divider-bg, #555);
         }
 
         .settings-category-header:hover {
-            background: rgba(128, 128, 128, 0.12);
+            background: var(--theme-divider-bg, #555);
         }
     }
 
@@ -933,11 +947,11 @@ html {
     }
 
     .pinned-apps-container {
-        border: 1px solid var(--theme-divider-bg, rgba(128, 128, 128, 0.15));
+        border: 1px solid var(--theme-divider-bg, #ccc);
         border-radius: 8px;
         padding: 12px;
         margin-bottom: 16px;
-        background: rgba(128, 128, 128, 0.02);
+        background: transparent;
     }
 
     .pinned-apps-header {
@@ -1081,7 +1095,7 @@ html {
     }
 
     .pinned-app-item:hover {
-        background: rgba(128, 128, 128, 0.12);
+        background: var(--theme-divider-bg, #ccc);
     }
 
     .pinned-app-item img {
@@ -1099,10 +1113,10 @@ html {
         justify-content: space-between;
         gap: 12px;
         padding: 10px 14px;
-        border: 1px solid var(--theme-divider-bg, rgba(128, 128, 128, 0.15));
+        border: 1px solid var(--theme-divider-bg, #ccc);
         border-radius: 8px;
         margin-bottom: 12px;
-        background: rgba(128, 128, 128, 0.02);
+        background: transparent;
         transition: background 0.15s;
     }
 
@@ -1112,7 +1126,7 @@ html {
     }
 
     .add-page-item-clickable:hover {
-        background: rgba(128, 128, 128, 0.08);
+        background: var(--theme-divider-bg, #ccc);
     }
 
     .add-page-row-icon {
@@ -1165,11 +1179,10 @@ html {
 
     .add-page-url {
         font-size: 11px;
-        opacity: 0.5;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        color: var(--theme-font-color, #d6d6d6);
+        color: var(--theme-midtone-color, #a4a4a4);
         margin-top: 1px;
     }
 
@@ -1191,7 +1204,7 @@ html {
     }
 
     .add-page-action-btn:hover {
-        background: rgba(128, 128, 128, 0.12);
+        background: var(--theme-divider-bg, #ccc);
         transform: scale(1.1);
     }
 
@@ -1257,7 +1270,7 @@ html {
 
     .search-results-list .search-status {
         font-size: 11px;
-        opacity: 0.45;
+        color: var(--theme-midtone-color, #a4a4a4);
         padding: 6px 2px;
         text-align: center;
     }
@@ -1273,12 +1286,12 @@ html {
     }
 
     .search-result-item:hover {
-        background: rgba(128, 128, 128, 0.1);
+        background: var(--theme-divider-bg, #ccc);
     }
 
     .search-result-direct {
         margin-top: 4px;
-        border-top: 1px solid var(--theme-divider-bg, rgba(128, 128, 128, 0.12));
+        border-top: 1px solid var(--theme-divider-bg, #555);
         padding-top: 9px;
     }
 
@@ -1301,9 +1314,9 @@ html {
 
     .search-result-item .result-domain {
         font-size: 11px;
-        opacity: 0.4;
         white-space: nowrap;
         flex-shrink: 0;
+        color: var(--theme-midtone-color, #a4a4a4);
     }
 
     .search-result-item .result-add-btn {
@@ -1347,7 +1360,7 @@ html {
     }
 
     #add-page-back-btn:hover {
-        background: rgba(128, 128, 128, 0.2);
+        background: var(--theme-divider-bg, #ccc);
     }
 
     #add-page-back-btn svg {
@@ -1380,9 +1393,8 @@ html {
         width: 100%;
         text-align: center;
         padding: 20px;
-        opacity: 0.5;
         font-size: 13px;
-        color: var(--theme-font-color, #d6d6d6);
+        color: var(--theme-midtone-color, #a4a4a4);
     }
 
     /* ============================================================
@@ -1417,7 +1429,7 @@ html {
     }
 
     .revived-taper-top::before {
-        background: radial-gradient(circle at 0 100%, transparent 11px, var(--theme-divider-bg, rgba(0, 0, 0, 0.15)) 11px, var(--theme-divider-bg, rgba(0, 0, 0, 0.15)) 12px, transparent 12.5px);
+        background: radial-gradient(circle at 0 100%, transparent 11px, var(--theme-divider-bg, #ccc) 11px, var(--theme-divider-bg, #ccc) 12px, transparent 12.5px);
     }
 
     .revived-taper-bottom {
@@ -1426,5 +1438,42 @@ html {
     }
 
     .revived-taper-bottom::before {
-        background: radial-gradient(circle at 0 0, transparent 11px, var(--theme-divider-bg, rgba(0, 0, 0, 0.15)) 11px, var(--theme-divider-bg, rgba(0, 0, 0, 0.15)) 12px, transparent 12.5px);
+        background: radial-gradient(circle at 0 0, transparent 11px, var(--theme-divider-bg, #ccc) 11px, var(--theme-divider-bg, #ccc) 12px, transparent 12.5px);
+    }
+
+    #sidebar-container,
+    #settings-panel,
+    #revived-idle-sidebar,
+    .edge-sidebar-icon-bar,
+    .sidebar-icon-bar,
+    .edge-sidebar-content-area,
+    .sidebar-content-area {
+        background-image: var(--theme-bg-image, none) !important;
+        background-size: var(--theme-bg-image-size, cover) !important;
+        background-repeat: var(--theme-bg-image-repeat, no-repeat) !important;
+        background-position: var(--theme-bg-image-position, center) !important;
+    }
+
+    /* Floating Panel Padding and Roundness Layout Engine */
+    #revived-edge-sidebar-container,
+    #revived-idle-sidebar {
+        margin: var(--theme-sidebar-padding, 0px) var(--theme-sidebar-padding, 0px) var(--theme-sidebar-padding, 0px) 0px !important;
+        border-radius: var(--theme-sidebar-roundness, 0px) !important;
+        height: calc(100vh - 2 * var(--theme-sidebar-padding, 0px)) !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    #revived-idle-sidebar {
+        width: calc(100% - var(--theme-sidebar-padding, 0px)) !important;
+    }
+
+    #container {
+        margin: var(--theme-sidebar-padding, 0px) !important;
+        border-radius: var(--theme-sidebar-roundness, 0px) !important;
+        height: calc(100vh - 2 * var(--theme-sidebar-padding, 0px)) !important;
+        width: calc(100vw - 2 * var(--theme-sidebar-padding, 0px)) !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+        box-sizing: border-box !important;
     }

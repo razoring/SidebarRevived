@@ -110,6 +110,17 @@
                 <input type="color" id="theme-accent-color" />
               </div>
             </div>
+
+            <div class="theme-color-row">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Midtone</span>
+                <span class="settings-description-sub">Secondary description text, slider values, and caption tints.</span>
+              </div>
+              <div class="theme-color-picker-wrapper">
+                <input type="text" class="theme-hex-input" id="hex-midtone-color" value="#a4a4a4" spellcheck="false" />
+                <input type="color" id="theme-midtone-color" />
+              </div>
+            </div>
             
             <div class="theme-color-row">
               <div class="theme-color-label-group">
@@ -132,7 +143,64 @@
                 <input type="range" id="theme-panel-blur" min="0" max="20" step="1" value="0" />
               </div>
             </div>
+
+            <div class="theme-color-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Background Image Link / Path</span>
+                <span class="settings-description-sub">Enter an online image URL, local file path/link, or upload a local file directly.</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; width: 100%;">
+                <input type="text" id="theme-bg-image-url" placeholder="https://... or file:///C:/..." style="background: rgba(0,0,0,0.5); color: #eee; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; outline: none; box-sizing: border-box; width: 100%;" spellcheck="false" />
+                <div style="display: flex; gap: 6px; align-items: center; width: 100%;">
+                  <button id="theme-bg-image-upload-btn" class="settings-accent-btn" style="margin: 0; flex: 1;">Upload File...</button>
+                  <button id="theme-bg-image-clear-btn" class="danger" style="margin: 0; padding: 6px 12px; display: none;">Clear</button>
+                  <input type="file" id="theme-bg-image-file" accept="image/*" style="display: none;" />
+                </div>
+              </div>
+              <div id="theme-bg-image-preview-container" style="display: none; align-items: center; gap: 8px; margin-top: 4px; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 4px;">
+                <img id="theme-bg-image-preview" style="max-height: 40px; max-width: 60px; border-radius: 2px; object-fit: cover;" />
+                <span id="theme-bg-image-name" class="settings-description-sub" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+              </div>
+            </div>
             
+            <div class="theme-color-row">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Image Sizing</span>
+                <span class="settings-description-sub">Configure how the background image scales and repeats.</span>
+              </div>
+              <div class="theme-select-wrapper">
+                <select id="theme-bg-image-size" style="background: rgba(0,0,0,0.5); color: #eee; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer;">
+                  <option value="fill">Fill (Cover)</option>
+                  <option value="fit">Fit (Contain)</option>
+                  <option value="stretch">Stretch</option>
+                  <option value="repeat">Repeat</option>
+                  <option value="center">Center</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="theme-color-row">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Panel Padding</span>
+                <span class="settings-description-sub">Floating inset distance from the screen edges (0px - 10px).</span>
+              </div>
+              <div class="theme-slider-wrapper">
+                <span class="theme-slider-value" id="val-panel-padding">0px</span>
+                <input type="range" id="theme-panel-padding" min="0" max="10" step="1" value="0" />
+              </div>
+            </div>
+
+            <div class="theme-color-row">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Panel Roundness</span>
+                <span class="settings-description-sub">Corner border-radius for the floating panels (0px - 20px).</span>
+              </div>
+              <div class="theme-slider-wrapper">
+                <span class="theme-slider-value" id="val-panel-roundness">0px</span>
+                <input type="range" id="theme-panel-roundness" min="0" max="20" step="1" value="0" />
+              </div>
+            </div>
+
             <div class="settings-actions" style="margin-top: 16px;">
               <button id="export-theme-btn">Export JSON</button>
               <button id="import-theme-btn">Import JSON</button>

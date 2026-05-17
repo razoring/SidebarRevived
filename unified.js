@@ -204,11 +204,16 @@
         if (isEdge) {
             return {
                 fontColor: isDark ? '#ffffff' : '#1a1a1a',
-                sidebarBackground: isDark ? '#3b3b3b' : '#dddfe2',
+                sidebarBackground: isDark ? '#333333' : '#dddfe2',
                 dividerBackground: isDark ? '#555555' : '#c0c0c0',
                 accentColor: '#38b3ff',
+                midtoneColor: isDark ? '#a4a4a4' : '#6e6e6e',
                 panelOpacity: 1,
-                panelBlur: 0
+                panelBlur: 0,
+                backgroundImage: '',
+                backgroundImageSize: 'fill',
+                panelPadding: 0,
+                panelRoundness: 0
             };
         }
         return {
@@ -216,8 +221,13 @@
             sidebarBackground: isDark ? '#3c3c3c' : '#ffffff',
             dividerBackground: isDark ? '#555555' : '#c0c0c0',
             accentColor: '#38b3ff',
+            midtoneColor: isDark ? '#a4a4a4' : '#6e6e6e',
             panelOpacity: 1,
-            panelBlur: 0
+            panelBlur: 0,
+            backgroundImage: '',
+            backgroundImageSize: 'fill',
+            panelPadding: 0,
+            panelRoundness: 0
         };
     };
 
@@ -311,12 +321,56 @@
                 const ar = S.hexToRgb(theme.accentColor);
                 el.style.setProperty('--theme-accent-color-rgba', `rgba(${ar.r},${ar.g},${ar.b},0.5)`);
             }
+            if (theme.midtoneColor) {
+                el.style.setProperty('--theme-midtone-color', theme.midtoneColor);
+            }
             if (theme.panelBlur !== undefined) el.style.setProperty('--theme-panel-blur', theme.panelBlur + 'px');
+            if (theme.panelPadding !== undefined) el.style.setProperty('--theme-sidebar-padding', theme.panelPadding + 'px');
+            if (theme.panelRoundness !== undefined) el.style.setProperty('--theme-sidebar-roundness', theme.panelRoundness + 'px');
+            
+            // Set background image and sizing!
+            if (theme.backgroundImage) {
+                el.style.setProperty('--theme-bg-image', `url(${JSON.stringify(theme.backgroundImage)})`);
+                
+                const sizeMap = {
+                    stretch: '100% 100%',
+                    fit: 'contain',
+                    fill: 'cover',
+                    repeat: 'auto',
+                    center: 'auto'
+                };
+                const repeatMap = {
+                    stretch: 'no-repeat',
+                    fit: 'no-repeat',
+                    fill: 'no-repeat',
+                    repeat: 'repeat',
+                    center: 'no-repeat'
+                };
+                const positionMap = {
+                    stretch: 'center',
+                    fit: 'center',
+                    fill: 'center',
+                    repeat: 'top left',
+                    center: 'center'
+                };
+                
+                const sizeVal = theme.backgroundImageSize || 'fill';
+                el.style.setProperty('--theme-bg-image-size', sizeMap[sizeVal] || 'cover');
+                el.style.setProperty('--theme-bg-image-repeat', repeatMap[sizeVal] || 'no-repeat');
+                el.style.setProperty('--theme-bg-image-position', positionMap[sizeVal] || 'center');
+            } else {
+                el.style.removeProperty('--theme-bg-image');
+                el.style.removeProperty('--theme-bg-image-size');
+                el.style.removeProperty('--theme-bg-image-repeat');
+                el.style.removeProperty('--theme-bg-image-position');
+            }
         } else {
             const props = [
                 '--theme-font-color', '--theme-sidebar-bg', '--theme-divider-bg',
-                '--theme-accent-color', '--theme-panel-opacity', '--theme-panel-blur',
-                '--theme-settings-bg', '--theme-sidebar-bg-rgba', '--theme-accent-color-rgba'
+                '--theme-accent-color', '--theme-midtone-color', '--theme-panel-opacity', '--theme-panel-blur',
+                '--theme-settings-bg', '--theme-sidebar-bg-rgba', '--theme-accent-color-rgba',
+                '--theme-bg-image', '--theme-bg-image-size', '--theme-bg-image-repeat', '--theme-bg-image-position',
+                '--theme-sidebar-padding', '--theme-sidebar-roundness'
             ];
             props.forEach(p => el.style.removeProperty(p));
         }
@@ -1798,14 +1852,16 @@
                 { input: 'theme-font-color', hex: 'hex-font-color', fallback: '#ffffff' },
                 { input: 'theme-sidebar-bg', hex: 'hex-sidebar-bg', fallback: '#38393c' },
                 { input: 'theme-divider-bg', hex: 'hex-divider-bg', fallback: '#555555' },
-                { input: 'theme-accent-color', hex: 'hex-accent-color', fallback: '#38b3ff' }
+                { input: 'theme-accent-color', hex: 'hex-accent-color', fallback: '#38b3ff' },
+                { input: 'theme-midtone-color', hex: 'hex-midtone-color', fallback: '#a4a4a4' }
             ];
 
             const themeKey = { 
                 'theme-font-color': 'fontColor', 
                 'theme-sidebar-bg': 'sidebarBackground', 
                 'theme-divider-bg': 'dividerBackground', 
-                'theme-accent-color': 'accentColor' 
+                'theme-accent-color': 'accentColor',
+                'theme-midtone-color': 'midtoneColor'
             };
 
             fields.forEach(f => {
@@ -1893,6 +1949,57 @@
 
             const taperChk = document.getElementById('settings-enable-taper');
             if (taperChk) taperChk.checked = state.enableTaper;
+
+            // Background Image and Sizing
+            const bgImage = theme.backgroundImage || '';
+            const bgImageSize = theme.backgroundImageSize || 'fill';
+            
+            const clearBtn = document.getElementById('theme-bg-image-clear-btn');
+            const previewContainer = document.getElementById('theme-bg-image-preview-container');
+            const previewImg = document.getElementById('theme-bg-image-preview');
+            const imageNameText = document.getElementById('theme-bg-image-name');
+            const sizeSelect = document.getElementById('theme-bg-image-size');
+            const urlInput = document.getElementById('theme-bg-image-url');
+            
+            if (sizeSelect) sizeSelect.value = bgImageSize;
+            if (urlInput && document.activeElement !== urlInput) urlInput.value = bgImage;
+            
+            if (bgImage) {
+                if (previewImg) {
+                    previewImg.src = bgImage;
+                    previewImg.dataset.bgData = bgImage;
+                }
+                if (imageNameText) {
+                    imageNameText.textContent = bgImage.startsWith('data:') ? 'Local Selected File' : bgImage;
+                }
+                if (previewContainer) previewContainer.style.display = 'flex';
+                if (clearBtn) clearBtn.style.display = 'block';
+            } else {
+                if (previewImg) {
+                    previewImg.removeAttribute('src');
+                    delete previewImg.dataset.bgData;
+                }
+                if (imageNameText) imageNameText.textContent = '';
+                if (previewContainer) previewContainer.style.display = 'none';
+                if (clearBtn) clearBtn.style.display = 'none';
+            }
+
+            // Background Padding and Roundness
+            const paddingSlider = document.getElementById('theme-panel-padding');
+            const paddingVal = document.getElementById('val-panel-padding');
+            const padding = theme.panelPadding !== undefined ? theme.panelPadding : 0;
+            if (paddingSlider) paddingSlider.value = padding;
+            if (paddingVal) paddingVal.textContent = padding + 'px';
+
+            const roundnessSlider = document.getElementById('theme-panel-roundness');
+            const roundnessVal = document.getElementById('val-panel-roundness');
+            const roundness = theme.panelRoundness !== undefined ? theme.panelRoundness : 0;
+            if (roundnessSlider) roundnessSlider.value = roundness;
+            if (roundnessVal) roundnessVal.textContent = roundness + 'px';
+
+            // Update progress fills on all range sliders
+            const sliders = document.querySelectorAll('.theme-slider-wrapper input[type="range"]');
+            sliders.forEach(s => updateSliderProgress(s));
         }
 
         document.getElementById('settings-panel').addEventListener('click', (e) => {
@@ -1915,18 +2022,41 @@
             chrome.storage.local.set({ [STORAGE_KEYS.IS_SETTINGS_OPEN]: false, [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false });
         });
 
+        function updateSliderProgress(slider) {
+            if (!slider) return;
+            const min = parseFloat(slider.min) || 0;
+            const max = parseFloat(slider.max) || 100;
+            const val = parseFloat(slider.value) || 0;
+            const pct = (val - min) / (max - min) * 100;
+            slider.style.background = `linear-gradient(to right, var(--theme-accent-color, #38b3ff) 0%, var(--theme-accent-color, #38b3ff) ${pct}%, var(--theme-divider-bg, rgba(0, 0, 0, 0.15)) ${pct}%, var(--theme-divider-bg, rgba(0, 0, 0, 0.15)) 100%)`;
+        }
+
         function debounceThemeUpdate() {
             const opacitySlider = document.getElementById('theme-panel-opacity');
             const blurSlider = document.getElementById('theme-panel-blur');
+            const sizeSelect = document.getElementById('theme-bg-image-size');
+            const urlInput = document.getElementById('theme-bg-image-url');
+            const bgImgData = urlInput ? urlInput.value.trim() : '';
+            const paddingSlider = document.getElementById('theme-panel-padding');
+            const roundnessSlider = document.getElementById('theme-panel-roundness');
+
             const newTheme = {
                 fontColor: document.getElementById('theme-font-color').value,
                 sidebarBackground: document.getElementById('theme-sidebar-bg').value,
                 dividerBackground: document.getElementById('theme-divider-bg').value,
                 accentColor: document.getElementById('theme-accent-color').value,
+                midtoneColor: document.getElementById('theme-midtone-color').value,
                 panelOpacity: opacitySlider ? parseFloat(opacitySlider.value) : 1,
-                panelBlur: blurSlider ? parseInt(blurSlider.value, 10) : 0
+                panelBlur: blurSlider ? parseInt(blurSlider.value, 10) : 0,
+                backgroundImage: bgImgData,
+                backgroundImageSize: sizeSelect ? sizeSelect.value : 'fill',
+                panelPadding: paddingSlider ? parseInt(paddingSlider.value, 10) : 0,
+                panelRoundness: roundnessSlider ? parseInt(roundnessSlider.value, 10) : 0
             };
             chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: newTheme });
+
+            const sliders = document.querySelectorAll('.theme-slider-wrapper input[type="range"]');
+            sliders.forEach(s => updateSliderProgress(s));
         }
 
         function updateSwatchFromInput(inputId, hexId) {
@@ -1940,7 +2070,8 @@
             { input: 'theme-font-color', hex: 'hex-font-color' },
             { input: 'theme-sidebar-bg', hex: 'hex-sidebar-bg' },
             { input: 'theme-divider-bg', hex: 'hex-divider-bg' },
-            { input: 'theme-accent-color', hex: 'hex-accent-color' }
+            { input: 'theme-accent-color', hex: 'hex-accent-color' },
+            { input: 'theme-midtone-color', hex: 'hex-midtone-color' }
         ];
 
         colorFields.forEach(f => {
@@ -1977,6 +2108,105 @@
             if (val) val.textContent = px + 'px';
             debounceThemeUpdate();
         });
+
+        // Background Image Event Listeners
+        const fileInput = document.getElementById('theme-bg-image-file');
+        const uploadBtn = document.getElementById('theme-bg-image-upload-btn');
+        const clearBtn = document.getElementById('theme-bg-image-clear-btn');
+        const previewContainer = document.getElementById('theme-bg-image-preview-container');
+        const previewImg = document.getElementById('theme-bg-image-preview');
+        const imageNameText = document.getElementById('theme-bg-image-name');
+        const sizeSelect = document.getElementById('theme-bg-image-size');
+        const urlInput = document.getElementById('theme-bg-image-url');
+
+        if (uploadBtn && fileInput) {
+            uploadBtn.addEventListener('click', () => fileInput.click());
+        }
+
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const dataUrl = evt.target.result;
+                    if (urlInput) urlInput.value = dataUrl;
+                    if (previewImg) {
+                        previewImg.src = dataUrl;
+                        previewImg.dataset.bgData = dataUrl;
+                    }
+                    if (imageNameText) imageNameText.textContent = file.name;
+                    if (previewContainer) previewContainer.style.display = 'flex';
+                    if (clearBtn) clearBtn.style.display = 'block';
+                    debounceThemeUpdate();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        if (urlInput) {
+            urlInput.addEventListener('input', () => {
+                const val = urlInput.value.trim();
+                if (previewImg) {
+                    if (val) {
+                        previewImg.src = val;
+                        previewImg.dataset.bgData = val;
+                    } else {
+                        previewImg.removeAttribute('src');
+                        delete previewImg.dataset.bgData;
+                    }
+                }
+                if (imageNameText) {
+                    imageNameText.textContent = val.startsWith('data:') ? 'Local Selected File' : val;
+                }
+                if (previewContainer) {
+                    previewContainer.style.display = val ? 'flex' : 'none';
+                }
+                if (clearBtn) {
+                    clearBtn.style.display = val ? 'block' : 'none';
+                }
+                debounceThemeUpdate();
+            });
+        }
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                if (fileInput) fileInput.value = '';
+                if (urlInput) urlInput.value = '';
+                if (previewImg) {
+                    previewImg.removeAttribute('src');
+                    delete previewImg.dataset.bgData;
+                }
+                if (imageNameText) imageNameText.textContent = '';
+                if (previewContainer) previewContainer.style.display = 'none';
+                if (clearBtn) clearBtn.style.display = 'none';
+                debounceThemeUpdate();
+            });
+        }
+
+        if (sizeSelect) {
+            sizeSelect.addEventListener('change', () => {
+                debounceThemeUpdate();
+            });
+        }
+
+        const paddingInput = document.getElementById('theme-panel-padding');
+        if (paddingInput) {
+            paddingInput.addEventListener('input', (e) => {
+                const val = document.getElementById('val-panel-padding');
+                if (val) val.textContent = e.target.value + 'px';
+                debounceThemeUpdate();
+            });
+        }
+
+        const roundnessInput = document.getElementById('theme-panel-roundness');
+        if (roundnessInput) {
+            roundnessInput.addEventListener('input', (e) => {
+                const val = document.getElementById('val-panel-roundness');
+                if (val) val.textContent = e.target.value + 'px';
+                debounceThemeUpdate();
+            });
+        }
 
         document.getElementById('settings-auto-hide').addEventListener('change', (e) => {
             state.autoHideEnabled = e.target.checked;

@@ -3,6 +3,9 @@
   "name": "Sideboar",
   "version": "2.0",
   "description": "True single-instance Edge Sidebar clone via chrome.sidePanel API for persistent VM-like state.",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' data: blob: https: file:;"
+  },
   "permissions": [
     "storage",
     "declarativeNetRequest",
