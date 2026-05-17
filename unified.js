@@ -743,6 +743,11 @@
         let pinnedHeader, tempHeader, pinDivider, tempDivider;
 
         function updateVisibility(isDragging = false) {
+            if (isDragging) {
+                container.classList.add('dragging');
+            } else {
+                container.classList.remove('dragging');
+            }
             const pinnedPopulated = (getSites && getSites()) ? getSites().length > 0 : false;
             const tempPopulated = (getTempSites && getTempSites()) ? getTempSites().length > 0 : false;
             
@@ -2197,6 +2202,7 @@
                 this.host.style.height = '100vh';
                 this.host.style.zIndex = '2147483647';
                 this.host.style.pointerEvents = 'none';
+                this.host.style.visibility = 'hidden';
 
                 this.shadow = this.host.attachShadow({ mode: 'closed' });
 
@@ -2369,7 +2375,21 @@
                     const sharedLink = document.createElement('link');
                     sharedLink.rel = 'stylesheet';
                     sharedLink.href = chrome.runtime.getURL('sidepanel.css');
+                    sharedLink.onload = () => {
+                        if (this.host) {
+                            this.host.style.visibility = 'visible';
+                        }
+                    };
+                    sharedLink.onerror = () => {
+                        if (this.host) {
+                            this.host.style.visibility = 'visible';
+                        }
+                    };
                     this.shadow.appendChild(sharedLink);
+                } else {
+                    if (this.host) {
+                        this.host.style.visibility = 'visible';
+                    }
                 }
             }
 
@@ -2599,6 +2619,7 @@
                     z-index: 2147483647;
                     pointer-events: none;
                     display: none;
+                    visibility: hidden;
                 `;
                 SR.applyThemeStyles(this.host, SR.getThemeDefaults());
                 this.shadow = this.host.attachShadow({ mode: 'closed' });
@@ -2607,7 +2628,19 @@
                     const sharedLink = document.createElement('link');
                     sharedLink.rel = 'stylesheet';
                     sharedLink.href = chrome.runtime.getURL('sidepanel.css');
+                    sharedLink.onload = () => {
+                        if (this.host) {
+                            this.host.style.visibility = 'visible';
+                        }
+                    };
+                    sharedLink.onerror = () => {
+                        if (this.host) {
+                            this.host.style.visibility = 'visible';
+                        }
+                    };
                     this.shadow.appendChild(sharedLink);
+                } else {
+                    this.host.style.visibility = 'visible';
                 }
 
                 this.container = document.createElement('div');
@@ -2857,6 +2890,9 @@
                     return;
                 }
 
+                ah.cleanup();
+                this.autoHideArmed = false;
+
                 this.host.style.removeProperty('display');
                 document.documentElement.classList.add('revived-sidebar-idle-active');
                 this.fixedElementManager.start();
@@ -2976,6 +3012,7 @@
                 this.abortController = null;
                 this.signal = null;
                 this.state = {};
+                this.isInitialized = false;
             }
 
             start() {
@@ -2985,30 +3022,64 @@
                 this.activeInstance = new ActiveSidebar(this.signal);
                 this.idleInstance = new IdleSidebar(this.signal);
 
-                this.syncAndRender();
-
-                document.addEventListener('visibilitychange', () => {
-                    if (!document.hidden) {
-                        this.syncAndRender();
-                    }
-                }, { signal: this.signal });
-
-                window.addEventListener('mouseenter', () => {
-                    this.syncAndRender();
-                }, { signal: this.signal });
+                let receivedHandover = false;
 
                 const hHandler = (e) => {
                     if (e.detail && e.detail.controllerState) {
                         this.state = { ...this.state, ...e.detail.controllerState };
                         window.removeEventListener('REVIVED_HANDOVER_RES', hHandler);
-                        this.orchestrate();
+                        receivedHandover = true;
+                        if (!this.isInitialized) {
+                            this.isInitialized = true;
+                            this.orchestrate();
+                        }
                     }
                 };
                 window.addEventListener('REVIVED_HANDOVER_RES', hHandler, { signal: this.signal });
                 window.dispatchEvent(new CustomEvent('REVIVED_HANDOVER_REQ'));
 
-                SR.safeStorage.onChanged((changes) => {
+                const keys = [
+                    STORAGE_KEYS.SITES,
+                    STORAGE_KEYS.TEMP_SITES,
+                    STORAGE_KEYS.ACTIVE_SITE_ID,
+                    STORAGE_KEYS.ACTIVE_SITE_OWNER,
+                    STORAGE_KEYS.SIDEBAR_WIDTH,
+                    STORAGE_KEYS.CURRENT_URLS,
+                    STORAGE_KEYS.SCROLL_BLOCKLIST,
+                    STORAGE_KEYS.SIDEPANEL_BLOCKLIST,
+                    STORAGE_KEYS.AUTOHIDE_BLOCKLIST,
+                    STORAGE_KEYS.AUTO_HIDE_ENABLED,
+                    STORAGE_KEYS.CUSTOM_THEME,
+                    STORAGE_KEYS.IS_SIDE_PANEL_OPEN,
+                    STORAGE_KEYS.IS_SETTINGS_OPEN,
+                    STORAGE_KEYS.ENABLE_TAPER,
+                    STORAGE_KEYS.SHOW_CATEGORY_ICONS
+                ];
+                SR.safeStorage.get(keys, (result) => {
                     if (SR.isOrphaned()) return;
+                    this.state = { ...result, ...this.state };
+                    globalThis.__SidebarRevived_CurrentState = globalThis.__SidebarRevived_CurrentState || {};
+                    globalThis.__SidebarRevived_CurrentState.controllerState = this.state;
+                    if (!this.isInitialized) {
+                        this.isInitialized = true;
+                        this.orchestrate();
+                    }
+                });
+
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden && this.isInitialized) {
+                        this.syncAndRender();
+                    }
+                }, { signal: this.signal });
+
+                window.addEventListener('mouseenter', () => {
+                    if (this.isInitialized) {
+                        this.syncAndRender();
+                    }
+                }, { signal: this.signal });
+
+                SR.safeStorage.onChanged((changes) => {
+                    if (SR.isOrphaned() || !this.isInitialized) return;
                     let needsRender = false;
                     for (const key in changes) {
                         this.state[key] = changes[key].newValue;
@@ -3018,10 +3089,18 @@
                         this.orchestrate();
                     }
                 });
+
+                chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+                    if (SR.isOrphaned()) return;
+                    if (message.type === 'PING') {
+                        sendResponse({ status: 'alive' });
+                        return true;
+                    }
+                });
             }
 
             syncAndRender() {
-                if (SR.isOrphaned()) return;
+                if (SR.isOrphaned() || !this.isInitialized) return;
                 const keys = [
                     STORAGE_KEYS.SITES,
                     STORAGE_KEYS.TEMP_SITES,
@@ -3048,6 +3127,7 @@
             }
 
             orchestrate() {
+                if (!this.isInitialized) return;
                 const renderCallback = () => this.orchestrate();
 
                 const isBlocked = SR.isBlocklistedDomain(window.location.hostname, this.state.sidepanelBlocklist);

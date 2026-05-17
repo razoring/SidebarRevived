@@ -469,6 +469,11 @@ html {
         pointer-events: auto;
         z-index: 10;
         position: relative;
+        display: none;
+    }
+
+    .dragging .drop-indicator {
+        display: block;
     }
 
     .drop-indicator::after {
