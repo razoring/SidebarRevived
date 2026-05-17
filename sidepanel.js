@@ -132,9 +132,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 });
 
 function applyTheme() {
-    const defaults = __SidebarRevived.getThemeDefaults();
-    const theme = state.customTheme ? { ...defaults, ...state.customTheme } : defaults;
-    applyThemeStyles(document.documentElement, theme);
+    applyThemeStyles(document.documentElement, state.customTheme || __SidebarRevived.getThemeDefaults());
 }
 
 async function render() {
@@ -631,21 +629,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function updateSettingsUI() {
-    const defaults = __SidebarRevived.getThemeDefaults();
-    const theme = state.customTheme ? { ...defaults, ...state.customTheme } : defaults;
-    
+    const theme = state.customTheme || {};
     const fields = [
-        { input: 'theme-font-color', hex: 'hex-font-color', key: 'fontColor' },
-        { input: 'theme-sidebar-bg', hex: 'hex-sidebar-bg', key: 'sidebarBackground' },
-        { input: 'theme-divider-bg', hex: 'hex-divider-bg', key: 'dividerBackground' },
-        { input: 'theme-midtone-bg', hex: 'hex-midtone-bg', key: 'midtoneBackground' },
-        { input: 'theme-accent-color', hex: 'hex-accent-color', key: 'accentColor' }
+        { input: 'theme-font-color', hex: 'hex-font-color', fallback: '#ffffff' },
+        { input: 'theme-sidebar-bg', hex: 'hex-sidebar-bg', fallback: '#38393c' },
+        { input: 'theme-divider-bg', hex: 'hex-divider-bg', fallback: '#555555' },
+        { input: 'theme-accent-color', hex: 'hex-accent-color', fallback: '#b2d7ef' }
     ];
+
+    const themeKey = { 'theme-font-color': 'fontColor', 'theme-sidebar-bg': 'sidebarBackground', 'theme-divider-bg': 'dividerBackground', 'theme-accent-color': 'accentColor' };
 
     fields.forEach(f => {
         const inp = document.getElementById(f.input);
         const hex = document.getElementById(f.hex);
-        const val = theme[f.key];
+        const val = theme[themeKey[f.input]] || f.fallback;
         if (inp) inp.value = val;
         if (hex && document.activeElement !== hex) hex.value = val;
     });
@@ -757,7 +754,6 @@ function debounceThemeUpdate() {
         fontColor: document.getElementById('theme-font-color').value,
         sidebarBackground: document.getElementById('theme-sidebar-bg').value,
         dividerBackground: document.getElementById('theme-divider-bg').value,
-        midtoneBackground: document.getElementById('theme-midtone-bg').value,
         accentColor: document.getElementById('theme-accent-color').value,
         panelOpacity: opacitySlider ? parseFloat(opacitySlider.value) : 1,
         panelBlur: blurSlider ? parseInt(blurSlider.value, 10) : 0
@@ -776,7 +772,6 @@ const colorFields = [
     { input: 'theme-font-color', hex: 'hex-font-color' },
     { input: 'theme-sidebar-bg', hex: 'hex-sidebar-bg' },
     { input: 'theme-divider-bg', hex: 'hex-divider-bg' },
-    { input: 'theme-midtone-bg', hex: 'hex-midtone-bg' },
     { input: 'theme-accent-color', hex: 'hex-accent-color' }
 ];
 
