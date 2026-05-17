@@ -54,7 +54,7 @@
             if (!S.isOrphaned()) {
                 try {
                     chrome.storage.local.get(keys, (res) => {
-                        if (chrome.runtime.lastError) return;
+                        if (chrome && chrome.runtime && chrome.runtime.lastError) return;
                         if (cb) cb(res);
                     });
                     return;
@@ -3273,6 +3273,10 @@
             }
 
             start() {
+                if (SR.isOrphaned()) {
+                    this.destroy();
+                    return;
+                }
                 this.abortController = new AbortController();
                 this.signal = this.abortController.signal;
 
@@ -3282,6 +3286,10 @@
                 let receivedHandover = false;
 
                 const hHandler = (e) => {
+                    if (SR.isOrphaned()) {
+                        this.destroy();
+                        return;
+                    }
                     if (e.detail && e.detail.controllerState) {
                         this.state = { ...this.state, ...e.detail.controllerState };
                         window.removeEventListener('REVIVED_HANDOVER_RES', hHandler);
@@ -3313,7 +3321,10 @@
                     STORAGE_KEYS.SHOW_CATEGORY_ICONS
                 ];
                 SR.safeStorage.get(keys, (result) => {
-                    if (SR.isOrphaned()) return;
+                    if (SR.isOrphaned()) {
+                        this.destroy();
+                        return;
+                    }
                     this.state = { ...result, ...this.state };
                     globalThis.__SidebarRevived_CurrentState = globalThis.__SidebarRevived_CurrentState || {};
                     globalThis.__SidebarRevived_CurrentState.controllerState = this.state;
@@ -3324,19 +3335,31 @@
                 });
 
                 document.addEventListener('visibilitychange', () => {
+                    if (SR.isOrphaned()) {
+                        this.destroy();
+                        return;
+                    }
                     if (!document.hidden && this.isInitialized) {
                         this.syncAndRender();
                     }
                 }, { signal: this.signal });
 
                 window.addEventListener('mouseenter', () => {
+                    if (SR.isOrphaned()) {
+                        this.destroy();
+                        return;
+                    }
                     if (this.isInitialized) {
                         this.syncAndRender();
                     }
                 }, { signal: this.signal });
 
                 SR.safeStorage.onChanged((changes) => {
-                    if (SR.isOrphaned() || !this.isInitialized) return;
+                    if (SR.isOrphaned()) {
+                        this.destroy();
+                        return;
+                    }
+                    if (!this.isInitialized) return;
                     let needsRender = false;
                     for (const key in changes) {
                         this.state[key] = changes[key].newValue;
@@ -3347,17 +3370,28 @@
                     }
                 });
 
-                chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-                    if (SR.isOrphaned()) return;
-                    if (message.type === 'PING') {
-                        sendResponse({ status: 'alive' });
-                        return true;
-                    }
-                });
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+                    try {
+                        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+                            if (SR.isOrphaned()) {
+                                this.destroy();
+                                return;
+                            }
+                            if (message.type === 'PING') {
+                                sendResponse({ status: 'alive' });
+                                return true;
+                            }
+                        });
+                    } catch (e) { }
+                }
             }
 
             syncAndRender() {
-                if (SR.isOrphaned() || !this.isInitialized) return;
+                if (SR.isOrphaned()) {
+                    this.destroy();
+                    return;
+                }
+                if (!this.isInitialized) return;
                 const keys = [
                     STORAGE_KEYS.SITES,
                     STORAGE_KEYS.TEMP_SITES,
@@ -3376,6 +3410,10 @@
                     STORAGE_KEYS.SHOW_CATEGORY_ICONS
                 ];
                 SR.safeStorage.get(keys, (result) => {
+                    if (SR.isOrphaned()) {
+                        this.destroy();
+                        return;
+                    }
                     this.state = { ...this.state, ...result };
                     globalThis.__SidebarRevived_CurrentState = globalThis.__SidebarRevived_CurrentState || {};
                     globalThis.__SidebarRevived_CurrentState.controllerState = this.state;
