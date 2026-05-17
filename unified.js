@@ -1229,12 +1229,6 @@
         ];
 
         chrome.storage.local.get(keysToRetrieve, async (result) => {
-            if (state._loaded) { 
-                await SR.svgReady;
-                render(); 
-                return; 
-            }
-            state._loaded = true;
             if (result.sites) state.sites = result.sites;
             if (result.tempSites) state.tempSites = result.tempSites;
             if (result.activeSiteId) state.activeSiteId = result.activeSiteId;
@@ -1250,6 +1244,7 @@
             if (result.enableTaper !== undefined) state.enableTaper = result.enableTaper;
             if (result.activeSiteOwner !== undefined) state.activeSiteOwner = result.activeSiteOwner;
             
+            state._loaded = true;
             applyTheme();
             await SR.svgReady;
             render();
@@ -2408,10 +2403,12 @@
                         state.activeSiteId = newActiveId;
                         state.activeSiteOwner = newOwner;
                         state.isSettingsOpen = false;
+                        state.isAddPageOpen = false;
                         SR.safeStorage.set({
                             [STORAGE_KEYS.ACTIVE_SITE_ID]: newActiveId,
                             [STORAGE_KEYS.ACTIVE_SITE_OWNER]: newOwner,
-                            [STORAGE_KEYS.IS_SETTINGS_OPEN]: false
+                            [STORAGE_KEYS.IS_SETTINGS_OPEN]: false,
+                            [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false
                         });
                         renderCallback();
                     },
@@ -2757,7 +2754,9 @@
                     onSiteClick: (siteId) => {
                         SR.safeStorage.set({
                             [STORAGE_KEYS.ACTIVE_SITE_ID]: siteId,
-                            [STORAGE_KEYS.ACTIVE_SITE_OWNER]: 'sidepanel'
+                            [STORAGE_KEYS.ACTIVE_SITE_OWNER]: 'sidepanel',
+                            [STORAGE_KEYS.IS_SETTINGS_OPEN]: false,
+                            [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false
                         });
                         SR.safeSendMessage({ action: 'open_side_panel' });
                         renderCallback();
@@ -2766,7 +2765,10 @@
                         SR.safeSendMessage({ action: 'add_current_tab' });
                     },
                     onSettingsClick: () => {
-                        SR.safeStorage.set({ [STORAGE_KEYS.IS_SETTINGS_OPEN]: true });
+                        SR.safeStorage.set({ 
+                            [STORAGE_KEYS.IS_SETTINGS_OPEN]: true,
+                            [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false
+                        });
                         SR.safeSendMessage({ action: 'open_side_panel' });
                     }
                 });
@@ -3054,17 +3056,13 @@
 
                 if (isActiveMode) {
                     this.idleInstance.hide();
-                    this.idleInstance.destroy();
                     this.activeInstance.render(this.state, renderCallback);
                 } else if (isIdleMode) {
                     this.activeInstance.hide();
-                    this.activeInstance.destroy();
                     this.idleInstance.render(this.state, renderCallback);
                 } else {
                     this.activeInstance.hide();
-                    this.activeInstance.destroy();
                     this.idleInstance.hide();
-                    this.idleInstance.destroy();
                 }
             }
 
