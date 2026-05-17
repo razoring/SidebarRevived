@@ -1195,11 +1195,29 @@
             try {
                 const response = await fetch(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(query)}`);
                 const data = await response.json();
-                return data.map(item => ({
+                
+                const mapped = data.map(item => ({
                     title: item.name,
                     url: 'https://' + item.domain,
-                    faviconUrl: item.logo || `https://www.google.com/s2/favicons?domain=${item.domain}&sz=64`
+                    faviconUrl: item.logo || `https://www.google.com/s2/favicons?domain=${item.domain}&sz=64`,
+                    domain: item.domain
                 }));
+
+                const checked = await Promise.all(mapped.map(async (item) => {
+                    try {
+                        const dohResponse = await fetch(`https://family.cloudflare-dns.com/dns-query?name=${encodeURIComponent(item.domain)}&type=A`, {
+                            headers: { 'Accept': 'application/dns-json' }
+                        });
+                        const dohData = await dohResponse.json();
+                        const isBlocked = dohData.Answer && dohData.Answer.some(ans => ans.data === '0.0.0.0');
+                        return { ...item, isBlocked };
+                    } catch (e) {
+                        return { ...item, isBlocked: false };
+                    }
+                }));
+
+                checked.sort((a, b) => (a.isBlocked === b.isBlocked) ? 0 : a.isBlocked ? 1 : -1);
+                return checked;
             } catch (err) {
                 console.error('Search failed', err);
                 return [];
