@@ -1748,6 +1748,12 @@
 
             if (container.children.length === 0) {
                 container.innerHTML = '<div class="search-status">No results found</div>';
+            } else {
+                const warning = document.createElement('div');
+                warning.className = 'search-results-warning';
+                warning.style.cssText = 'text-align: center; font-size: 10px; opacity: 0.5; padding: 12px; color: var(--theme-font-color, inherit); font-style: italic; border-top: 1px solid rgba(128, 128, 128, 0.15);';
+                warning.textContent = 'Search results are provided by a third-party service.';
+                container.appendChild(warning);
             }
             container.classList.add('visible');
         }
@@ -2350,6 +2356,9 @@
                 const style = document.createElement('style');
                 style.id = 'revived-sidebar-host-styles';
                 style.textContent = `
+                    #revived-idle-sidebar-host {
+                        display: none !important;
+                    }
                     html.revived-sidebar-active {
                         --revived-sidebar-width: 48px;
                         margin-right: var(--revived-sidebar-width, 48px) !important;
