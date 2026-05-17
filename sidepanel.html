@@ -59,6 +59,7 @@
         <h2>Settings</h2>
       </div>
       <div class="settings-form">
+        <!-- 1. Theme Section -->
         <div class="settings-category">
           <div class="settings-category-header collapsible" data-target="theme-section">
             <span>Theme</span>
@@ -67,39 +68,7 @@
           <div class="settings-category-body" id="theme-section">
             <p class="settings-description" style="margin-bottom: 12px;">Customize the styling, transparency, and hardware-accelerated blur filters of the sidebar.</p>
             
-            <div class="theme-color-row">
-              <div class="theme-color-label-group">
-                <span class="theme-color-label">Contrast</span>
-                <span class="settings-description-sub">Primary foreground color for text, SVGs, and control highlights.</span>
-              </div>
-              <div class="theme-color-picker-wrapper">
-                <input type="text" class="theme-hex-input" id="hex-font-color" value="#ffffff" spellcheck="false" />
-                <input type="color" id="theme-font-color" />
-              </div>
-            </div>
-            
-            <div class="theme-color-row">
-              <div class="theme-color-label-group">
-                <span class="theme-color-label">Background</span>
-                <span class="settings-description-sub">Background solid fill color of both sidebar panels.</span>
-              </div>
-              <div class="theme-color-picker-wrapper">
-                <input type="text" class="theme-hex-input" id="hex-sidebar-bg" value="#2b2b2b" spellcheck="false" />
-                <input type="color" id="theme-sidebar-bg" />
-              </div>
-            </div>
-            
-            <div class="theme-color-row">
-              <div class="theme-color-label-group">
-                <span class="theme-color-label">Divider</span>
-                <span class="settings-description-sub">Tint of vertical separators separating categories and utilities.</span>
-              </div>
-              <div class="theme-color-picker-wrapper">
-                <input type="text" class="theme-hex-input" id="hex-divider-bg" value="#555555" spellcheck="false" />
-                <input type="color" id="theme-divider-bg" />
-              </div>
-            </div>
-            
+            <!-- Accent (Most used color) -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Accent</span>
@@ -111,17 +80,31 @@
               </div>
             </div>
 
+            <!-- Contrast -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
-                <span class="theme-color-label">Midtone</span>
-                <span class="settings-description-sub">Secondary description text, slider values, and caption tints.</span>
+                <span class="theme-color-label">Contrast</span>
+                <span class="settings-description-sub">Primary foreground color for text, SVGs, and control highlights.</span>
               </div>
               <div class="theme-color-picker-wrapper">
-                <input type="text" class="theme-hex-input" id="hex-midtone-color" value="#a4a4a4" spellcheck="false" />
-                <input type="color" id="theme-midtone-color" />
+                <input type="text" class="theme-hex-input" id="hex-font-color" value="#ffffff" spellcheck="false" />
+                <input type="color" id="theme-font-color" />
               </div>
             </div>
             
+            <!-- Background -->
+            <div class="theme-color-row">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Background</span>
+                <span class="settings-description-sub">Background solid fill color of both sidebar panels.</span>
+              </div>
+              <div class="theme-color-picker-wrapper">
+                <input type="text" class="theme-hex-input" id="hex-sidebar-bg" value="#2b2b2b" spellcheck="false" />
+                <input type="color" id="theme-sidebar-bg" />
+              </div>
+            </div>
+            
+            <!-- Opacity -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Opacity</span>
@@ -133,6 +116,7 @@
               </div>
             </div>
             
+            <!-- Blur -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Blur</span>
@@ -144,6 +128,55 @@
               </div>
             </div>
 
+            <!-- Divider -->
+            <div class="theme-color-row">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Divider</span>
+                <span class="settings-description-sub">Tint of vertical separators separating categories and utilities.</span>
+              </div>
+              <div class="theme-color-picker-wrapper">
+                <input type="text" class="theme-hex-input" id="hex-divider-bg" value="#555555" spellcheck="false" />
+                <input type="color" id="theme-divider-bg" />
+              </div>
+            </div>
+            
+            <!-- Midtone -->
+            <div class="theme-color-row">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Midtone</span>
+                <span class="settings-description-sub">Secondary description text, slider values, and caption tints.</span>
+              </div>
+              <div class="theme-color-picker-wrapper">
+                <input type="text" class="theme-hex-input" id="hex-midtone-color" value="#a4a4a4" spellcheck="false" />
+                <input type="color" id="theme-midtone-color" />
+              </div>
+            </div>
+
+            <!-- Panel Padding -->
+            <div class="theme-color-row">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Panel Padding</span>
+                <span class="settings-description-sub">Floating inset distance from the screen edges (0px - 10px).</span>
+              </div>
+              <div class="theme-slider-wrapper">
+                <span class="theme-slider-value" id="val-panel-padding">0px</span>
+                <input type="range" id="theme-panel-padding" min="0" max="10" step="1" value="0" />
+              </div>
+            </div>
+
+            <!-- Panel Roundness -->
+            <div class="theme-color-row">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Panel Roundness</span>
+                <span class="settings-description-sub">Corner border-radius for the floating panels (0px - 20px).</span>
+              </div>
+              <div class="theme-slider-wrapper">
+                <span class="theme-slider-value" id="val-panel-roundness">0px</span>
+                <input type="range" id="theme-panel-roundness" min="0" max="20" step="1" value="0" />
+              </div>
+            </div>
+
+            <!-- Background Image -->
             <div class="theme-color-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Background Image Link / Path</span>
@@ -163,6 +196,7 @@
               </div>
             </div>
             
+            <!-- Image Sizing -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Image Sizing</span>
@@ -179,28 +213,7 @@
               </div>
             </div>
 
-            <div class="theme-color-row">
-              <div class="theme-color-label-group">
-                <span class="theme-color-label">Panel Padding</span>
-                <span class="settings-description-sub">Floating inset distance from the screen edges (0px - 10px).</span>
-              </div>
-              <div class="theme-slider-wrapper">
-                <span class="theme-slider-value" id="val-panel-padding">0px</span>
-                <input type="range" id="theme-panel-padding" min="0" max="10" step="1" value="0" />
-              </div>
-            </div>
-
-            <div class="theme-color-row">
-              <div class="theme-color-label-group">
-                <span class="theme-color-label">Panel Roundness</span>
-                <span class="settings-description-sub">Corner border-radius for the floating panels (0px - 20px).</span>
-              </div>
-              <div class="theme-slider-wrapper">
-                <span class="theme-slider-value" id="val-panel-roundness">0px</span>
-                <input type="range" id="theme-panel-roundness" min="0" max="20" step="1" value="0" />
-              </div>
-            </div>
-
+            <!-- Theme Actions -->
             <div class="settings-actions" style="margin-top: 16px;">
               <button id="export-theme-btn">Export JSON</button>
               <button id="import-theme-btn">Import JSON</button>
@@ -210,6 +223,40 @@
           </div>
         </div>
         
+        <!-- 2. Appearance Section (Adjacent to Theme for visual consistency and relatedness) -->
+        <div class="settings-category">
+          <div class="settings-category-header collapsible" data-target="appearance-section">
+            <span>Appearance</span>
+            <span class="collapse-arrow">&#9660;</span>
+          </div>
+          <div class="settings-category-body" id="appearance-section">
+            <!-- Enable Taper (Visual styling, highly used customization) -->
+            <div class="settings-option-group">
+              <label class="toggle-row">
+                <span>Enable Taper</span>
+                <div class="toggle-track">
+                  <input type="checkbox" id="settings-enable-taper" />
+                  <div class="toggle-thumb"></div>
+                </div>
+              </label>
+              <p class="settings-description" style="margin-top: 4px; margin-bottom: 12px;">Incorporate seamless concave rounded tapers on the top and bottom edges of the idle sidebar to blend naturally with Edge's UI style (disabled during Auto-Hide).</p>
+            </div>
+
+            <!-- Show Category Icons -->
+            <div class="settings-option-group">
+              <label class="toggle-row">
+                <span>Show Category Icons</span>
+                <div class="toggle-track">
+                  <input type="checkbox" id="settings-show-category-drag" />
+                  <div class="toggle-thumb"></div>
+                </div>
+              </label>
+              <p class="settings-description" style="margin-top: 4px;">Display section icons ("Pinned" pins and "Temporary" clocks) to keep site groups organized.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Functionality Section -->
         <div class="settings-category">
           <div class="settings-category-header collapsible" data-target="functionality-section">
             <span>Functionality</span>
@@ -227,65 +274,40 @@
           </div>
         </div>
         
-        <div class="settings-category">
-          <div class="settings-category-header collapsible" data-target="appearance-section">
-            <span>Appearance</span>
-            <span class="collapse-arrow">&#9660;</span>
-          </div>
-          <div class="settings-category-body" id="appearance-section">
-            <div class="settings-option-group">
-              <label class="toggle-row">
-                <span>Show Category Icons</span>
-                <div class="toggle-track">
-                  <input type="checkbox" id="settings-show-category-drag" />
-                  <div class="toggle-thumb"></div>
-                </div>
-              </label>
-              <p class="settings-description" style="margin-top: 4px; margin-bottom: 12px;">Display section icons ("Pinned" pins and "Temporary" clocks) to keep site groups organized.</p>
-            </div>
-            
-            <div class="settings-option-group">
-              <label class="toggle-row">
-                <span>Enable Taper</span>
-                <div class="toggle-track">
-                  <input type="checkbox" id="settings-enable-taper" />
-                  <div class="toggle-thumb"></div>
-                </div>
-              </label>
-              <p class="settings-description" style="margin-top: 4px;">Incorporate seamless concave rounded tapers on the top and bottom edges of the idle sidebar to blend naturally with Edge's UI style (disabled during Auto-Hide).</p>
-            </div>
-          </div>
-        </div>
-        
+        <!-- 4. Blocklists Section -->
         <div class="settings-category">
           <div class="settings-category-header collapsible" data-target="blocklists-section">
             <span>Blocklists</span>
             <span class="collapse-arrow">&#9660;</span>
           </div>
           <div class="settings-category-body" id="blocklists-section">
+            <!-- Sidepanel Blocklist (Completely disable sidebar) -->
             <div class="settings-subsection">
-              <div class="settings-subsection-title">Scrollbar Blocklist</div>
-              <p class="settings-description">Prevent the sidebar's aggressive scrollbar and infinite-scroll patches from running on specific domains. Useful for sites that experience scroll glitches.</p>
-              <button id="add-to-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
-              <textarea id="settings-scroll-blocklist" placeholder="example.com&#10;anotherdomain.org" spellcheck="false"></textarea>
-            </div>
-            
-            <div class="settings-subsection" style="margin-top: 16px;">
               <div class="settings-subsection-title">Sidepanel Blocklist</div>
               <p class="settings-description">Completely disable and block the in-page sidebar from rendering on specified domains. Pinned apps can still be launched via the native sidepanel.</p>
               <button id="add-to-sidepanel-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
               <textarea id="settings-sidepanel-blocklist" placeholder="example.com&#10;anotherdomain.org" spellcheck="false"></textarea>
             </div>
             
+            <!-- Auto-Hide Blocklist (Enforces slide behavior) -->
             <div class="settings-subsection" style="margin-top: 16px;">
               <div class="settings-subsection-title">Auto-Hide Blocklist</div>
               <p class="settings-description">Enforce auto-hide sliding behavior on these specific domains, even if auto-hide is globally disabled. Perfect for pages where the sidebar overlaps important content.</p>
               <button id="add-to-autohide-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
               <textarea id="settings-autohide-blocklist" placeholder="example.com&#10;anotherdomain.org" spellcheck="false"></textarea>
             </div>
+
+            <!-- Scrollbar Blocklist (Scrollbar/infinite-scroll overrides blocker) -->
+            <div class="settings-subsection" style="margin-top: 16px;">
+              <div class="settings-subsection-title">Scrollbar Blocklist</div>
+              <p class="settings-description">Prevent the sidebar's aggressive scrollbar and infinite-scroll patches from running on specific domains. Useful for sites that experience scroll glitches.</p>
+              <button id="add-to-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
+              <textarea id="settings-scroll-blocklist" placeholder="example.com&#10;anotherdomain.org" spellcheck="false"></textarea>
+            </div>
           </div>
         </div>
 
+        <!-- 5. Backup & Restore Section -->
         <div class="settings-category">
           <div class="settings-category-header collapsible" data-target="backup-section">
             <span>Backup & Restore</span>
