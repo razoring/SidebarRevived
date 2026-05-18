@@ -1428,6 +1428,7 @@
             if (state.isSettingsOpen) {
                 updateSettingsUI();
                 initCollapsibleSections();
+                updateLastSyncRelativeTime();
                 
                 iconBar.style.display = 'none';
                 contentArea.style.display = 'none';
@@ -2157,6 +2158,9 @@
             });
 
         document.getElementById('settings-back-btn').addEventListener('click', () => {
+            if (window.settingsSyncEngine) {
+                window.settingsSyncEngine.flushPendingSync();
+            }
             chrome.storage.local.set({ [STORAGE_KEYS.IS_SETTINGS_OPEN]: false, [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false, [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false });
         });
 
@@ -2631,6 +2635,9 @@
                         if (window.settingsSyncEngine) {
                             window.settingsSyncEngine.onUserStatusChangedCallback && 
                             window.settingsSyncEngine.onUserStatusChangedCallback(currentUser);
+
+                            // Activate synchronization and download cloud settings immediately!
+                            window.settingsSyncEngine.activateSyncForUser();
                         }
                         updateSyncUI(currentUser);
                     });
@@ -2653,10 +2660,9 @@
             const avatarImg = document.getElementById('sync-user-avatar');
             const nameInput = document.getElementById('sync-user-name-input');
             const emailSpan = document.getElementById('sync-user-email');
-            const lastSyncSpan = document.getElementById('sync-last-timestamp');
             const storePublishContainer = document.getElementById('store-publish-container');
             const storePublishGuestMsg = document.getElementById('store-publish-guest-msg');
-            const providerBadge = document.getElementById('provider-badge-name');
+            const logoutBtn = document.getElementById('sync-logout-btn');
 
             if (user) {
                 if (guestView) guestView.style.display = 'none';
@@ -2672,99 +2678,104 @@
                 if (emailSpan) emailSpan.textContent = user.email || '';
                 if (storePublishContainer) storePublishContainer.style.display = 'block';
                 if (storePublishGuestMsg) storePublishGuestMsg.style.display = 'none';
-
-                chrome.storage.local.get(['sync_last_timestamp', 'auth_provider'], (res) => {
-                    if (lastSyncSpan) {
-                        lastSyncSpan.textContent = res.sync_last_timestamp ? new Date(res.sync_last_timestamp).toLocaleString() : 'Just now';
-                    }
-                    if (providerBadge) {
-                        providerBadge.textContent = res.auth_provider || 'OAuth Connected';
-                        if (res.auth_provider === 'Google') {
-                            providerBadge.style.background = 'rgba(234, 67, 53, 0.15)';
-                            providerBadge.style.color = '#ea4335';
-                        } else if (res.auth_provider === 'Microsoft') {
-                            providerBadge.style.background = 'rgba(0, 164, 239, 0.15)';
-                            providerBadge.style.color = '#00a4ef';
-                        } else if (res.auth_provider === 'Apple') {
-                            providerBadge.style.background = 'rgba(255, 255, 255, 0.15)';
-                            providerBadge.style.color = '#ffffff';
-                        } else {
-                            providerBadge.style.background = 'rgba(255,255,255,0.1)';
-                            providerBadge.style.color = '#fff';
-                        }
-                    }
-                });
+                if (logoutBtn) logoutBtn.style.display = 'inline-block';
             } else {
                 if (guestView) guestView.style.display = 'block';
                 if (userView) userView.style.display = 'none';
                 if (storePublishContainer) storePublishContainer.style.display = 'none';
                 if (storePublishGuestMsg) storePublishGuestMsg.style.display = 'block';
+                if (logoutBtn) logoutBtn.style.display = 'none';
             }
         }
 
-        // Binds Username Saver
-        const saveUsernameBtn = document.getElementById('save-username-btn');
-        if (saveUsernameBtn) {
-            saveUsernameBtn.addEventListener('click', async () => {
-                const nameInput = document.getElementById('sync-user-name-input');
-                if (!nameInput) return;
-                const newName = nameInput.value.trim();
-                if (!newName) {
-                    alert('Please enter a username.');
+        // Helper to format and display friendly relative time for last backup timestamp
+        function updateLastSyncRelativeTime() {
+            const lastSyncSpan = document.getElementById('sync-last-timestamp');
+            if (!lastSyncSpan) return;
+            chrome.storage.local.get(['settings_last_synced'], (res) => {
+                const ts = res.settings_last_synced;
+                if (!ts) {
+                    lastSyncSpan.textContent = 'Never';
                     return;
                 }
-
-                saveUsernameBtn.disabled = true;
-                saveUsernameBtn.textContent = 'Saving...';
-                try {
-                    const client = window.appwriteService;
-                    const avatarUrl = client.currentUser.profile?.avatarUrl || '';
-                    await client.updateUserProfile(newName, avatarUrl);
-                    alert('Username successfully updated!');
-                } catch (err) {
-                    console.error(err);
-                    alert('Failed to update username: ' + err.message);
-                } finally {
-                    saveUsernameBtn.disabled = false;
-                    saveUsernameBtn.textContent = 'Save';
+                const now = Date.now();
+                const diffMs = now - new Date(ts).getTime();
+                if (diffMs < 0) {
+                    lastSyncSpan.textContent = 'Just now';
+                    return;
                 }
+                const diffSecs = Math.floor(diffMs / 1000);
+                if (diffSecs < 10) {
+                    lastSyncSpan.textContent = 'Just now';
+                    return;
+                }
+                if (diffSecs < 60) {
+                    lastSyncSpan.textContent = `${diffSecs} seconds ago`;
+                    return;
+                }
+                const diffMins = Math.floor(diffSecs / 60);
+                if (diffMins < 60) {
+                    lastSyncSpan.textContent = diffMins === 1 ? '1 minute ago' : `${diffMins} minutes ago`;
+                    return;
+                }
+                const diffHours = Math.floor(diffMins / 60);
+                if (diffHours < 24) {
+                    lastSyncSpan.textContent = diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+                    return;
+                }
+                const diffDays = Math.floor(diffHours / 24);
+                if (diffDays < 7) {
+                    lastSyncSpan.textContent = diffDays === 1 ? 'Yesterday' : `${diffDays} days ago`;
+                    return;
+                }
+                lastSyncSpan.textContent = new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
             });
         }
 
-        // Binds Custom Avatar Seed Generator
-        const saveSeedBtn = document.getElementById('save-seed-btn');
-        if (saveSeedBtn) {
-            saveSeedBtn.addEventListener('click', async () => {
-                const seedInput = document.getElementById('avatar-seed-input');
-                if (!seedInput) return;
-                const seedVal = seedInput.value.trim();
-                if (!seedVal) {
-                    alert('Please type a phrase to generate your robot avatar.');
+        // Binds Premium Inline Username Editor with Debounced Cloud Saving
+        const nameInput = document.getElementById('sync-user-name-input');
+        let usernameDebounceTimeout = null;
+
+        async function saveUsernameToServer(newName) {
+            try {
+                const client = window.appwriteService;
+                if (!client || !client.currentUser) return;
+                const avatarUrl = client.currentUser.profile?.avatarUrl || '';
+                
+                console.log("💾 [AppwriteService] Updating username to:", newName);
+                await client.updateUserProfile(newName, avatarUrl);
+                console.log("✔ [AppwriteService] Username updated successfully!");
+            } catch (err) {
+                console.error("❌ [AppwriteService] Failed to update username on server:", err);
+            }
+        }
+
+        if (nameInput) {
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    nameInput.blur(); // Triggers the blur event to save and exit edit focus
+                }
+            });
+
+            nameInput.addEventListener('blur', () => {
+                const newName = nameInput.value.trim();
+                const client = window.appwriteService;
+                
+                if (!newName) {
+                    // Revert to original username if they clear it
+                    nameInput.value = client.currentUser?.profile?.displayName || client.currentUser?.name || 'Connected User';
                     return;
                 }
 
-                saveSeedBtn.disabled = true;
-                saveSeedBtn.textContent = 'Generating...';
-                try {
-                    const client = window.appwriteService;
-                    const dicebearUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(seedVal)}`;
-                    const currentName = client.currentUser.profile?.displayName || client.currentUser.name || 'Connected User';
-                    
-                    await client.updateUserProfile(currentName, dicebearUrl);
-                    
-                    const avatarImg = document.getElementById('sync-user-avatar');
-                    if (avatarImg) {
-                        avatarImg.src = dicebearUrl;
-                    }
-                    seedInput.value = '';
-                    alert('Robot avatar successfully generated and applied!');
-                } catch (err) {
-                    console.error(err);
-                    alert('Failed to generate avatar: ' + err.message);
-                } finally {
-                    saveSeedBtn.disabled = false;
-                    saveSeedBtn.textContent = 'Generate';
+                // Debounce saving to the cloud to prevent overwhelming the server with frequent API hits
+                if (usernameDebounceTimeout) {
+                    clearTimeout(usernameDebounceTimeout);
                 }
+
+                usernameDebounceTimeout = setTimeout(() => {
+                    saveUsernameToServer(newName);
+                }, 1000); // 1.0 second debounce delay
             });
         }
 
@@ -2826,37 +2837,11 @@
             });
         }
 
-        const appleBtn = document.getElementById('sync-apple-btn');
-        if (appleBtn) {
-            appleBtn.addEventListener('click', () => {
-                console.log("👉 [OAuth] Opening Apple sign-in in a new tab.");
-                chrome.tabs.create({ url: chrome.runtime.getURL("sidepanel.html?auth_trigger=apple") });
-            });
-        }
-
         const logoutBtn = document.getElementById('sync-logout-btn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => {
                 if (window.settingsSyncEngine) {
                     window.settingsSyncEngine.logout();
-                }
-            });
-        }
-
-        const syncNowBtn = document.getElementById('sync-now-btn');
-        if (syncNowBtn) {
-            syncNowBtn.addEventListener('click', async () => {
-                syncNowBtn.disabled = true;
-                syncNowBtn.textContent = 'Syncing...';
-                try {
-                    await window.settingsSyncEngine.triggerForceSync();
-                    updateSyncUI(window.settingsSyncEngine.getCurrentUser());
-                } catch (err) {
-                    console.error(err);
-                    alert('Sync failed: ' + err.message);
-                } finally {
-                    syncNowBtn.disabled = false;
-                    syncNowBtn.textContent = 'Sync Now';
                 }
             });
         }

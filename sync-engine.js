@@ -42,9 +42,25 @@ class SettingsSyncEngine {
             this.startRealtimeListener();
         }
 
+        // Flush pending changes when the sidebar window unloads (is closed)
+        window.addEventListener('pagehide', () => {
+            this.flushPendingSync();
+        });
+
         if (this.onUserStatusChangedCallback) {
             this.onUserStatusChangedCallback(window.appwriteService.currentUser);
         }
+    }
+
+    /**
+     * Activate settings synchronization loop upon login
+     */
+    async activateSyncForUser() {
+        if (!window.appwriteService.currentUser) return;
+        
+        console.log("🚀 [SyncEngine] Activating synchronization loop for user...");
+        await this.performInitialSync();
+        this.startRealtimeListener();
     }
 
     /**
@@ -246,6 +262,34 @@ class SettingsSyncEngine {
                 resolve();
             });
         });
+    }
+
+    /**
+     * Force immediate upload of any pending debounced changes
+     */
+    async flushPendingSync() {
+        if (this.debounceTimeout) {
+            clearTimeout(this.debounceTimeout);
+            this.debounceTimeout = null;
+
+            if (this.isSyncInProgress || !window.appwriteService.currentUser) return;
+
+            this.isSyncInProgress = true;
+            console.log("📤 [SyncEngine] Flushing pending changes immediately to cloud...");
+
+            try {
+                const localData = await this._getLocalSyncData();
+                const success = await window.appwriteService.pushSettingsToCloud(localData.settings);
+                if (success) {
+                    const nowPushIso = new Date().toISOString();
+                    await this._setLocalSyncTimestamps(nowPushIso, nowPushIso);
+                }
+            } catch (err) {
+                console.error("❌ [SyncEngine] Forced sync flush failed:", err);
+            } finally {
+                this.isSyncInProgress = false;
+            }
+        }
     }
 
     /**

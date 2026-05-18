@@ -100,66 +100,31 @@
                   <span class="provider-icon microsoft-icon"></span>
                   <span class="provider-text">Continue with Microsoft</span>
                 </button>
-                <button id="sync-apple-btn" class="sync-provider-btn apple-btn">
-                  <span class="provider-icon apple-icon"></span>
-                  <span class="provider-text">Continue with Apple</span>
-                </button>
               </div>
             </div>
 
             <!-- Logged In User View -->
             <div id="sync-user-view" class="sync-status-container" style="display: none;">
-              <div class="sync-status-label">Account Status: <span class="badge success">Logged In</span></div>
-
               <!-- Profile Details -->
               <div class="user-profile-details" style="margin-top: 12px;">
                 <div class="user-avatar-container" style="position: relative; display: inline-block;">
                   <img id="sync-user-avatar" class="user-avatar" src="" alt="Avatar" />
-                  <label for="avatar-file-input" class="avatar-edit-badge" title="Upload custom photo">✎</label>
+                  <label for="avatar-file-input" class="avatar-edit-overlay" title="Upload custom photo"></label>
                   <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" />
                 </div>
                 <div class="user-profile-text" style="flex: 1;">
-                  <div style="display: flex; gap: 6px; align-items: center; width: 100%;">
-                    <input type="text" id="sync-user-name-input" class="profile-input" placeholder="Username"
-                      spellcheck="false" style="flex: 1;" />
-                    <button id="save-username-btn" class="settings-accent-btn"
-                      style="margin: 0; padding: 4px 8px; font-size: 10px;">Save</button>
+                  <div style="display: flex; align-items: center; width: 100%;">
+                    <input type="text" id="sync-user-name-input" class="inline-editable-username" placeholder="Username"
+                      spellcheck="false" />
                   </div>
                   <span id="sync-user-email" class="user-email"></span>
                 </div>
               </div>
 
-              <!-- Avatar Seed Customizer -->
-              <div class="avatar-seed-row" style="margin-top: 12px; display: flex; flex-direction: column; gap: 4px;">
-                <span class="theme-color-label">Generate Robot Avatar</span>
-                <span class="settings-description-sub">Type any phrase to generate a unique digital avatar
-                  instantly:</span>
-                <div style="display: flex; gap: 6px; align-items: center; width: 100%; margin-top: 4px;">
-                  <input type="text" id="avatar-seed-input" class="profile-input"
-                    placeholder="Type a seed phrase (e.g. skywalker)" spellcheck="false" style="flex: 1;" />
-                  <button id="save-seed-btn" class="settings-accent-btn"
-                    style="margin: 0; padding: 4px 8px; font-size: 10px;">Generate</button>
-                </div>
-              </div>
-
-              <!-- Connected Services Badge -->
-              <div class="connected-services-row"
-                style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--theme-divider-bg, rgba(255,255,255,0.1)); padding-top: 8px;">
-                <span class="info-label" style="font-size: 11px;">Connected Provider:</span>
-                <div id="provider-badge-container">
-                  <span class="badge" style="background: rgba(255,255,255,0.1); color: #fff;"
-                    id="provider-badge-name">Unknown</span>
-                </div>
-              </div>
-
-              <div class="sync-info-row" style="margin-top: 8px;">
-                <span class="info-label">Last Backed Up:</span>
-                <span id="sync-last-timestamp" class="info-value">Never</span>
-              </div>
-
-              <div class="settings-actions" style="margin-top: 16px;">
-                <button id="sync-now-btn" class="settings-accent-btn">Sync Settings Now</button>
-                <button id="sync-logout-btn" class="danger">Log Out</button>
+              <!-- Backup Timestamp Row with Premium Flex Alignment -->
+              <div class="sync-info-row" style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between;">
+                <span class="info-label" style="font-size: 11px; color: var(--theme-font-color-sub, #aaa);">Last Backed Up:</span>
+                <span id="sync-last-timestamp" class="info-value" style="font-size: 11px; font-weight: 500; color: var(--theme-font-color, #eee);">Never</span>
               </div>
             </div>
           </div>
@@ -447,6 +412,7 @@
               <button id="debug-resync-btn" style="flex: 1 1 calc(50% - 4px); min-width: 100px;">Resync</button>
               <button id="debug-reset-theme-btn" style="flex: 1 1 calc(50% - 4px); min-width: 100px;">Reset Theme</button>
               <button id="debug-clear-cache-btn" style="flex: 1 1 calc(50% - 4px); min-width: 100px;">Clear Cache</button>
+              <button id="sync-logout-btn" class="danger" style="flex: 1 1 calc(50% - 4px); min-width: 100px; display: none;">Log Out</button>
               <button id="clear-all-data-btn" class="danger" style="flex: 1 1 100%; min-width: 100px;">Clear Data</button>
             </div>
           </div>

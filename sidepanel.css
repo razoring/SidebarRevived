@@ -1595,10 +1595,6 @@ html {
     .microsoft-icon {
         background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h11v11H0z" fill="%23F25022"/><path d="M12 0h11v11H12z" fill="%237FBA00"/><path d="M0 12h11v11H0z" fill="%2301A6F0"/><path d="M12 12h11v11H12z" fill="%23FFB900"/></svg>');
     }
-    .apple-icon {
-        background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/120px-Apple_logo_black.svg.png') !important;
-        filter: brightness(0) invert(1) !important;
-    }
 
     .signup-premium-badge {
         display: inline-block;
@@ -1686,6 +1682,7 @@ html {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        padding-left: 6px;
     }
     .sync-info-row {
         display: flex;
@@ -1969,25 +1966,62 @@ html {
         box-shadow: 0 0 4px rgba(0, 120, 215, 0.4);
     }
 
-    .avatar-edit-badge {
+    .avatar-edit-overlay {
         position: absolute;
-        bottom: 0;
-        right: 0;
-        background: var(--theme-accent-color, #0078d7);
-        color: #fff;
-        width: 18px;
-        height: 18px;
+        top: 0;
+        left: 0;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
-        display: flex;
+        background-color: color-mix(in srgb, var(--theme-sidebar-bg, #1a1a1a) 60%, transparent);
+        opacity: 0;
+        cursor: pointer;
+        transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+        display: flex !important;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        transition: transform 0.2s, filter 0.2s;
-        user-select: none;
+        pointer-events: auto !important;
+        box-sizing: border-box;
     }
-    .avatar-edit-badge:hover {
-        transform: scale(1.1);
-        filter: brightness(1.2);
+    .avatar-edit-overlay::after {
+        content: "";
+        width: 16px;
+        height: 16px;
+        background-color: var(--theme-font-color, #ffffff); /* Dynamic contrast font color! */
+        mask: url('assets/edit_profile.svg') no-repeat center;
+        -webkit-mask: url('assets/edit_profile.svg') no-repeat center;
+        mask-size: contain;
+        -webkit-mask-size: contain;
+        display: block;
+    }
+    
+    .user-avatar-container:hover .avatar-edit-overlay {
+        opacity: 1;
+    }
+
+    .inline-editable-username {
+        width: 100%;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        padding: 4px 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--theme-font-color, #fff);
+        outline: none;
+        cursor: pointer;
+        box-sizing: border-box;
+        transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .inline-editable-username:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .inline-editable-username:focus {
+        background: rgba(0, 0, 0, 0.35);
+        border-color: var(--theme-accent-color, #0078d7);
+        box-shadow: 0 0 4px rgba(0, 120, 215, 0.4);
+        cursor: text;
     }
