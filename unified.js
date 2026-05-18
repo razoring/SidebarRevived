@@ -18,6 +18,7 @@
         ACTIVE_SITE_OWNER: 'activeSiteOwner',
         IS_SETTINGS_OPEN: 'isSettingsOpen',
         IS_ADD_PAGE_OPEN: 'isAddPageOpen',
+        IS_THEME_STORE_OPEN: 'isThemeStoreOpen',
         IS_SIDE_PANEL_OPEN: 'isSidePanelOpen',
         AUTO_HIDE_ENABLED: 'autoHideEnabled',
         SHOW_CATEGORY_ICONS: 'showCategoryIcons',
@@ -178,15 +179,17 @@
     S.svgReady = Promise.all([
         fetchSvg('assets/add_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>'),
         fetchSvg('assets/trash_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>'),
-        fetchSvg('assets/settings_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'),
+        fetchSvg('assets/settings_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 a2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'),
         fetchSvg('assets/pin_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"></path></svg>'),
         fetchSvg('assets/temporary_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'),
-    ]).then(([add, trash, settings, pin, temp]) => {
+        fetchSvg('assets/extension.svg', '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M346-134H188q-22.73 0-38.36-15.64Q134-165.27 134-188v-146q35-13 54.5-46t19.5-72q0-39-19.5-72T134-570v-148q0-22.72 15.64-38.36Q165.27-772 188-772h150q14-38 45-61t69-23q38 0 69 23t45 61h152q22.72 0 38.36 15.64T772-718v152q38 14 61 45t23 69q0 38-23 69t-61 45v150q0 22.73-15.64 38.36Q740.72-134 718-134H558q-8-41-38-67.5T452-228q-38 0-68 26.5T346-134Zm-158-54h117q15-32 50.5-63t96.5-31q61 0 97.5 31t51.5 63h117v-186h16q35-6 51.5-29t16.5-49q0-26-16.5-49T734-530h-16v-188H530v-16q-6-35-29-51.5T452-802q-26 0-49 16.5T374-734v16H188v114q34 31 54 70t20 82q0 44.3-20 82.65Q222-331 188-302v114Zm264-264Z"/></svg>'),
+    ]).then(([add, trash, settings, pin, temp, ext]) => {
         S.ADD_ICON_SVG = add;
         S.TRASH_ICON_SVG = trash;
         S.SETTINGS_ICON_SVG = settings;
         S.PIN_HEADER_SVG = pin;
         S.TEMP_HEADER_SVG = temp;
+        S.EXTENSION_ICON_SVG = ext;
     });
 
     S.detectBrowserState = function () {
@@ -574,6 +577,7 @@
             onSiteClick: handlers.onSiteClick,
             onAddSite: handlers.onAddSite,
             onSettingsClick: handlers.onSettingsClick,
+            onExtensionClick: handlers.onExtensionClick,
             showCategoryIcons: !!state.showCategoryIcons
         };
 
@@ -599,6 +603,7 @@
         onSiteClick,
         onAddSite,
         onSettingsClick,
+        onExtensionClick,
         getIconOpacity,
         showCategoryIcons
     }) {
@@ -876,10 +881,21 @@
 
         container.appendChild(addBtn);
 
+        const extensionBtn = document.createElement('div');
+        extensionBtn.className = 'edge-sidebar-icon edge-sidebar-add-btn';
+        extensionBtn.title = "Theme Store";
+        extensionBtn.style.marginTop = 'auto';
+        extensionBtn.style.marginBottom = '4px';
+        extensionBtn.innerHTML = S.EXTENSION_ICON_SVG;
+        extensionBtn.onclick = () => {
+            if (onExtensionClick) onExtensionClick();
+        };
+        container.appendChild(extensionBtn);
+
         const settingsBtn = document.createElement('div');
         settingsBtn.className = 'edge-sidebar-icon edge-sidebar-add-btn';
         settingsBtn.title = "Settings";
-        settingsBtn.style.marginTop = 'auto';
+        settingsBtn.style.marginTop = '0px';
         settingsBtn.style.marginBottom = '12px';
         settingsBtn.innerHTML = S.SETTINGS_ICON_SVG;
         settingsBtn.onclick = () => {
@@ -1100,6 +1116,7 @@
                 [STORAGE_KEYS.ACTIVE_SITE_OWNER]: null,
                 [STORAGE_KEYS.IS_SETTINGS_OPEN]: false,
                 [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false,
+                [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false,
                 [STORAGE_KEYS.IS_SIDE_PANEL_OPEN]: false,
                 [STORAGE_KEYS.AUTO_HIDE_ENABLED]: false,
                 [STORAGE_KEYS.SHOW_CATEGORY_ICONS]: false,
@@ -1212,7 +1229,10 @@
                             [STORAGE_KEYS.IS_SIDE_PANEL_OPEN]: false, 
                             [STORAGE_KEYS.TEMP_SITES]: [], 
                             [STORAGE_KEYS.ACTIVE_SITE_ID]: null, 
-                            [STORAGE_KEYS.ACTIVE_SITE_OWNER]: null 
+                            [STORAGE_KEYS.ACTIVE_SITE_OWNER]: null,
+                            [STORAGE_KEYS.IS_SETTINGS_OPEN]: false,
+                            [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false,
+                            [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false
                         });
                     }
                 });
@@ -1233,6 +1253,7 @@
             currentUrls: {},
             customTheme: null,
             isSettingsOpen: false,
+            isThemeStoreOpen: false,
             scrollBlocklist: [],
             sidepanelBlocklist: [],
             autoHideBlocklist: [],
@@ -1296,6 +1317,7 @@
             STORAGE_KEYS.CUSTOM_THEME,
             STORAGE_KEYS.IS_SETTINGS_OPEN,
             STORAGE_KEYS.IS_ADD_PAGE_OPEN,
+            STORAGE_KEYS.IS_THEME_STORE_OPEN,
             STORAGE_KEYS.SCROLL_BLOCKLIST,
             STORAGE_KEYS.SIDEPANEL_BLOCKLIST,
             STORAGE_KEYS.AUTOHIDE_BLOCKLIST,
@@ -1306,6 +1328,13 @@
         ];
 
         chrome.storage.local.get(keysToRetrieve, async (result) => {
+            // Bypass rendering if this is an OAuth authentication tab context
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('auth_trigger') || urlParams.get('auth')) {
+                console.log("ℹ️ [OAuth] Bypassing sidebar rendering inside the OAuth tab.");
+                return;
+            }
+
             if (result.sites) state.sites = result.sites;
             if (result.tempSites) state.tempSites = result.tempSites;
             if (result.activeSiteId) state.activeSiteId = result.activeSiteId;
@@ -1313,6 +1342,7 @@
             if (result.customTheme) state.customTheme = result.customTheme;
             if (result.isSettingsOpen !== undefined) state.isSettingsOpen = result.isSettingsOpen;
             if (result.isAddPageOpen !== undefined) state.isAddPageOpen = result.isAddPageOpen;
+            if (result.isThemeStoreOpen !== undefined) state.isThemeStoreOpen = result.isThemeStoreOpen;
             if (result.scrollBlocklist) state.scrollBlocklist = result.scrollBlocklist;
             if (result.sidepanelBlocklist) state.sidepanelBlocklist = result.sidepanelBlocklist;
             if (result.autoHideBlocklist) state.autoHideBlocklist = result.autoHideBlocklist;
@@ -1325,13 +1355,19 @@
             applyTheme();
             await SR.svgReady;
             render();
-            if (state.isSettingsOpen) {
-                document.getElementById('icon-bar').style.display = 'none';
-                document.getElementById('content-area').style.display = 'none';
+            if (state.isSettingsOpen || state.isThemeStoreOpen) {
+                const barEl = document.getElementById('icon-bar');
+                const areaEl = document.getElementById('content-area');
+                if (barEl) barEl.style.display = 'none';
+                if (areaEl) areaEl.style.display = 'none';
             }
         });
 
         chrome.storage.onChanged.addListener((changes, namespace) => {
+            // Bypass execution if this is an OAuth authentication tab context
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('auth_trigger') || urlParams.get('auth')) return;
+
             if (namespace === 'local') {
                 state._loaded = true;
                 if (changes.sites) state.sites = changes.sites.newValue;
@@ -1353,6 +1389,9 @@
                 }
                 if (changes.isAddPageOpen !== undefined) {
                     state.isAddPageOpen = changes.isAddPageOpen.newValue;
+                }
+                if (changes.isThemeStoreOpen !== undefined) {
+                    state.isThemeStoreOpen = changes.isThemeStoreOpen.newValue;
                 }
                 if (changes.scrollBlocklist) {
                     state.scrollBlocklist = changes.scrollBlocklist.newValue;
@@ -1383,6 +1422,7 @@
         async function render() {
             const sp = document.getElementById('settings-panel');
             const ap = document.getElementById('add-page-panel');
+            const tp = document.getElementById('theme-store-panel');
             const note = document.getElementById('inpage-sidebar-note');
 
             if (state.isSettingsOpen) {
@@ -1393,7 +1433,21 @@
                 contentArea.style.display = 'none';
                 if (note) note.style.display = 'none';
                 if (ap) ap.style.display = 'none';
+                if (tp) tp.style.display = 'none';
                 if (sp) sp.style.display = 'flex';
+                return;
+            }
+
+            if (state.isThemeStoreOpen) {
+                iconBar.style.display = 'none';
+                contentArea.style.display = 'none';
+                if (note) note.style.display = 'none';
+                if (ap) ap.style.display = 'none';
+                if (sp) sp.style.display = 'none';
+                if (tp) tp.style.display = 'flex';
+                if (window.loadThemeStoreCatalog) {
+                    window.loadThemeStoreCatalog();
+                }
                 return;
             }
 
@@ -1403,11 +1457,13 @@
                 contentArea.style.display = 'none';
                 if (note) note.style.display = 'none';
                 if (sp) sp.style.display = 'none';
+                if (tp) tp.style.display = 'none';
                 if (ap) ap.style.display = 'flex';
             } else {
                 iconBar.style.display = 'flex';
                 if (sp) sp.style.display = 'none';
                 if (ap) ap.style.display = 'none';
+                if (tp) tp.style.display = 'none';
 
                 const inPageActive = state.activeSiteOwner === 'inpage';
                 if (note) note.style.display = inPageActive ? 'flex' : 'none';
@@ -1452,7 +1508,8 @@
                         [STORAGE_KEYS.ACTIVE_SITE_ID]: newId, 
                         [STORAGE_KEYS.ACTIVE_SITE_OWNER]: newId ? 'sidepanel' : null, 
                         [STORAGE_KEYS.IS_SETTINGS_OPEN]: false, 
-                        [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false 
+                        [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false,
+                        [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false
                     });
                     if (!state.currentUrls[siteId]) {
                         state.currentUrls[siteId] = site.url;
@@ -1465,10 +1522,25 @@
                         searchInput.value = '';
                         renderSearchResults('');
                     }
-                    chrome.storage.local.set({ [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: true, [STORAGE_KEYS.IS_SETTINGS_OPEN]: false });
+                    chrome.storage.local.set({ 
+                        [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: true, 
+                        [STORAGE_KEYS.IS_SETTINGS_OPEN]: false,
+                        [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false
+                    });
                 },
                 onSettingsClick: () => {
-                    chrome.storage.local.set({ [STORAGE_KEYS.IS_SETTINGS_OPEN]: true, [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false });
+                    chrome.storage.local.set({ 
+                        [STORAGE_KEYS.IS_SETTINGS_OPEN]: true, 
+                        [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false,
+                        [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false
+                    });
+                },
+                onExtensionClick: () => {
+                    chrome.storage.local.set({ 
+                        [STORAGE_KEYS.IS_THEME_STORE_OPEN]: true, 
+                        [STORAGE_KEYS.IS_SETTINGS_OPEN]: false, 
+                        [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false 
+                    });
                 }
             });
 
@@ -1490,6 +1562,13 @@
                     header.querySelector('.collapse-arrow').style.transform = nowCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
                     state.collapsedSections[targetId] = nowCollapsed;
                     localStorage.setItem('collapsedSections', JSON.stringify(state.collapsedSections));
+
+                    // Dynamic Hook: Fetch from Theme Store when expanding theme store
+                    if (targetId === 'theme-store-section' && !nowCollapsed) {
+                        if (window.loadThemeStoreCatalog) {
+                            window.loadThemeStoreCatalog();
+                        }
+                    }
                 };
             });
         }
@@ -1815,6 +1894,63 @@
         let searchTimeout = null;
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Intercept OAuth Tab parameters for full-screen tab auth handling
+            const urlParams = new URLSearchParams(window.location.search);
+            const authTrigger = urlParams.get('auth_trigger');
+            const authStatus = urlParams.get('auth');
+
+            if (authTrigger) {
+                console.log(`🚀 [OAuth] Initiating ${authTrigger} OAuth session in new tab...`);
+                if (window.appwriteService) {
+                    window.appwriteService.init().then(() => {
+                        if (window.settingsSyncEngine) {
+                            window.settingsSyncEngine.login(authTrigger);
+                        }
+                    });
+                }
+                document.body.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #1c1c1c; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; user-select: none;">
+                        <div class="loader-spinner" style="width: 40px; height: 40px; border: 3px solid rgba(255, 255, 255, 0.07); border-top-color: var(--theme-accent-color, #38b3ff); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 24px;"></div>
+                        <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 10px 0; letter-spacing: -0.5px;">Connecting to ${authTrigger.charAt(0).toUpperCase() + authTrigger.slice(1)}...</h1>
+                        <p style="font-size: 13px; color: #888; margin: 0;">Please follow the prompts in the popup window to link your workspace.</p>
+                        <style>
+                            @keyframes spin { to { transform: rotate(360deg); } }
+                        </style>
+                    </div>
+                `;
+                return;
+            }
+
+            if (authStatus) {
+                // Broadcast success notification to all other extension windows (like the sidepanel)
+                chrome.runtime.sendMessage({ type: "AUTH_SUCCESS" });
+                
+                if (authStatus === 'success') {
+                    console.log("✅ [OAuth] Connected successfully!");
+                    document.body.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #1c1c1c; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; user-select: none;">
+                            <div style="font-size: 48px; margin-bottom: 20px; animation: bounce 1s cubic-bezier(0.25, 1, 0.5, 1);">🎉</div>
+                            <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 10px 0; color: #2ecc71; letter-spacing: -0.5px;">Connected Successfully!</h1>
+                            <p style="font-size: 13px; color: #aaa; margin: 0 0 24px 0;">Your sidebar settings are now fully synchronized.</p>
+                            <p style="font-size: 11px; color: #555; margin: 0;">This window will close automatically...</p>
+                        </div>
+                    `;
+                    setTimeout(() => { window.close(); }, 2000);
+                } else {
+                    console.log("❌ [OAuth] Connection failed.");
+                    document.body.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #1c1c1c; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; user-select: none;">
+                            <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                            <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 10px 0; color: #e74c3c; letter-spacing: -0.5px;">Connection Failed</h1>
+                            <p style="font-size: 13px; color: #aaa; margin: 0 0 24px 0;">Something went wrong during sign-in. Please try again.</p>
+                            <p style="font-size: 11px; color: #555; margin: 0;">This window will close automatically...</p>
+                        </div>
+                    `;
+                    setTimeout(() => { window.close(); }, 3000);
+                }
+                return;
+            }
+
             const backBtn = document.getElementById('add-page-back-btn');
             if (backBtn) {
                 backBtn.onclick = () => {
@@ -2016,11 +2152,20 @@
             .then(svg => {
                 const btn = document.getElementById('settings-back-btn');
                 if (btn) btn.innerHTML = svg;
+                const tsBtn = document.getElementById('theme-store-back-btn');
+                if (tsBtn) tsBtn.innerHTML = svg;
             });
 
         document.getElementById('settings-back-btn').addEventListener('click', () => {
-            chrome.storage.local.set({ [STORAGE_KEYS.IS_SETTINGS_OPEN]: false, [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false });
+            chrome.storage.local.set({ [STORAGE_KEYS.IS_SETTINGS_OPEN]: false, [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false, [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false });
         });
+
+        const tsBackBtn = document.getElementById('theme-store-back-btn');
+        if (tsBackBtn) {
+            tsBackBtn.addEventListener('click', () => {
+                chrome.storage.local.set({ [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false });
+            });
+        }
 
         function updateSliderProgress(slider) {
             if (!slider) return;
@@ -2283,39 +2428,52 @@
             });
         });
 
-        document.getElementById('export-theme-btn').addEventListener('click', () => {
-            const themeStr = JSON.stringify(state.customTheme || {}, null, 2);
-            const blob = new Blob([themeStr], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "sidebar_theme.json";
-            a.click();
-            URL.revokeObjectURL(url);
-        });
+        const exportThemeBtn = document.getElementById('export-theme-btn');
+        if (exportThemeBtn) {
+            exportThemeBtn.addEventListener('click', () => {
+                const themeStr = JSON.stringify(state.customTheme || {}, null, 2);
+                const blob = new Blob([themeStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "sidebar_theme.json";
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
 
-        document.getElementById('import-theme-btn').addEventListener('click', () => {
-            document.getElementById('import-theme-file').click();
-        });
+        const importThemeBtn = document.getElementById('import-theme-btn');
+        if (importThemeBtn) {
+            importThemeBtn.addEventListener('click', () => {
+                const fileInput = document.getElementById('import-theme-file');
+                if (fileInput) fileInput.click();
+            });
+        }
 
-        document.getElementById('import-theme-file').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                try {
-                    const parsed = JSON.parse(ev.target.result);
-                    chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: parsed });
-                } catch (err) {
-                    alert("Invalid Theme JSON");
-                }
-            };
-            reader.readAsText(file);
-        });
+        const importThemeFile = document.getElementById('import-theme-file');
+        if (importThemeFile) {
+            importThemeFile.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const parsed = JSON.parse(ev.target.result);
+                        chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: parsed });
+                    } catch (err) {
+                        alert("Invalid Theme JSON");
+                    }
+                };
+                reader.readAsText(file);
+            });
+        }
 
-        document.getElementById('reset-theme-btn').addEventListener('click', () => {
-            chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: getThemeDefaults() });
-        });
+        const resetThemeBtn = document.getElementById('reset-theme-btn');
+        if (resetThemeBtn) {
+            resetThemeBtn.addEventListener('click', () => {
+                chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: getThemeDefaults() });
+            });
+        }
 
         function renderMostVisited() {
             const list = document.getElementById('most-visited-list');
@@ -2359,47 +2517,565 @@
             });
         }
 
-        document.getElementById('export-all-btn').addEventListener('click', () => {
-            chrome.storage.local.get(null, (allData) => {
-                const dataStr = JSON.stringify(allData, null, 2);
-                const blob = new Blob([dataStr], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = "sidebar_backup.json";
-                a.click();
-                URL.revokeObjectURL(url);
+        // Debug Action Listeners
+        const resyncBtn = document.getElementById('debug-resync-btn');
+        if (resyncBtn) {
+            resyncBtn.addEventListener('click', async () => {
+                if (window.settingsSyncEngine && window.settingsSyncEngine.getCurrentUser()) {
+                    resyncBtn.disabled = true;
+                    resyncBtn.textContent = 'Syncing...';
+                    try {
+                        await window.settingsSyncEngine.triggerForceSync();
+                        alert("Workspace successfully synchronized with the cloud.");
+                    } catch (err) {
+                        alert("Resync failed: " + err.message);
+                    } finally {
+                        resyncBtn.disabled = false;
+                        resyncBtn.textContent = 'Resync';
+                    }
+                } else {
+                    alert("Resync requires a connected account. Please sign up or log in first.");
+                }
             });
-        });
+        }
 
-        document.getElementById('import-all-btn').addEventListener('click', () => {
-            document.getElementById('import-all-file').click();
-        });
-
-        document.getElementById('import-all-file').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                try {
-                    const parsed = JSON.parse(ev.target.result);
-                    chrome.storage.local.set(parsed, () => {
+        const debugResetThemeBtn = document.getElementById('debug-reset-theme-btn');
+        if (debugResetThemeBtn) {
+            debugResetThemeBtn.addEventListener('click', () => {
+                if (confirm("Reset current theme settings to defaults?")) {
+                    chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: getThemeDefaults() }, () => {
                         window.location.reload();
                     });
-                } catch (err) {
-                    alert("Invalid Backup JSON");
                 }
-            };
-            reader.readAsText(file);
-        });
+            });
+        }
 
-        document.getElementById('clear-all-data-btn').addEventListener('click', () => {
-            if (confirm("Are you sure you want to clear ALL data? This will reset your pinned sites, theme, and all settings. This action cannot be undone.")) {
-                chrome.storage.local.clear(() => {
-                    window.location.reload();
+        const clearCacheBtn = document.getElementById('debug-clear-cache-btn');
+        if (clearCacheBtn) {
+            clearCacheBtn.addEventListener('click', () => {
+                chrome.storage.local.remove(['community_theme_catalog', 'last_catalog_fetch'], () => {
+                    alert("Local database cache cleared successfully.");
                 });
+            });
+        }
+
+        const exportAllBtn = document.getElementById('export-all-btn');
+        if (exportAllBtn) {
+            exportAllBtn.addEventListener('click', () => {
+                chrome.storage.local.get(null, (allData) => {
+                    const dataStr = JSON.stringify(allData, null, 2);
+                    const blob = new Blob([dataStr], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "sidebar_backup.json";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+            });
+        }
+
+        const importAllBtn = document.getElementById('import-all-btn');
+        if (importAllBtn) {
+            importAllBtn.addEventListener('click', () => {
+                const fileInput = document.getElementById('import-all-file');
+                if (fileInput) fileInput.click();
+            });
+        }
+
+        const importAllFile = document.getElementById('import-all-file');
+        if (importAllFile) {
+            importAllFile.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const parsed = JSON.parse(ev.target.result);
+                        chrome.storage.local.set(parsed, () => {
+                            window.location.reload();
+                        });
+                    } catch (err) {
+                        alert("Invalid Backup JSON");
+                    }
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        const clearAllDataBtn = document.getElementById('clear-all-data-btn');
+        if (clearAllDataBtn) {
+            clearAllDataBtn.addEventListener('click', () => {
+                if (confirm("Are you sure you want to clear ALL data? This will reset your pinned sites, theme, and all settings. This action cannot be undone.")) {
+                    chrome.storage.local.clear(() => {
+                        window.location.reload();
+                    });
+                }
+            });
+        }
+
+        // Initialize Appwrite Cloud Sync Engine if present
+        if (window.settingsSyncEngine) {
+            window.settingsSyncEngine.init((user) => {
+                updateSyncUI(user);
+            });
+        }
+
+        // Listen for Auth success notifications from the OAuth login tab
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            if (message && message.type === "AUTH_SUCCESS") {
+                console.log("🔔 [OAuth] Received AUTH_SUCCESS broadcast from login tab. Re-syncing status...");
+                if (window.appwriteService) {
+                    window.appwriteService.resolveUserSession().then(() => {
+                        const currentUser = window.appwriteService.currentUser;
+                        if (window.settingsSyncEngine) {
+                            window.settingsSyncEngine.onUserStatusChangedCallback && 
+                            window.settingsSyncEngine.onUserStatusChangedCallback(currentUser);
+                        }
+                        updateSyncUI(currentUser);
+                    });
+                }
             }
         });
+
+        // Helper to escape HTML tags to prevent cross-site scripting in theme cards
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // Account Profile Update Logic
+        function updateSyncUI(user) {
+            const guestView = document.getElementById('sync-guest-view');
+            const userView = document.getElementById('sync-user-view');
+            const avatarImg = document.getElementById('sync-user-avatar');
+            const nameInput = document.getElementById('sync-user-name-input');
+            const emailSpan = document.getElementById('sync-user-email');
+            const lastSyncSpan = document.getElementById('sync-last-timestamp');
+            const storePublishContainer = document.getElementById('store-publish-container');
+            const storePublishGuestMsg = document.getElementById('store-publish-guest-msg');
+            const providerBadge = document.getElementById('provider-badge-name');
+
+            if (user) {
+                if (guestView) guestView.style.display = 'none';
+                if (userView) userView.style.display = 'block';
+                
+                const profile = user.profile || {};
+                if (avatarImg) {
+                    avatarImg.src = profile.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.$id)}`;
+                }
+                if (nameInput) {
+                    nameInput.value = profile.displayName || user.name || 'Connected User';
+                }
+                if (emailSpan) emailSpan.textContent = user.email || '';
+                if (storePublishContainer) storePublishContainer.style.display = 'block';
+                if (storePublishGuestMsg) storePublishGuestMsg.style.display = 'none';
+
+                chrome.storage.local.get(['sync_last_timestamp', 'auth_provider'], (res) => {
+                    if (lastSyncSpan) {
+                        lastSyncSpan.textContent = res.sync_last_timestamp ? new Date(res.sync_last_timestamp).toLocaleString() : 'Just now';
+                    }
+                    if (providerBadge) {
+                        providerBadge.textContent = res.auth_provider || 'OAuth Connected';
+                        if (res.auth_provider === 'Google') {
+                            providerBadge.style.background = 'rgba(234, 67, 53, 0.15)';
+                            providerBadge.style.color = '#ea4335';
+                        } else if (res.auth_provider === 'Microsoft') {
+                            providerBadge.style.background = 'rgba(0, 164, 239, 0.15)';
+                            providerBadge.style.color = '#00a4ef';
+                        } else if (res.auth_provider === 'Apple') {
+                            providerBadge.style.background = 'rgba(255, 255, 255, 0.15)';
+                            providerBadge.style.color = '#ffffff';
+                        } else {
+                            providerBadge.style.background = 'rgba(255,255,255,0.1)';
+                            providerBadge.style.color = '#fff';
+                        }
+                    }
+                });
+            } else {
+                if (guestView) guestView.style.display = 'block';
+                if (userView) userView.style.display = 'none';
+                if (storePublishContainer) storePublishContainer.style.display = 'none';
+                if (storePublishGuestMsg) storePublishGuestMsg.style.display = 'block';
+            }
+        }
+
+        // Binds Username Saver
+        const saveUsernameBtn = document.getElementById('save-username-btn');
+        if (saveUsernameBtn) {
+            saveUsernameBtn.addEventListener('click', async () => {
+                const nameInput = document.getElementById('sync-user-name-input');
+                if (!nameInput) return;
+                const newName = nameInput.value.trim();
+                if (!newName) {
+                    alert('Please enter a username.');
+                    return;
+                }
+
+                saveUsernameBtn.disabled = true;
+                saveUsernameBtn.textContent = 'Saving...';
+                try {
+                    const client = window.appwriteService;
+                    const avatarUrl = client.currentUser.profile?.avatarUrl || '';
+                    await client.updateUserProfile(newName, avatarUrl);
+                    alert('Username successfully updated!');
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to update username: ' + err.message);
+                } finally {
+                    saveUsernameBtn.disabled = false;
+                    saveUsernameBtn.textContent = 'Save';
+                }
+            });
+        }
+
+        // Binds Custom Avatar Seed Generator
+        const saveSeedBtn = document.getElementById('save-seed-btn');
+        if (saveSeedBtn) {
+            saveSeedBtn.addEventListener('click', async () => {
+                const seedInput = document.getElementById('avatar-seed-input');
+                if (!seedInput) return;
+                const seedVal = seedInput.value.trim();
+                if (!seedVal) {
+                    alert('Please type a phrase to generate your robot avatar.');
+                    return;
+                }
+
+                saveSeedBtn.disabled = true;
+                saveSeedBtn.textContent = 'Generating...';
+                try {
+                    const client = window.appwriteService;
+                    const dicebearUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(seedVal)}`;
+                    const currentName = client.currentUser.profile?.displayName || client.currentUser.name || 'Connected User';
+                    
+                    await client.updateUserProfile(currentName, dicebearUrl);
+                    
+                    const avatarImg = document.getElementById('sync-user-avatar');
+                    if (avatarImg) {
+                        avatarImg.src = dicebearUrl;
+                    }
+                    seedInput.value = '';
+                    alert('Robot avatar successfully generated and applied!');
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to generate avatar: ' + err.message);
+                } finally {
+                    saveSeedBtn.disabled = false;
+                    saveSeedBtn.textContent = 'Generate';
+                }
+            });
+        }
+
+        // Binds Custom Image File Upload for Avatar
+        const avatarFileInput = document.getElementById('avatar-file-input');
+        if (avatarFileInput) {
+            avatarFileInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file.');
+                    return;
+                }
+
+                const avatarImg = document.getElementById('sync-user-avatar');
+                if (avatarImg) {
+                    avatarImg.style.opacity = '0.5';
+                }
+
+                try {
+                    const client = window.appwriteService;
+                    // Reuse the existing asset upload bucket
+                    const fileId = await client.uploadThemePreview(file);
+                    const customAvatarUrl = client.getThemePreviewUrl(fileId);
+                    const currentName = client.currentUser.profile?.displayName || client.currentUser.name || 'Connected User';
+                    
+                    await client.updateUserProfile(currentName, customAvatarUrl);
+                    
+                    if (avatarImg) {
+                        avatarImg.src = customAvatarUrl;
+                    }
+                    alert('Custom profile picture uploaded successfully!');
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to upload custom profile picture: ' + err.message);
+                } finally {
+                    if (avatarImg) {
+                        avatarImg.style.opacity = '1';
+                    }
+                }
+            });
+        }
+
+        // Trigger Sync Provider Redirects
+        const googleBtn = document.getElementById('sync-google-btn');
+        if (googleBtn) {
+            googleBtn.addEventListener('click', () => {
+                console.log("👉 [OAuth] Opening Google sign-in in a new tab.");
+                chrome.tabs.create({ url: chrome.runtime.getURL("sidepanel.html?auth_trigger=google") });
+            });
+        }
+
+        const microsoftBtn = document.getElementById('sync-microsoft-btn');
+        if (microsoftBtn) {
+            microsoftBtn.addEventListener('click', () => {
+                console.log("👉 [OAuth] Opening Microsoft sign-in in a new tab.");
+                chrome.tabs.create({ url: chrome.runtime.getURL("sidepanel.html?auth_trigger=microsoft") });
+            });
+        }
+
+        const appleBtn = document.getElementById('sync-apple-btn');
+        if (appleBtn) {
+            appleBtn.addEventListener('click', () => {
+                console.log("👉 [OAuth] Opening Apple sign-in in a new tab.");
+                chrome.tabs.create({ url: chrome.runtime.getURL("sidepanel.html?auth_trigger=apple") });
+            });
+        }
+
+        const logoutBtn = document.getElementById('sync-logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                if (window.settingsSyncEngine) {
+                    window.settingsSyncEngine.logout();
+                }
+            });
+        }
+
+        const syncNowBtn = document.getElementById('sync-now-btn');
+        if (syncNowBtn) {
+            syncNowBtn.addEventListener('click', async () => {
+                syncNowBtn.disabled = true;
+                syncNowBtn.textContent = 'Syncing...';
+                try {
+                    await window.settingsSyncEngine.triggerForceSync();
+                    updateSyncUI(window.settingsSyncEngine.getCurrentUser());
+                } catch (err) {
+                    console.error(err);
+                    alert('Sync failed: ' + err.message);
+                } finally {
+                    syncNowBtn.disabled = false;
+                    syncNowBtn.textContent = 'Sync Now';
+                }
+            });
+        }
+
+        // Theme Store Catalog Management
+        let currentThemeStoreFilter = 'popular';
+        let themeStoreSearchQuery = '';
+
+        window.loadThemeStoreCatalog = async function() {
+            const grid = document.getElementById('theme-store-grid');
+            if (!grid) return;
+            grid.innerHTML = '<div class="theme-store-loader">Loading community catalog...</div>';
+
+            try {
+                const client = window.appwriteService;
+                if (!client) {
+                    grid.innerHTML = '<div class="theme-store-loader">Sync Service Uninitialized</div>';
+                    return;
+                }
+
+                const themes = await client.listThemes(currentThemeStoreFilter, themeStoreSearchQuery);
+                grid.innerHTML = '';
+                
+                if (themes.length === 0) {
+                    grid.innerHTML = '<div class="theme-store-loader">No themes found matching your search.</div>';
+                    return;
+                }
+
+                themes.forEach(themeDoc => {
+                    let customData = {};
+                    try {
+                        customData = JSON.parse(themeDoc.themeData);
+                    } catch (e) {
+                        console.error("Invalid themeDoc.themeData JSON", themeDoc.themeData);
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'theme-card';
+                    
+                    const pFont = customData.fontColor || '#ffffff';
+                    const pBg = customData.sidebarBackground || '#333333';
+                    const pAcc = customData.accentColor || '#38b3ff';
+                    const pMid = customData.midtoneColor || '#a4a4a4';
+
+                    card.innerHTML = `
+                        <div class="theme-card-header">
+                            <div class="theme-card-title-box">
+                                <span class="theme-card-title">${escapeHTML(themeDoc.name || 'Unnamed Theme')}</span>
+                                <span class="theme-card-author">by ${escapeHTML(themeDoc.authorName || 'Anonymous')}</span>
+                            </div>
+                        </div>
+                        <p class="theme-card-desc">${escapeHTML(themeDoc.description || 'No description provided.')}</p>
+                        <div class="theme-card-preview">
+                            <div class="preview-swatch" style="background: ${pBg}" title="Background"></div>
+                            <div class="preview-swatch" style="background: ${pFont}" title="Font Color"></div>
+                            <div class="preview-swatch" style="background: ${pAcc}" title="Accent"></div>
+                            <div class="preview-swatch" style="background: ${pMid}" title="Muted Accent"></div>
+                        </div>
+                        <div class="theme-card-footer">
+                            <div class="theme-stats">
+                                <span class="stat-item stat-icon-like" id="like-count-${themeDoc.$id}">${themeDoc.likesCount || 0}</span>
+                                <span class="stat-item stat-icon-dl" id="dl-count-${themeDoc.$id}">${themeDoc.downloadsCount || 0}</span>
+                            </div>
+                            <div class="theme-card-actions">
+                                <button class="like-btn" data-id="${themeDoc.$id}">Like</button>
+                                <button class="install-btn" data-id="${themeDoc.$id}">Install</button>
+                            </div>
+                        </div>
+                    `;
+
+                    const likeBtn = card.querySelector('.like-btn');
+                    const installBtn = card.querySelector('.install-btn');
+
+                    likeBtn.onclick = async () => {
+                        const currentUser = window.settingsSyncEngine.getCurrentUser();
+                        if (!currentUser) {
+                            alert('Please link your Google or Microsoft account in the Cloud Sync section to upvote themes!');
+                            return;
+                        }
+                        try {
+                            likeBtn.disabled = true;
+                            const res = await client.likeTheme(themeDoc.$id, currentUser.id);
+                            if (res) {
+                                const countSpan = document.getElementById(`like-count-${themeDoc.$id}`);
+                                if (countSpan) {
+                                    const currentLikes = parseInt(countSpan.textContent, 10) || 0;
+                                    countSpan.textContent = currentLikes + 1;
+                                }
+                            }
+                        } catch (err) {
+                            alert(err.message || 'Already upvoted this theme!');
+                        } finally {
+                            likeBtn.disabled = false;
+                        }
+                    };
+
+                    installBtn.onclick = async () => {
+                        if (confirm(`Do you want to install and apply "${themeDoc.name}"? This will overwrite your current custom theme colors.`)) {
+                            try {
+                                installBtn.disabled = true;
+                                installBtn.textContent = 'Applying...';
+                                
+                                chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: customData });
+                                
+                                await client.incrementDownloadCount(themeDoc.$id);
+                                const countSpan = document.getElementById(`dl-count-${themeDoc.$id}`);
+                                if (countSpan) {
+                                    const currentDl = parseInt(countSpan.textContent, 10) || 0;
+                                    countSpan.textContent = currentDl + 1;
+                                }
+                            } catch (err) {
+                                console.error(err);
+                            } finally {
+                                installBtn.disabled = false;
+                                installBtn.textContent = 'Install';
+                            }
+                        }
+                    };
+
+                    grid.appendChild(card);
+                });
+            } catch (err) {
+                console.error(err);
+                grid.innerHTML = `<div class="theme-store-loader error">Error: ${escapeHTML(err.message)}</div>`;
+            }
+        };
+
+        // Theme Store Controls binding
+        const tabPopular = document.getElementById('tab-store-popular');
+        const tabNewest = document.getElementById('tab-store-newest');
+        const storeSearchInput = document.getElementById('store-search-input');
+        const storeSearchBtn = document.getElementById('store-search-btn');
+
+        if (tabPopular) {
+            tabPopular.onclick = () => {
+                tabPopular.classList.add('active');
+                tabNewest.classList.remove('active');
+                currentThemeStoreFilter = 'popular';
+                window.loadThemeStoreCatalog();
+            };
+        }
+
+        if (tabNewest) {
+            tabNewest.onclick = () => {
+                tabNewest.classList.add('active');
+                tabPopular.classList.remove('active');
+                currentThemeStoreFilter = 'newest';
+                window.loadThemeStoreCatalog();
+            };
+        }
+
+        if (storeSearchBtn && storeSearchInput) {
+            storeSearchBtn.onclick = () => {
+                themeStoreSearchQuery = storeSearchInput.value.trim();
+                window.loadThemeStoreCatalog();
+            };
+            storeSearchInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    themeStoreSearchQuery = storeSearchInput.value.trim();
+                    window.loadThemeStoreCatalog();
+                }
+            };
+        }
+
+        // Publish Theme Form binding
+        const publishSubmit = document.getElementById('publish-theme-submit');
+        const publishName = document.getElementById('publish-theme-name');
+        const publishDesc = document.getElementById('publish-theme-desc');
+        const publishStatus = document.getElementById('publish-theme-status');
+
+        if (publishSubmit) {
+            publishSubmit.onclick = async () => {
+                const currentUser = window.settingsSyncEngine.getCurrentUser();
+                if (!currentUser) {
+                    alert('Please link your account above before publishing a custom theme!');
+                    return;
+                }
+
+                const nameVal = publishName.value.trim();
+                const descVal = publishDesc.value.trim();
+
+                if (!nameVal) {
+                    publishStatus.className = 'status-msg error';
+                    publishStatus.textContent = 'Please enter a name!';
+                    return;
+                }
+
+                publishSubmit.disabled = true;
+                publishStatus.className = 'status-msg';
+                publishStatus.textContent = 'Publishing...';
+
+                try {
+                    const client = window.appwriteService;
+                    const themeData = state.customTheme || SR.getThemeDefaults();
+                    
+                    await client.publishTheme(nameVal, descVal, themeData, currentUser);
+                    
+                    publishStatus.className = 'status-msg success';
+                    publishStatus.textContent = 'Successfully published!';
+                    publishName.value = '';
+                    publishDesc.value = '';
+                    
+                    window.loadThemeStoreCatalog();
+                    setTimeout(() => { publishStatus.textContent = ''; }, 3000);
+                } catch (err) {
+                    publishStatus.className = 'status-msg error';
+                    publishStatus.textContent = err.message || 'Error occurred!';
+                } finally {
+                    publishSubmit.disabled = false;
+                }
+            };
+        }
+
+        // Trigger loading theme catalog on load if the theme store section is already expanded
+        if (!state.collapsedSections['theme-store-section']) {
+            setTimeout(() => {
+                window.loadThemeStoreCatalog();
+            }, 500);
+        }
 
     } else if (isContentScript) {
         // ============================================================
@@ -2681,11 +3357,13 @@
                         state.activeSiteOwner = newOwner;
                         state.isSettingsOpen = false;
                         state.isAddPageOpen = false;
+                        state.isThemeStoreOpen = false;
                         SR.safeStorage.set({
                             [STORAGE_KEYS.ACTIVE_SITE_ID]: newActiveId,
                             [STORAGE_KEYS.ACTIVE_SITE_OWNER]: newOwner,
                             [STORAGE_KEYS.IS_SETTINGS_OPEN]: false,
-                            [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false
+                            [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false,
+                            [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false
                         });
                         renderCallback();
                     },
@@ -2694,7 +3372,15 @@
                     },
                     onSettingsClick: () => {
                         state.isSettingsOpen = true;
-                        SR.safeStorage.set({ [STORAGE_KEYS.IS_SETTINGS_OPEN]: true });
+                        state.isThemeStoreOpen = false;
+                        SR.safeStorage.set({ [STORAGE_KEYS.IS_SETTINGS_OPEN]: true, [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false });
+                        SR.safeSendMessage({ action: 'open_side_panel' });
+                        renderCallback();
+                    },
+                    onExtensionClick: () => {
+                        state.isThemeStoreOpen = true;
+                        state.isSettingsOpen = false;
+                        SR.safeStorage.set({ [STORAGE_KEYS.IS_THEME_STORE_OPEN]: true, [STORAGE_KEYS.IS_SETTINGS_OPEN]: false });
                         SR.safeSendMessage({ action: 'open_side_panel' });
                         renderCallback();
                     }
@@ -3057,6 +3743,15 @@
                     onSettingsClick: () => {
                         SR.safeStorage.set({ 
                             [STORAGE_KEYS.IS_SETTINGS_OPEN]: true,
+                            [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false,
+                            [STORAGE_KEYS.IS_THEME_STORE_OPEN]: false
+                        });
+                        SR.safeSendMessage({ action: 'open_side_panel' });
+                    },
+                    onExtensionClick: () => {
+                        SR.safeStorage.set({ 
+                            [STORAGE_KEYS.IS_THEME_STORE_OPEN]: true,
+                            [STORAGE_KEYS.IS_SETTINGS_OPEN]: false,
                             [STORAGE_KEYS.IS_ADD_PAGE_OPEN]: false
                         });
                         SR.safeSendMessage({ action: 'open_side_panel' });

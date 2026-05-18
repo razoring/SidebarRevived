@@ -59,6 +59,112 @@
         <h2>Settings</h2>
       </div>
       <div class="settings-form">
+        <!-- 0. Syncing Section -->
+        <div class="settings-category">
+          <div class="settings-category-header collapsible" data-target="account-section">
+            <span>Syncing</span>
+            <span class="collapse-arrow">&#9660;</span>
+          </div>
+          <div class="settings-category-body" id="account-section">
+
+            <!-- Guest View (Premium Sign Up) -->
+            <div id="sync-guest-view" class="sync-status-container">
+              <div class="signup-title">Connect & Sync Your Workspace</div>
+              <p class="settings-description-sub" style="margin-top: 4px; margin-bottom: 12px; font-size: 11px;">Join now to activate secure, real-time cloud synchronization and premium features.</p>
+              
+              <ul class="signup-benefits-list">
+                <li>
+                  <span class="benefit-check">✓</span>
+                  <span class="benefit-text"><strong>100% Free Forever:</strong> Access all premium cloud features, synchronization, and store sharing without any hidden costs.</span>
+                </li>
+                <li>
+                  <span class="benefit-check">✓</span>
+                  <span class="benefit-text"><strong>Real-time Cloud Sync:</strong> Keep pinned apps and custom settings aligned across all your browsers and devices instantly.</span>
+                </li>
+                <li>
+                  <span class="benefit-check">✓</span>
+                  <span class="benefit-text"><strong>Community Theme Store:</strong> Publish your own customized themes, upvote creations, and download curated designs.</span>
+                </li>
+                <li>
+                  <span class="benefit-check">✓</span>
+                  <span class="benefit-text"><strong>Automatic Secure Backups:</strong> Never lose your sidebar settings, blocklists, or tab structures.</span>
+                </li>
+              </ul>
+
+              <div class="settings-actions sync-auth-actions" style="margin-top: 14px; border-top: none; padding-top: 0;">
+                <button id="sync-google-btn" class="sync-provider-btn google-btn">
+                  <span class="provider-icon google-icon"></span>
+                  <span class="provider-text">Continue with Google</span>
+                </button>
+                <button id="sync-microsoft-btn" class="sync-provider-btn microsoft-btn">
+                  <span class="provider-icon microsoft-icon"></span>
+                  <span class="provider-text">Continue with Microsoft</span>
+                </button>
+                <button id="sync-apple-btn" class="sync-provider-btn apple-btn">
+                  <span class="provider-icon apple-icon"></span>
+                  <span class="provider-text">Continue with Apple</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Logged In User View -->
+            <div id="sync-user-view" class="sync-status-container" style="display: none;">
+              <div class="sync-status-label">Account Status: <span class="badge success">Logged In</span></div>
+
+              <!-- Profile Details -->
+              <div class="user-profile-details" style="margin-top: 12px;">
+                <div class="user-avatar-container" style="position: relative; display: inline-block;">
+                  <img id="sync-user-avatar" class="user-avatar" src="" alt="Avatar" />
+                  <label for="avatar-file-input" class="avatar-edit-badge" title="Upload custom photo">✎</label>
+                  <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" />
+                </div>
+                <div class="user-profile-text" style="flex: 1;">
+                  <div style="display: flex; gap: 6px; align-items: center; width: 100%;">
+                    <input type="text" id="sync-user-name-input" class="profile-input" placeholder="Username"
+                      spellcheck="false" style="flex: 1;" />
+                    <button id="save-username-btn" class="settings-accent-btn"
+                      style="margin: 0; padding: 4px 8px; font-size: 10px;">Save</button>
+                  </div>
+                  <span id="sync-user-email" class="user-email"></span>
+                </div>
+              </div>
+
+              <!-- Avatar Seed Customizer -->
+              <div class="avatar-seed-row" style="margin-top: 12px; display: flex; flex-direction: column; gap: 4px;">
+                <span class="theme-color-label">Generate Robot Avatar</span>
+                <span class="settings-description-sub">Type any phrase to generate a unique digital avatar
+                  instantly:</span>
+                <div style="display: flex; gap: 6px; align-items: center; width: 100%; margin-top: 4px;">
+                  <input type="text" id="avatar-seed-input" class="profile-input"
+                    placeholder="Type a seed phrase (e.g. skywalker)" spellcheck="false" style="flex: 1;" />
+                  <button id="save-seed-btn" class="settings-accent-btn"
+                    style="margin: 0; padding: 4px 8px; font-size: 10px;">Generate</button>
+                </div>
+              </div>
+
+              <!-- Connected Services Badge -->
+              <div class="connected-services-row"
+                style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--theme-divider-bg, rgba(255,255,255,0.1)); padding-top: 8px;">
+                <span class="info-label" style="font-size: 11px;">Connected Provider:</span>
+                <div id="provider-badge-container">
+                  <span class="badge" style="background: rgba(255,255,255,0.1); color: #fff;"
+                    id="provider-badge-name">Unknown</span>
+                </div>
+              </div>
+
+              <div class="sync-info-row" style="margin-top: 8px;">
+                <span class="info-label">Last Backed Up:</span>
+                <span id="sync-last-timestamp" class="info-value">Never</span>
+              </div>
+
+              <div class="settings-actions" style="margin-top: 16px;">
+                <button id="sync-now-btn" class="settings-accent-btn">Sync Settings Now</button>
+                <button id="sync-logout-btn" class="danger">Log Out</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 1. Theme Section -->
         <div class="settings-category">
           <div class="settings-category-header collapsible" data-target="theme-section">
@@ -66,13 +172,15 @@
             <span class="collapse-arrow">&#9660;</span>
           </div>
           <div class="settings-category-body" id="theme-section">
-            <p class="settings-description" style="margin-bottom: 12px;">Customize the styling, transparency, and hardware-accelerated blur filters of the sidebar.</p>
-            
+            <p class="settings-description" style="margin-bottom: 12px;">Customize the styling, transparency, and
+              hardware-accelerated blur filters of the sidebar.</p>
+
             <!-- Accent (Most used color) -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Accent</span>
-                <span class="settings-description-sub">Highlight color for selected items, toggles, and button states.</span>
+                <span class="settings-description-sub">Highlight color for selected items, toggles, and button
+                  states.</span>
               </div>
               <div class="theme-color-picker-wrapper">
                 <input type="text" class="theme-hex-input" id="hex-accent-color" value="#0078d7" spellcheck="false" />
@@ -84,14 +192,15 @@
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Contrast</span>
-                <span class="settings-description-sub">Primary foreground color for text, SVGs, and control highlights.</span>
+                <span class="settings-description-sub">Primary foreground color for text, SVGs, and control
+                  highlights.</span>
               </div>
               <div class="theme-color-picker-wrapper">
                 <input type="text" class="theme-hex-input" id="hex-font-color" value="#ffffff" spellcheck="false" />
                 <input type="color" id="theme-font-color" />
               </div>
             </div>
-            
+
             <!-- Background -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
@@ -103,24 +212,26 @@
                 <input type="color" id="theme-sidebar-bg" />
               </div>
             </div>
-            
+
             <!-- Opacity -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Opacity</span>
-                <span class="settings-description-sub">Overall transparency percentage of the sidebar background (10% - 100%).</span>
+                <span class="settings-description-sub">Overall transparency percentage of the sidebar background (10% -
+                  100%).</span>
               </div>
               <div class="theme-slider-wrapper">
                 <span class="theme-slider-value" id="val-panel-opacity">100%</span>
                 <input type="range" id="theme-panel-opacity" min="0.1" max="1" step="0.05" value="1" />
               </div>
             </div>
-            
+
             <!-- Blur -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Blur</span>
-                <span class="settings-description-sub">Hardware-accelerated glassmorphism blur radius (0px - 20px).</span>
+                <span class="settings-description-sub">Hardware-accelerated glassmorphism blur radius (0px -
+                  20px).</span>
               </div>
               <div class="theme-slider-wrapper">
                 <span class="theme-slider-value" id="val-panel-blur">0px</span>
@@ -132,19 +243,21 @@
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Divider</span>
-                <span class="settings-description-sub">Tint of vertical separators separating categories and utilities.</span>
+                <span class="settings-description-sub">Tint of vertical separators separating categories and
+                  utilities.</span>
               </div>
               <div class="theme-color-picker-wrapper">
                 <input type="text" class="theme-hex-input" id="hex-divider-bg" value="#555555" spellcheck="false" />
                 <input type="color" id="theme-divider-bg" />
               </div>
             </div>
-            
+
             <!-- Midtone -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Midtone</span>
-                <span class="settings-description-sub">Secondary description text, slider values, and caption tints.</span>
+                <span class="settings-description-sub">Secondary description text, slider values, and caption
+                  tints.</span>
               </div>
               <div class="theme-color-picker-wrapper">
                 <input type="text" class="theme-hex-input" id="hex-midtone-color" value="#a4a4a4" spellcheck="false" />
@@ -156,7 +269,8 @@
             <div class="theme-color-row">
               <div class="theme-color-label-group">
                 <span class="theme-color-label">Panel Padding</span>
-                <span class="settings-description-sub">Floating inset distance from the screen edges (0px - 10px).</span>
+                <span class="settings-description-sub">Floating inset distance from the screen edges (0px -
+                  10px).</span>
               </div>
               <div class="theme-slider-wrapper">
                 <span class="theme-slider-value" id="val-panel-padding">0px</span>
@@ -179,23 +293,31 @@
             <!-- Background Image -->
             <div class="theme-color-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
               <div class="theme-color-label-group">
-                <span class="theme-color-label">Background Image Link / Path</span>
-                <span class="settings-description-sub">Enter an online image URL, local file path/link, or upload a local file directly.</span>
+                <span class="theme-color-label">Background Image</span>
+                <span class="settings-description-sub">Enter an online image URL, local file path/link, or upload a
+                  local file directly.</span>
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; width: 100%;">
-                <input type="text" id="theme-bg-image-url" placeholder="https://... or file:///C:/..." style="background: rgba(0,0,0,0.5); color: #eee; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; outline: none; box-sizing: border-box; width: 100%;" spellcheck="false" />
+                <input type="text" id="theme-bg-image-url" placeholder="https://... or file:///C:/..."
+                  style="background: rgba(0,0,0,0.5); color: #eee; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; outline: none; box-sizing: border-box; width: 100%;"
+                  spellcheck="false" />
                 <div style="display: flex; gap: 6px; align-items: center; width: 100%;">
-                  <button id="theme-bg-image-upload-btn" class="settings-accent-btn" style="margin: 0; flex: 1;">Upload File...</button>
-                  <button id="theme-bg-image-clear-btn" class="danger" style="margin: 0; padding: 6px 12px; display: none;">Clear</button>
+                  <button id="theme-bg-image-upload-btn" class="settings-accent-btn" style="margin: 0; flex: 1;">Upload
+                    File...</button>
+                  <button id="theme-bg-image-clear-btn" class="danger"
+                    style="margin: 0; padding: 6px 12px; display: none;">Clear</button>
                   <input type="file" id="theme-bg-image-file" accept="image/*" style="display: none;" />
                 </div>
               </div>
-              <div id="theme-bg-image-preview-container" style="display: none; align-items: center; gap: 8px; margin-top: 4px; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 4px;">
-                <img id="theme-bg-image-preview" style="max-height: 40px; max-width: 60px; border-radius: 2px; object-fit: cover;" />
-                <span id="theme-bg-image-name" class="settings-description-sub" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+              <div id="theme-bg-image-preview-container"
+                style="display: none; align-items: center; gap: 8px; margin-top: 4px; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 4px;">
+                <img id="theme-bg-image-preview"
+                  style="max-height: 40px; max-width: 60px; border-radius: 2px; object-fit: cover;" />
+                <span id="theme-bg-image-name" class="settings-description-sub"
+                  style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
               </div>
             </div>
-            
+
             <!-- Image Sizing -->
             <div class="theme-color-row">
               <div class="theme-color-label-group">
@@ -203,7 +325,8 @@
                 <span class="settings-description-sub">Configure how the background image scales and repeats.</span>
               </div>
               <div class="theme-select-wrapper">
-                <select id="theme-bg-image-size" style="background: rgba(0,0,0,0.5); color: #eee; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer;">
+                <select id="theme-bg-image-size"
+                  style="background: rgba(0,0,0,0.5); color: #eee; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer;">
                   <option value="fill">Fill (Cover)</option>
                   <option value="fit">Fit (Contain)</option>
                   <option value="stretch">Stretch</option>
@@ -213,16 +336,9 @@
               </div>
             </div>
 
-            <!-- Theme Actions -->
-            <div class="settings-actions" style="margin-top: 16px;">
-              <button id="export-theme-btn">Export JSON</button>
-              <button id="import-theme-btn">Import JSON</button>
-              <input type="file" id="import-theme-file" style="display:none" accept=".json" />
-              <button id="reset-theme-btn">Reset to Defaults</button>
-            </div>
           </div>
         </div>
-        
+
         <!-- 2. Appearance Section (Adjacent to Theme for visual consistency and relatedness) -->
         <div class="settings-category">
           <div class="settings-category-header collapsible" data-target="appearance-section">
@@ -239,7 +355,9 @@
                   <div class="toggle-thumb"></div>
                 </div>
               </label>
-              <p class="settings-description" style="margin-top: 4px; margin-bottom: 12px;">Incorporate seamless concave rounded tapers on the top and bottom edges of the idle sidebar to blend naturally with Edge's UI style (disabled during Auto-Hide).</p>
+              <p class="settings-description" style="margin-top: 4px; margin-bottom: 12px;">Incorporate seamless concave
+                rounded tapers on the top and bottom edges of the idle sidebar to blend naturally with Edge's UI style
+                (disabled during Auto-Hide).</p>
             </div>
 
             <!-- Show Category Icons -->
@@ -251,7 +369,8 @@
                   <div class="toggle-thumb"></div>
                 </div>
               </label>
-              <p class="settings-description" style="margin-top: 4px;">Display section icons ("Pinned" pins and "Temporary" clocks) to keep site groups organized.</p>
+              <p class="settings-description" style="margin-top: 4px;">Display section icons ("Pinned" pins and
+                "Temporary" clocks) to keep site groups organized.</p>
             </div>
           </div>
         </div>
@@ -270,10 +389,11 @@
                 <div class="toggle-thumb"></div>
               </div>
             </label>
-            <p class="settings-description">Keep the in-page sidebar completely hidden, automatically sliding it into view only when you hover your cursor near the right edge of the window.</p>
+            <p class="settings-description">Keep the in-page sidebar completely hidden, automatically sliding it into
+              view only when you hover your cursor near the right edge of the window.</p>
           </div>
         </div>
-        
+
         <!-- 4. Blocklists Section -->
         <div class="settings-category">
           <div class="settings-category-header collapsible" data-target="blocklists-section">
@@ -284,48 +404,103 @@
             <!-- Sidepanel Blocklist (Completely disable sidebar) -->
             <div class="settings-subsection">
               <div class="settings-subsection-title">Sidepanel Blocklist</div>
-              <p class="settings-description">Completely disable and block the in-page sidebar from rendering on specified domains. Pinned apps can still be launched via the native sidepanel.</p>
-              <button id="add-to-sidepanel-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
-              <textarea id="settings-sidepanel-blocklist" placeholder="example.com&#10;anotherdomain.org" spellcheck="false"></textarea>
+              <p class="settings-description">Completely disable and block the in-page sidebar from rendering on
+                specified domains. Pinned apps can still be launched via the native sidepanel.</p>
+              <button id="add-to-sidepanel-blocklist-btn" class="settings-accent-btn">Add Current Site to
+                Blocklist</button>
+              <textarea id="settings-sidepanel-blocklist" placeholder="example.com&#10;anotherdomain.org"
+                spellcheck="false"></textarea>
             </div>
-            
+
             <!-- Auto-Hide Blocklist (Enforces slide behavior) -->
             <div class="settings-subsection" style="margin-top: 16px;">
               <div class="settings-subsection-title">Auto-Hide Blocklist</div>
-              <p class="settings-description">Enforce auto-hide sliding behavior on these specific domains, even if auto-hide is globally disabled. Perfect for pages where the sidebar overlaps important content.</p>
-              <button id="add-to-autohide-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
-              <textarea id="settings-autohide-blocklist" placeholder="example.com&#10;anotherdomain.org" spellcheck="false"></textarea>
+              <p class="settings-description">Enforce auto-hide sliding behavior on these specific domains, even if
+                auto-hide is globally disabled. Perfect for pages where the sidebar overlaps important content.</p>
+              <button id="add-to-autohide-blocklist-btn" class="settings-accent-btn">Add Current Site to
+                Blocklist</button>
+              <textarea id="settings-autohide-blocklist" placeholder="example.com&#10;anotherdomain.org"
+                spellcheck="false"></textarea>
             </div>
 
             <!-- Scrollbar Blocklist (Scrollbar/infinite-scroll overrides blocker) -->
             <div class="settings-subsection" style="margin-top: 16px;">
               <div class="settings-subsection-title">Scrollbar Blocklist</div>
-              <p class="settings-description">Prevent the sidebar's aggressive scrollbar and infinite-scroll patches from running on specific domains. Useful for sites that experience scroll glitches.</p>
+              <p class="settings-description">Prevent the sidebar's aggressive scrollbar and infinite-scroll patches
+                from running on specific domains. Useful for sites that experience scroll glitches.</p>
               <button id="add-to-blocklist-btn" class="settings-accent-btn">Add Current Site to Blocklist</button>
-              <textarea id="settings-scroll-blocklist" placeholder="example.com&#10;anotherdomain.org" spellcheck="false"></textarea>
+              <textarea id="settings-scroll-blocklist" placeholder="example.com&#10;anotherdomain.org"
+                spellcheck="false"></textarea>
             </div>
           </div>
         </div>
 
-        <!-- 5. Backup & Restore Section -->
+        <!-- 5. Debug Section -->
         <div class="settings-category">
-          <div class="settings-category-header collapsible" data-target="backup-section">
-            <span>Backup & Restore</span>
+          <div class="settings-category-header collapsible" data-target="debug-section">
+            <span>Debug</span>
             <span class="collapse-arrow">&#9660;</span>
           </div>
-          <div class="settings-category-body" id="backup-section">
-            <p class="settings-description">Create an offline backup of your setup—including pinned apps, custom theme parameters, blocklists, and settings—or restore them instantly.</p>
-            <div class="settings-actions" style="margin-top: 12px;">
-              <button id="export-all-btn">Export All Settings</button>
-              <button id="import-all-btn">Import All Settings</button>
-              <button id="clear-all-data-btn" class="danger">Clear All Data</button>
-              <input type="file" id="import-all-file" style="display:none" accept=".json" />
+          <div class="settings-category-body" id="debug-section">
+            <p class="settings-description">Perform system maintenance tasks, force cloud synchronization, reset active theme styling, or wipe cached/local database assets.</p>
+            <div class="settings-actions" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
+              <button id="debug-resync-btn" style="flex: 1 1 calc(50% - 4px); min-width: 100px;">Resync</button>
+              <button id="debug-reset-theme-btn" style="flex: 1 1 calc(50% - 4px); min-width: 100px;">Reset Theme</button>
+              <button id="debug-clear-cache-btn" style="flex: 1 1 calc(50% - 4px); min-width: 100px;">Clear Cache</button>
+              <button id="clear-all-data-btn" class="danger" style="flex: 1 1 100%; min-width: 100px;">Clear Data</button>
             </div>
           </div>
         </div>
       </div>
     </div>
+    <div id="theme-store-panel" style="display: none;">
+      <div class="settings-header">
+        <button id="theme-store-back-btn" title="Close Theme Store"></button>
+        <h2>Theme Store</h2>
+      </div>
+      <div class="settings-form">
+        <p class="settings-description" style="margin-top: 0;">Browse, download, and rate unique custom themes created
+          by the community, or share your own current theme creation with the world!</p>
+
+        <div class="store-controls">
+          <div class="store-search-bar">
+            <input type="text" id="store-search-input" placeholder="Search community themes..." spellcheck="false" />
+            <button id="store-search-btn"></button>
+          </div>
+          <div class="store-filter-tabs">
+            <button id="tab-store-popular" class="store-tab active">Popular</button>
+            <button id="tab-store-newest" class="store-tab">Newest</button>
+          </div>
+        </div>
+
+        <div id="theme-store-grid" class="theme-store-grid">
+          <div class="theme-store-loader">Loading community catalog...</div>
+        </div>
+
+        <div id="store-publish-container" class="store-publish-box" style="display: none; margin-top: 16px;">
+          <div class="settings-subsection-title">Share Your Custom Theme</div>
+          <p class="settings-description">Publish your current theme styling so other users can see it, upvote it, and
+            download it.</p>
+          <div class="publish-form">
+            <input type="text" id="publish-theme-name" placeholder="Theme Name (e.g. Cyberpunk Blue)" max="30" />
+            <input type="text" id="publish-theme-desc" placeholder="Brief description of the colors/vibe..." max="80" />
+            <div class="publish-form-row">
+              <button id="publish-theme-submit" class="settings-accent-btn">Publish to Store</button>
+              <span id="publish-theme-status" class="status-msg"></span>
+            </div>
+          </div>
+        </div>
+
+        <div id="store-publish-guest-msg" class="store-publish-guest-msg" style="margin-top: 16px; text-align: center;">
+          <p class="settings-description-sub" style="font-size: 11px; margin: 0; color: #f39c12;">⚠️ Link your account
+            in the Settings panel to publish custom themes or upvote community items.</p>
+        </div>
+      </div>
+    </div>
   </div>
+  <script src="libs/appwrite.js"></script>
+  <script src="libs/appwrite-service.js"></script>
+  <script src="sync-engine.js"></script>
   <script src="unified.js"></script>
 </body>
 
