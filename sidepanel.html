@@ -123,8 +123,8 @@
 
               <!-- Backup Timestamp Row with Premium Flex Alignment -->
               <div class="sync-info-row" style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between;">
-                <span class="info-label" style="font-size: 11px; color: var(--theme-font-color-sub, #aaa);">Last Backed Up:</span>
-                <span id="sync-last-timestamp" class="info-value" style="font-size: 11px; font-weight: 500; color: var(--theme-font-color, #eee);">Never</span>
+                <span class="info-label" style="font-size: 11px; color: var(--theme-midtone-color, #a4a4a4);">Last Backed Up:</span>
+                <span id="sync-last-timestamp" class="info-value" style="font-size: 11px; font-weight: 500; color: var(--theme-font-color, inherit);">Never</span>
               </div>
             </div>
           </div>
@@ -175,6 +175,18 @@
               <div class="theme-color-picker-wrapper">
                 <input type="text" class="theme-hex-input" id="hex-sidebar-bg" value="#2b2b2b" spellcheck="false" />
                 <input type="color" id="theme-sidebar-bg" />
+              </div>
+            </div>
+
+            <!-- Difference -->
+            <div class="theme-color-row">
+              <div class="theme-color-label-group">
+                <span class="theme-color-label">Difference</span>
+                <span class="settings-description-sub">High-contrast background color for search bars, blocklists, and input text fields.</span>
+              </div>
+              <div class="theme-color-picker-wrapper">
+                <input type="text" class="theme-hex-input" id="hex-difference-bg" value="#1a1a1a" spellcheck="false" />
+                <input type="color" id="theme-difference-bg" />
               </div>
             </div>
 
@@ -291,7 +303,7 @@
               </div>
               <div class="theme-select-wrapper">
                 <select id="theme-bg-image-size"
-                  style="background: rgba(0,0,0,0.5); color: #eee; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer;">
+                  style="background: var(--theme-difference-bg, #1a1a1a); color: var(--theme-divider-bg, #555555); border: 1px solid var(--theme-divider-bg, rgba(128, 128, 128, 0.2)); padding: 4px 8px; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer;">
                   <option value="fill">Fill (Cover)</option>
                   <option value="fit">Fit (Contain)</option>
                   <option value="stretch">Stretch</option>

@@ -211,6 +211,7 @@
                 dividerBackground: isDark ? '#555555' : '#c0c0c0',
                 accentColor: '#38b3ff',
                 midtoneColor: isDark ? '#a4a4a4' : '#6e6e6e',
+                differenceColor: isDark ? '#1a1a1a' : '#ffffff',
                 panelOpacity: 1,
                 panelBlur: 0,
                 backgroundImage: '',
@@ -225,6 +226,7 @@
             dividerBackground: isDark ? '#555555' : '#c0c0c0',
             accentColor: '#38b3ff',
             midtoneColor: isDark ? '#a4a4a4' : '#6e6e6e',
+            differenceColor: isDark ? '#1a1a1a' : '#f5f5f5',
             panelOpacity: 1,
             panelBlur: 0,
             backgroundImage: '',
@@ -327,6 +329,9 @@
             if (theme.midtoneColor) {
                 el.style.setProperty('--theme-midtone-color', theme.midtoneColor);
             }
+            if (theme.differenceColor) {
+                el.style.setProperty('--theme-difference-bg', theme.differenceColor);
+            }
             if (theme.panelBlur !== undefined) el.style.setProperty('--theme-panel-blur', theme.panelBlur + 'px');
             if (theme.panelPadding !== undefined) el.style.setProperty('--theme-sidebar-padding', theme.panelPadding + 'px');
             if (theme.panelRoundness !== undefined) el.style.setProperty('--theme-sidebar-roundness', theme.panelRoundness + 'px');
@@ -370,7 +375,7 @@
         } else {
             const props = [
                 '--theme-font-color', '--theme-sidebar-bg', '--theme-divider-bg',
-                '--theme-accent-color', '--theme-midtone-color', '--theme-panel-opacity', '--theme-panel-blur',
+                '--theme-accent-color', '--theme-midtone-color', '--theme-difference-bg', '--theme-panel-opacity', '--theme-panel-blur',
                 '--theme-settings-bg', '--theme-sidebar-bg-rgba', '--theme-accent-color-rgba',
                 '--theme-bg-image', '--theme-bg-image-size', '--theme-bg-image-repeat', '--theme-bg-image-position',
                 '--theme-sidebar-padding', '--theme-sidebar-roundness'
@@ -1990,7 +1995,8 @@
                 { input: 'theme-sidebar-bg', hex: 'hex-sidebar-bg', fallback: '#38393c' },
                 { input: 'theme-divider-bg', hex: 'hex-divider-bg', fallback: '#555555' },
                 { input: 'theme-accent-color', hex: 'hex-accent-color', fallback: '#38b3ff' },
-                { input: 'theme-midtone-color', hex: 'hex-midtone-color', fallback: '#a4a4a4' }
+                { input: 'theme-midtone-color', hex: 'hex-midtone-color', fallback: '#a4a4a4' },
+                { input: 'theme-difference-bg', hex: 'hex-difference-bg', fallback: '#1a1a1a' }
             ];
 
             const themeKey = { 
@@ -1998,7 +2004,8 @@
                 'theme-sidebar-bg': 'sidebarBackground', 
                 'theme-divider-bg': 'dividerBackground', 
                 'theme-accent-color': 'accentColor',
-                'theme-midtone-color': 'midtoneColor'
+                'theme-midtone-color': 'midtoneColor',
+                'theme-difference-bg': 'differenceColor'
             };
 
             fields.forEach(f => {
@@ -2195,6 +2202,7 @@
                 dividerBackground: document.getElementById('theme-divider-bg').value,
                 accentColor: document.getElementById('theme-accent-color').value,
                 midtoneColor: document.getElementById('theme-midtone-color').value,
+                differenceColor: document.getElementById('theme-difference-bg').value,
                 panelOpacity: opacitySlider ? parseFloat(opacitySlider.value) : 1,
                 panelBlur: blurSlider ? parseInt(blurSlider.value, 10) : 0,
                 backgroundImage: bgImgData,
@@ -2220,7 +2228,8 @@
             { input: 'theme-sidebar-bg', hex: 'hex-sidebar-bg' },
             { input: 'theme-divider-bg', hex: 'hex-divider-bg' },
             { input: 'theme-accent-color', hex: 'hex-accent-color' },
-            { input: 'theme-midtone-color', hex: 'hex-midtone-color' }
+            { input: 'theme-midtone-color', hex: 'hex-midtone-color' },
+            { input: 'theme-difference-bg', hex: 'hex-difference-bg' }
         ];
 
         colorFields.forEach(f => {
