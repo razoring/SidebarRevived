@@ -34,7 +34,7 @@
         "sidepanel.css",
         "sidepanel.html",
         "unified.js",
-        "sync-engine.js",
+        "cloud.js",
         "persistence.js",
         "scroll.js",
         "libs/*"

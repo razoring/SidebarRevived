@@ -1,20 +1,20 @@
 /**
- * Dockit Appwrite Service Wrapper
- * Manages OAuth sessions, profiles, settings synchronization, and Theme Store requests.
+ * Dockit Cloud Integration (Amalgamated Appwrite Service & Settings Sync Engine)
+ * Manages OAuth sessions, profiles, settings synchronization, Theme Store, and .env loading.
  */
 
 const APPWRITE_CONFIG = {
-    endpoint: "https://nyc.cloud.appwrite.io/v1",
-    projectId: "6a0a1cc000178886bfaf",
-    databaseId: "dockit_db",
+    endpoint: "",
+    projectId: "",
+    databaseId: "",
     collections: {
-        profiles: "profiles",
-        userSettings: "user_settings",
-        themes: "themes",
-        themeLikes: "theme_likes"
+        profiles: "",
+        userSettings: "",
+        themes: "",
+        themeLikes: ""
     },
     buckets: {
-        themeAssets: "theme-assets"
+        themeAssets: ""
     }
 };
 
@@ -30,6 +30,75 @@ class AppwriteService {
     }
 
     /**
+     * Load environment variables from .env file packaged in the extension
+     */
+    async _loadEnvConfig() {
+        const fallbacks = {
+            endpoint: "https://nyc.cloud.appwrite.io/v1",
+            projectId: "6a0a1cc000178886bfaf",
+            databaseId: "dockit_db",
+            collections: {
+                profiles: "profiles",
+                userSettings: "user_settings",
+                themes: "themes",
+                themeLikes: "theme_likes"
+            },
+            buckets: {
+                themeAssets: "theme-assets"
+            }
+        };
+
+        try {
+            const url = chrome.runtime.getURL('.env');
+            const response = await fetch(url);
+            const text = await response.text();
+            
+            // Parse .env format
+            const env = {};
+            const lines = text.split(/\r?\n/);
+            for (let line of lines) {
+                line = line.trim();
+                if (!line || line.startsWith('#')) continue;
+                
+                const parts = line.split('=');
+                if (parts.length >= 2) {
+                    const key = parts[0].trim();
+                    let value = parts.slice(1).join('=').trim();
+                    if ((value.startsWith('"') && value.endsWith('"')) || 
+                        (value.startsWith("'") && value.endsWith("'"))) {
+                        value = value.substring(1, value.length - 1);
+                    }
+                    env[key] = value;
+                }
+            }
+
+            // Map variables
+            APPWRITE_CONFIG.endpoint = env.APPWRITE_ENDPOINT || fallbacks.endpoint;
+            APPWRITE_CONFIG.projectId = env.APPWRITE_PROJECT_ID || fallbacks.projectId;
+            APPWRITE_CONFIG.databaseId = env.APPWRITE_DATABASE_ID || fallbacks.databaseId;
+            APPWRITE_CONFIG.collections.profiles = env.APPWRITE_COLLECTION_PROFILES || fallbacks.collections.profiles;
+            APPWRITE_CONFIG.collections.userSettings = env.APPWRITE_COLLECTION_USER_SETTINGS || fallbacks.collections.userSettings;
+            APPWRITE_CONFIG.collections.themes = env.APPWRITE_COLLECTION_THEMES || fallbacks.collections.themes;
+            APPWRITE_CONFIG.collections.themeLikes = env.APPWRITE_COLLECTION_THEME_LIKES || fallbacks.collections.themeLikes;
+            APPWRITE_CONFIG.buckets.themeAssets = env.APPWRITE_BUCKET_THEME_ASSETS || fallbacks.buckets.themeAssets;
+
+            console.log("🔒 [AppwriteService] Environment configuration loaded from .env.");
+        } catch (error) {
+            console.warn("⚠️ [AppwriteService] Failed to load .env configuration, using fallbacks:", error);
+            
+            // Apply all fallbacks
+            APPWRITE_CONFIG.endpoint = fallbacks.endpoint;
+            APPWRITE_CONFIG.projectId = fallbacks.projectId;
+            APPWRITE_CONFIG.databaseId = fallbacks.databaseId;
+            APPWRITE_CONFIG.collections.profiles = fallbacks.collections.profiles;
+            APPWRITE_CONFIG.collections.userSettings = fallbacks.collections.userSettings;
+            APPWRITE_CONFIG.collections.themes = fallbacks.collections.themes;
+            APPWRITE_CONFIG.collections.themeLikes = fallbacks.collections.themeLikes;
+            APPWRITE_CONFIG.buckets.themeAssets = fallbacks.buckets.themeAssets;
+        }
+    }
+
+    /**
      * Initialize the Appwrite Client and services
      */
     async init() {
@@ -37,8 +106,11 @@ class AppwriteService {
 
         try {
             if (typeof window.Appwrite === 'undefined') {
-                throw new Error("Appwrite SDK is not loaded. Ensure libs/appwrite.js is included before appwrite-service.js");
+                throw new Error("Appwrite SDK is not loaded. Ensure libs/appwrite.js is included before cloud.js");
             }
+
+            // Load configuration variables from .env
+            await this._loadEnvConfig();
 
             this.client = new window.Appwrite.Client();
             this.client
@@ -276,8 +348,24 @@ class AppwriteService {
     async pushSettingsToCloud(settingsJson) {
         if (!this.currentUser) return false;
         const userId = this.currentUser.$id;
+
+        // Deep clone to avoid mutating the local settings state
+        let settingsCopy = null;
+        try {
+            settingsCopy = JSON.parse(JSON.stringify(settingsJson));
+        } catch (e) {
+            console.error("❌ [AppwriteService] Failed to serialize settings for sync:", e);
+            settingsCopy = settingsJson;
+        }
+
+        // Strip out large base64 background images to avoid Appwrite size limits/500 Server Error
+        if (settingsCopy && settingsCopy.customTheme && settingsCopy.customTheme.backgroundImage && settingsCopy.customTheme.backgroundImage.startsWith('data:')) {
+            console.log("☁️ [AppwriteService] Stripping local base64 background image from sync payload.");
+            settingsCopy.customTheme.backgroundImage = "";
+        }
+
         const payload = {
-            settingsData: JSON.stringify(settingsJson),
+            settingsData: JSON.stringify(settingsCopy),
             deviceSignature: this.deviceSignature,
             updatedAt: new Date().toISOString()
         };
@@ -305,11 +393,19 @@ class AppwriteService {
                     console.log("☁️ [AppwriteService] Cloud settings document created.");
                     return true;
                 } catch (createErr) {
-                    console.error("❌ [AppwriteService] Failed to create settings doc:", createErr);
+                    console.error("❌ [AppwriteService] Failed to create settings doc:", createErr, {
+                        code: createErr.code,
+                        type: createErr.type,
+                        response: createErr.response
+                    });
                     return false;
                 }
             }
-            console.error("❌ [AppwriteService] Failed to push settings:", error);
+            console.error("❌ [AppwriteService] Failed to push settings:", error, {
+                code: error.code,
+                type: error.type,
+                response: error.response
+            });
             return false;
         }
     }
@@ -343,9 +439,6 @@ class AppwriteService {
     // Theme Store Services
     // =========================================================================
 
-    /**
-     * Fetch catalog of public themes
-     */
     async listThemes(filter = 'popular', searchQuery = '') {
         try {
             const queries = [
@@ -371,9 +464,40 @@ class AppwriteService {
                 APPWRITE_CONFIG.collections.themes,
                 queries
             );
+
+            // Cache successfully fetched default themes for offline/outage fallback
+            if (list && list.documents && filter === 'popular' && !searchQuery) {
+                chrome.storage.local.set({
+                    community_theme_catalog: list.documents,
+                    last_catalog_fetch: Date.now()
+                }, () => {
+                    console.log("💾 [AppwriteService] Cached community theme catalog locally.");
+                });
+            }
+
             return list.documents;
         } catch (error) {
-            console.error("❌ [AppwriteService] Failed to list themes:", error);
+            console.error("❌ [AppwriteService] Failed to list themes:", error, {
+                code: error.code,
+                type: error.type,
+                response: error.response
+            });
+
+            // Try to load cached fallback catalog
+            try {
+                const cachedDocs = await new Promise((resolve) => {
+                    chrome.storage.local.get(['community_theme_catalog'], (res) => {
+                        resolve(res.community_theme_catalog || []);
+                    });
+                });
+                if (cachedDocs.length > 0) {
+                    console.log(`ℹ️ [AppwriteService] Loaded ${cachedDocs.length} fallback community themes from local cache.`);
+                    return cachedDocs;
+                }
+            } catch (cacheErr) {
+                console.error("❌ [AppwriteService] Failed to load cached themes fallback:", cacheErr);
+            }
+
             return [];
         }
     }
@@ -561,5 +685,321 @@ class AppwriteService {
     }
 }
 
+class SettingsSyncEngine {
+    constructor() {
+        this.syncKeys = [
+            'sites',
+            'autoHideEnabled',
+            'showCategoryIcons',
+            'scrollBlocklist',
+            'sidepanelBlocklist',
+            'autoHideBlocklist',
+            'customTheme',
+            'enableTaper',
+            'sidebarWidth',
+            'siteModePrefs'
+        ];
+        
+        this.isSyncInProgress = false;
+        this.debounceTimeout = null;
+        this.unsubscribeRealtime = null;
+        this.onUserStatusChangedCallback = null;
+    }
+
+    /**
+     * Initialize synchronization loop
+     */
+    async init(onUserStatusChanged = null) {
+        this.onUserStatusChangedCallback = onUserStatusChanged;
+        
+        // Initialize the base Appwrite Service
+        await window.appwriteService.init();
+
+        // Register storage watcher for local changes
+        chrome.storage.onChanged.addListener(this.handleLocalStorageChanged.bind(this));
+
+        // Start initial synchronization if logged in
+        if (window.appwriteService.currentUser) {
+            await this.performInitialSync();
+            this.startRealtimeListener();
+        }
+
+        // Flush pending changes when the sidebar window unloads (is closed)
+        window.addEventListener('pagehide', () => {
+            this.flushPendingSync();
+        });
+
+        if (this.onUserStatusChangedCallback) {
+            this.onUserStatusChangedCallback(window.appwriteService.currentUser);
+        }
+    }
+
+    /**
+     * Activate settings synchronization loop upon login
+     */
+    async activateSyncForUser() {
+        if (!window.appwriteService.currentUser) return;
+        
+        console.log("🚀 [SyncEngine] Activating synchronization loop for user...");
+        await this.performInitialSync();
+        this.startRealtimeListener();
+    }
+
+    /**
+     * Start Google or Microsoft Authentication
+     */
+    async login(provider) {
+        try {
+            if (provider === 'google') {
+                window.appwriteService.loginGoogle();
+            } else if (provider === 'microsoft') {
+                window.appwriteService.loginMicrosoft();
+            } else if (provider === 'apple') {
+                window.appwriteService.loginApple();
+            }
+        } catch (err) {
+            console.error("❌ [SyncEngine] Authentication start failed:", err);
+        }
+    }
+
+    /**
+     * Logout and disable syncing
+     */
+    async logout() {
+        this.stopRealtimeListener();
+        await window.appwriteService.logout();
+        
+        if (this.onUserStatusChangedCallback) {
+            this.onUserStatusChangedCallback(null);
+        }
+    }
+
+    /**
+     * Run Last-Write-Wins (LWW) Initial Sync
+     */
+    async performInitialSync() {
+        if (!window.appwriteService.currentUser || this.isSyncInProgress) return;
+
+        this.isSyncInProgress = true;
+        console.log("🔄 [SyncEngine] Starting initial synchronization...");
+
+        try {
+            // Fetch local settings state
+            const localData = await this._getLocalSyncData();
+            const cloudData = await window.appwriteService.fetchCloudSettings();
+
+            if (!cloudData) {
+                // Cloud is empty, push local state to initialize cloud
+                console.log("☁️ [SyncEngine] Cloud is empty. Initializing cloud with local settings.");
+                await window.appwriteService.pushSettingsToCloud(localData.settings);
+                
+                const nowIso = new Date().toISOString();
+                await this._setLocalSyncTimestamps(nowIso, nowIso);
+            } else {
+                // Determine newer state based on Last-Write-Wins (LWW)
+                const localTime = new Date(localData.lastUpdated || 0).getTime();
+                const cloudTime = new Date(cloudData.updatedAt).getTime();
+
+                if (cloudTime > localTime) {
+                    console.log("📥 [SyncEngine] Cloud settings are newer. Pulling cloud changes.");
+                    await this._applyCloudSettingsToLocal(cloudData.settings, cloudData.updatedAt);
+                } else if (localTime > cloudTime) {
+                    console.log("📤 [SyncEngine] Local settings are newer. Pushing local changes to cloud.");
+                    await window.appwriteService.pushSettingsToCloud(localData.settings);
+                    await this._setLocalSyncTimestamps(localData.lastUpdated, cloudData.updatedAt);
+                } else {
+                    console.log("✔ [SyncEngine] Local and Cloud settings are in sync.");
+                    await this._setLocalSyncTimestamps(localData.lastUpdated, cloudData.updatedAt);
+                }
+            }
+        } catch (error) {
+            console.error("❌ [SyncEngine] Initial sync error:", error);
+        } finally {
+            this.isSyncInProgress = false;
+        }
+    }
+
+    /**
+     * Start WebSocket listner for instant updates from other browsers
+     */
+    startRealtimeListener() {
+        this.stopRealtimeListener();
+
+        if (!window.appwriteService.currentUser) return;
+
+        console.log("📡 [SyncEngine] Activating realtime settings synchronization socket...");
+        this.unsubscribeRealtime = window.appwriteService.subscribeToSettings(async (cloudData) => {
+            if (this.isSyncInProgress) return;
+
+            this.isSyncInProgress = true;
+            console.log("📥 [SyncEngine] Realtime remote change received. Overwriting local storage.");
+            try {
+                await this._applyCloudSettingsToLocal(cloudData.settings, cloudData.updatedAt);
+            } catch (err) {
+                console.error("❌ [SyncEngine] Realtime sync apply error:", err);
+            } finally {
+                this.isSyncInProgress = false;
+            }
+        });
+    }
+
+    /**
+     * Stop WebSocket listener
+     */
+    stopRealtimeListener() {
+        if (this.unsubscribeRealtime) {
+            this.unsubscribeRealtime();
+            this.unsubscribeRealtime = null;
+            console.log("📡 [SyncEngine] Stopped realtime socket listener.");
+        }
+    }
+
+    /**
+     * Handle local chrome.storage changes
+     */
+    async handleLocalStorageChanged(changes, areaName) {
+        if (areaName !== 'local' || this.isSyncInProgress) return;
+        if (!window.appwriteService.currentUser) return;
+
+        // Check if any of the modified keys are in our synced set
+        const hasSyncableChanges = Object.keys(changes).some(key => this.syncKeys.includes(key));
+        if (!hasSyncableChanges) return;
+
+        // Mark local settings timestamp as dirty (changed right now)
+        const nowIso = new Date().toISOString();
+        chrome.storage.local.set({ settings_last_updated: nowIso });
+
+        // Debounce cloud push to prevent constant DB writes during sliding sidebar adjustments or typings
+        if (this.debounceTimeout) {
+            clearTimeout(this.debounceTimeout);
+        }
+
+        this.debounceTimeout = setTimeout(async () => {
+            if (this.isSyncInProgress) return;
+            this.isSyncInProgress = true;
+            console.log("📤 [SyncEngine] Local change detected. Debouncing sync to cloud...");
+
+            try {
+                const localData = await this._getLocalSyncData();
+                const success = await window.appwriteService.pushSettingsToCloud(localData.settings);
+                if (success) {
+                    const nowPushIso = new Date().toISOString();
+                    await this._setLocalSyncTimestamps(nowPushIso, nowPushIso);
+                }
+            } catch (err) {
+                console.error("❌ [SyncEngine] Debounced cloud update failed:", err);
+            } finally {
+                this.isSyncInProgress = false;
+            }
+        }, 1500); // 1.5 second debounce delay
+    }
+
+    // =========================================================================
+    // Local Storage Helpers
+    // =========================================================================
+
+    /**
+     * Fetch syncable keys and timestamps from chrome.storage
+     */
+    async _getLocalSyncData() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get([...this.syncKeys, 'settings_last_updated'], (result) => {
+                const settings = {};
+                this.syncKeys.forEach(key => {
+                    if (result[key] !== undefined) {
+                        settings[key] = result[key];
+                    }
+                });
+                resolve({
+                    settings,
+                    lastUpdated: result.settings_last_updated || null
+                });
+            });
+        });
+    }
+
+    /**
+     * Set persistent timestamp bookmarks
+     */
+    async _setLocalSyncTimestamps(lastUpdated, lastSynced) {
+        return new Promise((resolve) => {
+            chrome.storage.local.set({
+                settings_last_updated: lastUpdated,
+                settings_last_synced: lastSynced
+            }, resolve);
+        });
+    }
+
+    async _applyCloudSettingsToLocal(settings, cloudUpdatedAt) {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['customTheme'], (result) => {
+                const toSet = { ...settings };
+                
+                // Preserve local base64 background image data URI if cloud settings has none
+                if (result.customTheme && result.customTheme.backgroundImage && result.customTheme.backgroundImage.startsWith('data:')) {
+                    if (toSet.customTheme) {
+                        // Keep local data URI if cloud has no background or if it's empty/not web-based
+                        if (!toSet.customTheme.backgroundImage || !toSet.customTheme.backgroundImage.startsWith('http')) {
+                            console.log("ℹ️ [SyncEngine] Preserving local base64 background image during cloud sync overwrite.");
+                            toSet.customTheme.backgroundImage = result.customTheme.backgroundImage;
+                        }
+                    }
+                }
+
+                toSet.settings_last_updated = cloudUpdatedAt;
+                toSet.settings_last_synced = cloudUpdatedAt;
+
+                chrome.storage.local.set(toSet, () => {
+                    console.log("✔ [SyncEngine] Local storage overwritten with remote changes.");
+                    resolve();
+                });
+            });
+        });
+    }
+
+    /**
+     * Force immediate upload of any pending debounced changes
+     */
+    async flushPendingSync() {
+        if (this.debounceTimeout) {
+            clearTimeout(this.debounceTimeout);
+            this.debounceTimeout = null;
+
+            if (this.isSyncInProgress || !window.appwriteService.currentUser) return;
+
+            this.isSyncInProgress = true;
+            console.log("📤 [SyncEngine] Flushing pending changes immediately to cloud...");
+
+            try {
+                const localData = await this._getLocalSyncData();
+                const success = await window.appwriteService.pushSettingsToCloud(localData.settings);
+                if (success) {
+                    const nowPushIso = new Date().toISOString();
+                    await this._setLocalSyncTimestamps(nowPushIso, nowPushIso);
+                }
+            } catch (err) {
+                console.error("❌ [SyncEngine] Forced sync flush failed:", err);
+            } finally {
+                this.isSyncInProgress = false;
+            }
+        }
+    }
+
+    /**
+     * Get active logged in user session
+     */
+    getCurrentUser() {
+        return window.appwriteService.currentUser;
+    }
+
+    /**
+     * Manually trigger forced settings synchronization
+     */
+    async triggerForceSync() {
+        await this.performInitialSync();
+    }
+}
+
 // Instantiate globally
 window.appwriteService = new AppwriteService();
+window.settingsSyncEngine = new SettingsSyncEngine();
