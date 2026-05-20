@@ -171,42 +171,18 @@
         const markerId = 'revived-material-symbols-link';
         if (doc.getElementById(markerId)) return; // already injected
 
-        const injectCss = (cssText) => {
-            const style = doc.createElement('style');
-            style.id = markerId;
-            style.textContent = cssText;
-            (doc.head || doc.documentElement).appendChild(style);
-        };
-
-        // Check localStorage cache
-        try {
-            const cached = localStorage.getItem(S.MATERIAL_SYMBOLS_CACHE_KEY);
-            const cachedTs = parseInt(localStorage.getItem(S.MATERIAL_SYMBOLS_TS_KEY) || '0', 10);
-            if (cached && (Date.now() - cachedTs) < S.MATERIAL_SYMBOLS_TTL) {
-                injectCss(cached);
-                return;
-            }
-        } catch (e) { /* localStorage not available in some contexts */ }
-
-        // Fallback: inject a <link> tag and also try to cache the fetched CSS
+        // Always inject a <link> into document.head first (fast, native, works across origins)
         const link = doc.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = S.MATERIAL_SYMBOLS_URL;
-        link.id = markerId;
+        link.rel = 'preconnect';
+        link.href = 'https://fonts.gstatic.com';
+        link.crossOrigin = 'anonymous';
         (doc.head || doc.documentElement).appendChild(link);
 
-        // Try to fetch & cache for future use
-        try {
-            fetch(S.MATERIAL_SYMBOLS_URL)
-                .then(r => r.text())
-                .then(css => {
-                    try {
-                        localStorage.setItem(S.MATERIAL_SYMBOLS_CACHE_KEY, css);
-                        localStorage.setItem(S.MATERIAL_SYMBOLS_TS_KEY, String(Date.now()));
-                    } catch (e) { }
-                })
-                .catch(() => { });
-        } catch (e) { }
+        const fontLink = doc.createElement('link');
+        fontLink.rel = 'stylesheet';
+        fontLink.href = S.MATERIAL_SYMBOLS_URL;
+        fontLink.id = markerId;
+        (doc.head || doc.documentElement).appendChild(fontLink);
     };
 
     // Helper: create a Material Symbol span
@@ -3227,11 +3203,11 @@
                                 </div>
                                 <div class="overlay-stats">
                                     <div class="overlay-stat-item" title="Likes">
-                                        <svg viewBox="0 0 24 24" fill="#ff4757"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                        <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 20; font-size:16px; color:#ff4757;">favorite</span>
                                         <span id="like-count-${themeDoc.$id}">${themeDoc.likesCount || 0}</span>
                                     </div>
                                     <div class="overlay-stat-item" title="Downloads">
-                                        <svg viewBox="0 0 24 24" fill="#ffffff"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                                        <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 20; font-size:16px;">download</span>
                                         <span id="dl-count-${themeDoc.$id}">${themeDoc.downloadsCount || 0}</span>
                                     </div>
                                 </div>
@@ -3240,7 +3216,7 @@
                                 <button class="overlay-btn preview" data-id="${themeDoc.$id}">Preview</button>
                                 <button class="overlay-btn apply" data-id="${themeDoc.$id}">Apply</button>
                                 <button class="${likeBtnClass}" data-id="${themeDoc.$id}">
-                                    <span>❤</span> Like
+                                    <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 20; font-size:16px; color:#ff4757;">favorite</span> Like
                                 </button>
                             </div>
                         </div>
@@ -3721,6 +3697,10 @@
             }
 
             loadCSS() {
+                // Font-faces must load at the MAIN document level (not inside shadow root)
+                // so we inject the <link> into document.head, then inject only class rules into shadow.
+                SR.loadMaterialSymbolsFont(document);
+
                 if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
                     const sharedLink = document.createElement('link');
                     sharedLink.rel = 'stylesheet';
@@ -3736,11 +3716,30 @@
                         }
                     };
                     this.shadow.appendChild(sharedLink);
-                    // Inject Material Symbols font into this shadow root
-                    const msLink = document.createElement('link');
-                    msLink.rel = 'stylesheet';
-                    msLink.href = SR.MATERIAL_SYMBOLS_URL;
-                    this.shadow.appendChild(msLink);
+                    // Inject ONLY the class rules for .material-symbols-rounded into the shadow root.
+                    // Do NOT use @import or @font-face here — those don't work inside shadow DOM.
+                    const msStyle = document.createElement('style');
+                    msStyle.id = 'revived-ms-class-rules';
+                    msStyle.textContent = [
+                        '.material-symbols-rounded {',
+                        '  font-family: "Material Symbols Rounded", sans-serif;',
+                        '  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;',
+                        '  font-size: 20px;',
+                        '  line-height: 1;',
+                        '  display: inline-flex;',
+                        '  align-items: center;',
+                        '  justify-content: center;',
+                        '  color: inherit;',
+                        '  user-select: none;',
+                        '  pointer-events: none;',
+                        '  font-style: normal;',
+                        '  letter-spacing: normal;',
+                        '  text-transform: none;',
+                        '  white-space: nowrap;',
+                        '  -webkit-font-smoothing: antialiased;',
+                        '}'
+                    ].join('\n');
+                    this.shadow.appendChild(msStyle);
                 } else {
                     if (this.host) {
                         this.host.style.visibility = 'visible';
@@ -4011,11 +4010,30 @@
                         }
                     };
                     this.shadow.appendChild(sharedLink);
-                    // Inject Material Symbols font into this shadow root
-                    const msLink = document.createElement('link');
-                    msLink.rel = 'stylesheet';
-                    msLink.href = SR.MATERIAL_SYMBOLS_URL;
-                    this.shadow.appendChild(msLink);
+                    // Font must load at document level; inject only class rules into shadow root.
+                    SR.loadMaterialSymbolsFont(document);
+                    const msStyle = document.createElement('style');
+                    msStyle.id = 'revived-ms-class-rules-idle';
+                    msStyle.textContent = [
+                        '.material-symbols-rounded {',
+                        '  font-family: "Material Symbols Rounded", sans-serif;',
+                        '  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;',
+                        '  font-size: 20px;',
+                        '  line-height: 1;',
+                        '  display: inline-flex;',
+                        '  align-items: center;',
+                        '  justify-content: center;',
+                        '  color: inherit;',
+                        '  user-select: none;',
+                        '  pointer-events: none;',
+                        '  font-style: normal;',
+                        '  letter-spacing: normal;',
+                        '  text-transform: none;',
+                        '  white-space: nowrap;',
+                        '  -webkit-font-smoothing: antialiased;',
+                        '}'
+                    ].join('\n');
+                    this.shadow.appendChild(msStyle);
                 } else {
                     this.host.style.visibility = 'visible';
                 }

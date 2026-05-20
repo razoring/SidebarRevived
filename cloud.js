@@ -745,7 +745,11 @@ class AppwriteService {
     async toggleThemeLike(themeId) {
         if (!this.currentUser) throw new Error("Authentication required to upvote themes.");
         const userId = this.currentUser.$id;
-        const likeId = `${userId}_${themeId}`; // Unique composite ID bypasses preflight
+        // Appwrite documentId must be ≤36 chars, only [a-zA-Z0-9_], no leading underscore.
+        // Truncate each component so the composite fits exactly within 36 chars.
+        const userPart = userId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 17);
+        const themePart = themeId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 18);
+        const likeId = `${userPart}_${themePart}`;
 
         try {
             // Check if like exists
