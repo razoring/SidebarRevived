@@ -2856,75 +2856,401 @@
         }
 
         // Theme Store Catalog Management
+        // Theme Store Catalog Management
         let currentThemeStoreFilter = 'popular';
         let themeStoreSearchQuery = '';
+        let themeStoreScope = 'community';
+        let themeStorePage = 1;
+        const themeStoreLimit = 10;
+        let hasMoreThemes = true;
+        let originalThemeSettings = null;
+        let previewedThemeData = null;
+        let previewedThemeId = null;
 
-        window.loadThemeStoreCatalog = async function() {
+        // Toggle Filter Dropdown
+        const filterBtn = document.getElementById('store-filter-btn');
+        const filterDropdown = document.getElementById('store-filter-dropdown');
+        if (filterBtn && filterDropdown) {
+            filterBtn.onclick = (e) => {
+                e.stopPropagation();
+                filterDropdown.classList.toggle('show');
+            };
+            document.addEventListener('click', () => {
+                filterDropdown.classList.remove('show');
+            });
+            
+            // Dropdown items click
+            const dropdownItems = filterDropdown.querySelectorAll('.dropdown-item');
+            dropdownItems.forEach(item => {
+                item.onclick = () => {
+                    dropdownItems.forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    themeStoreScope = item.getAttribute('data-scope');
+                    
+                    // Reset page and reload catalog
+                    themeStorePage = 1;
+                    window.loadThemeStoreCatalog(false);
+                };
+            });
+        }
+
+        // Material Tabs slider behavior
+        const materialTabs = document.querySelectorAll('.material-tab');
+        const indicator = document.getElementById('material-tab-indicator');
+        
+        function updateTabIndicator() {
+            const activeTab = document.querySelector('.material-tab.active');
+            if (activeTab && indicator) {
+                indicator.style.width = `${activeTab.offsetWidth}px`;
+                indicator.style.left = `${activeTab.offsetLeft}px`;
+            }
+        }
+
+        materialTabs.forEach(tab => {
+            tab.onclick = () => {
+                materialTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentThemeStoreFilter = tab.getAttribute('data-filter');
+                updateTabIndicator();
+                
+                // Reset page and reload catalog
+                themeStorePage = 1;
+                window.loadThemeStoreCatalog(false);
+            };
+        });
+
+        // Initialize indicator position
+        setTimeout(updateTabIndicator, 300);
+
+        // Helper to convert hex to rgba
+        function hexToRgba(hex, alpha = 1) {
+            if (!hex) return `rgba(255, 255, 255, ${alpha})`;
+            let c = hex.substring(1);
+            if (c.length === 3) {
+                c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+            }
+            const num = parseInt(c, 16);
+            return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+        }
+
+        // Utility to format relative dates
+        function timeAgo(dateString) {
+            if (!dateString) return 'recently';
+            const date = new Date(dateString);
+            const now = new Date();
+            const seconds = Math.floor((now - date) / 1000);
+            
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            if (days < 30) return `${days}d ago`;
+            const months = Math.floor(days / 30);
+            if (months < 12) return `${months}mo ago`;
+            return `${Math.floor(months / 12)}y ago`;
+        }
+
+        // Theme preview state loading
+        // Retrieve if there was an active preview from local storage so that closing and opening doesn't lose banner/preview.
+        chrome.storage.local.get(['active_theme_preview'], (res) => {
+            if (res.active_theme_preview) {
+                const preview = res.active_theme_preview;
+                originalThemeSettings = preview.originalThemeSettings;
+                previewedThemeData = preview.previewedThemeData;
+                previewedThemeId = preview.previewedThemeId;
+                
+                // Show banner
+                const banner = document.getElementById('theme-preview-banner');
+                const bannerName = document.getElementById('preview-theme-name');
+                if (banner && bannerName) {
+                    bannerName.textContent = preview.name || '-';
+                    banner.style.display = 'flex';
+                }
+                
+                // Override stylesheet
+                SR.applyThemeStyles(document.documentElement, previewedThemeData);
+            }
+        });
+
+        // Search clear button
+        const searchInput = document.getElementById('store-search-input');
+        const searchClear = document.getElementById('store-search-clear');
+        if (searchInput && searchClear) {
+            searchInput.oninput = () => {
+                searchClear.style.display = searchInput.value ? 'block' : 'none';
+            };
+            searchClear.onclick = () => {
+                searchInput.value = '';
+                searchClear.style.display = 'none';
+                themeStoreSearchQuery = '';
+                themeStorePage = 1;
+                window.loadThemeStoreCatalog(false);
+            };
+            
+            // Enter key trigger
+            searchInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    themeStoreSearchQuery = searchInput.value.trim();
+                    themeStorePage = 1;
+                    window.loadThemeStoreCatalog(false);
+                }
+            };
+        }
+
+        window.loadThemeStoreCatalog = async function(append = false) {
             const grid = document.getElementById('theme-store-grid');
             if (!grid) return;
-            grid.innerHTML = '<div class="theme-store-loader">Loading community catalog...</div>';
-
+            
+            const loadMoreBtn = document.getElementById('store-load-more-btn');
+            
+            if (!append) {
+                grid.innerHTML = '<div class="theme-store-loader">Loading community catalog...</div>';
+                if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+                themeStorePage = 1;
+            } else {
+                if (loadMoreBtn) {
+                    loadMoreBtn.disabled = true;
+                    loadMoreBtn.textContent = 'Loading...';
+                }
+            }
+ 
             try {
                 const client = window.appwriteService;
                 if (!client) {
                     grid.innerHTML = '<div class="theme-store-loader">Sync Service Uninitialized</div>';
                     return;
                 }
-
-                const themes = await client.listThemes(currentThemeStoreFilter, themeStoreSearchQuery);
-                grid.innerHTML = '';
+ 
+                const themes = await client.listThemes(
+                    currentThemeStoreFilter, 
+                    themeStoreSearchQuery, 
+                    themeStoreScope, 
+                    themeStorePage, 
+                    themeStoreLimit
+                );
                 
-                if (themes.length === 0) {
-                    grid.innerHTML = '<div class="theme-store-loader">No themes found matching your search.</div>';
+                if (!append) {
+                    grid.innerHTML = '';
+                }
+                
+                if (themes.length < themeStoreLimit) {
+                    hasMoreThemes = false;
+                    if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+                } else {
+                    hasMoreThemes = true;
+                    if (loadMoreBtn) {
+                        loadMoreBtn.style.display = 'block';
+                        loadMoreBtn.disabled = false;
+                        loadMoreBtn.textContent = 'Load More';
+                    }
+                }
+ 
+                if (themes.length === 0 && !append) {
+                    grid.innerHTML = '<div class="theme-store-loader">No themes found matching your criteria.</div>';
                     return;
                 }
-
+ 
+                // Get list of liked themes to show liked state on buttons
+                let likedThemeIds = [];
+                const currentUser = window.settingsSyncEngine.getCurrentUser();
+                if (currentUser) {
+                    try {
+                        const likesList = await client.databases.listDocuments(
+                            APPWRITE_CONFIG.databaseId,
+                            APPWRITE_CONFIG.collections.themeLikes,
+                            [
+                                window.Appwrite.Query.equal("userId", currentUser.id),
+                                window.Appwrite.Query.limit(100)
+                            ]
+                        );
+                        likedThemeIds = likesList.documents.map(d => d.themeId);
+                    } catch (e) {
+                        console.warn("Could not load liked themes state from DB", e);
+                    }
+                }
+ 
                 themes.forEach(themeDoc => {
                     let customData = {};
                     try {
                         customData = JSON.parse(themeDoc.themeData);
                     } catch (e) {
                         console.error("Invalid themeDoc.themeData JSON", themeDoc.themeData);
+                        return;
                     }
-
+ 
                     const card = document.createElement('div');
-                    card.className = 'theme-card';
+                    card.className = 'new-theme-card';
                     
                     const pFont = customData.fontColor || '#ffffff';
-                    const pBg = customData.sidebarBackground || '#333333';
+                    const pBg = customData.sidebarBackground || '#1e1e1e';
                     const pAcc = customData.accentColor || '#38b3ff';
                     const pMid = customData.midtoneColor || '#a4a4a4';
-
+                    const pDiff = customData.differenceColor || '#000000';
+ 
+                    // Dynamic Custom Styling variables
+                    card.style.setProperty('--card-accent-color', pAcc);
+                    card.style.setProperty('--card-font-color', pFont);
+                    card.style.setProperty('--card-stroke-color', hexToRgba(pFont, 0.4));
+                    card.style.setProperty('--card-inner-border-color', pFont);
+                    card.style.setProperty('--card-inner-bg', hexToRgba(pFont, customData.panelOpacity !== undefined ? customData.panelOpacity : 0.5));
+                    card.style.setProperty('--card-inner-radius', `${customData.panelRoundness !== undefined ? customData.panelRoundness : 4}px`);
+ 
+                    // Background Image Layer
+                    let bgImageHtml = '';
+                    if (customData.backgroundImage) {
+                        const sizeVal = customData.backgroundImageSize || 'fill';
+                        if (sizeVal === 'repeat' || sizeVal === 'stretch') {
+                            bgImageHtml = `
+                                <div class="card-bg-image-layer repeat" style="
+                                    background: url('${customData.backgroundImage}') ${sizeVal === 'repeat' ? 'repeat' : 'no-repeat'};
+                                    background-size: ${sizeVal === 'stretch' ? '100% 100%' : 'auto'};
+                                "></div>
+                            `;
+                        } else {
+                            bgImageHtml = `
+                                <div class="card-bg-image-layer corner" style="
+                                    background: url('${customData.backgroundImage}') center center no-repeat;
+                                    background-size: cover;
+                                "></div>
+                            `;
+                        }
+                    }
+ 
+                    // Liked state check
+                    const isLiked = likedThemeIds.includes(themeDoc.$id);
+                    const likeBtnClass = isLiked ? 'overlay-btn like liked' : 'overlay-btn like';
+ 
                     card.innerHTML = `
-                        <div class="theme-card-header">
-                            <div class="theme-card-title-box">
-                                <span class="theme-card-title">${escapeHTML(themeDoc.name || 'Unnamed Theme')}</span>
-                                <span class="theme-card-author">by ${escapeHTML(themeDoc.authorName || 'Anonymous')}</span>
+                        ${bgImageHtml}
+                        <div class="card-top-row">
+                            <div class="card-palette-container">
+                                <div class="card-palette-bar" style="background: ${pBg}; width: 35%;" title="Sidebar BG"></div>
+                                <div class="card-palette-bar" style="background: ${pAcc}; width: 50%;" title="Accent"></div>
+                                <div class="card-palette-bar" style="background: ${pFont}; width: 65%;" title="Font Color"></div>
+                                <div class="card-palette-bar" style="background: ${pMid}; width: 80%;" title="Muted Accent"></div>
+                                <div class="card-palette-bar" style="background: ${pDiff}; width: 95%;" title="Difference Color"></div>
+                            </div>
+                            <div class="card-preview-dashed-square">
+                                <div class="card-preview-inner-square"></div>
                             </div>
                         </div>
-                        <p class="theme-card-desc">${escapeHTML(themeDoc.description || 'No description provided.')}</p>
-                        <div class="theme-card-preview">
-                            <div class="preview-swatch" style="background: ${pBg}" title="Background"></div>
-                            <div class="preview-swatch" style="background: ${pFont}" title="Font Color"></div>
-                            <div class="preview-swatch" style="background: ${pAcc}" title="Accent"></div>
-                            <div class="preview-swatch" style="background: ${pMid}" title="Muted Accent"></div>
-                        </div>
-                        <div class="theme-card-footer">
-                            <div class="theme-stats">
-                                <span class="stat-item stat-icon-like" id="like-count-${themeDoc.$id}">${themeDoc.likesCount || 0}</span>
-                                <span class="stat-item stat-icon-dl" id="dl-count-${themeDoc.$id}">${themeDoc.downloadsCount || 0}</span>
+                        <div class="card-bottom-row">
+                            <h4 class="card-theme-title">${escapeHTML(themeDoc.name || 'Unnamed Theme')}</h4>
+                            <div class="card-author-row">
+                                <img class="card-author-avatar" src="${themeDoc.authorAvatar || 'assets/default-avatar.png'}" onerror="this.src='data:image/svg+xml;utf8,<svg viewBox=\\'0 0 24 24\\' xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'%23666\\'><circle cx=\\'12\\' cy=\\'8\\' r=\\'4\\'></circle><path d=\\'M12 14c-6.1 0-8 4-8 4v2h16v-2s-1.9-4-8-4z\\'></path></svg>';" />
+                                <span class="card-author-name">${escapeHTML(themeDoc.authorName || 'Anonymous')}</span>
+                                <span class="card-publish-date">${timeAgo(themeDoc.createdAt || themeDoc.$createdAt)}</span>
                             </div>
-                            <div class="theme-card-actions">
-                                <button class="like-btn" data-id="${themeDoc.$id}">Like</button>
-                                <button class="install-btn" data-id="${themeDoc.$id}">Install</button>
+                        </div>
+                        
+                        <!-- Glassmorphic Hover Overlay -->
+                        <div class="card-hover-overlay">
+                            <div class="overlay-top-row">
+                                <div class="overlay-author-info">
+                                    <img class="overlay-avatar" src="${themeDoc.authorAvatar || 'assets/default-avatar.png'}" onerror="this.src='data:image/svg+xml;utf8,<svg viewBox=\\'0 0 24 24\\' xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'%23666\\'><circle cx=\\'12\\' cy=\\'8\\' r=\\'4\\'></circle><path d=\\'M12 14c-6.1 0-8 4-8 4v2h16v-2s-1.9-4-8-4z\\'></path></svg>';" />
+                                    <div class="overlay-author-text">
+                                        <span class="overlay-author-name">${escapeHTML(themeDoc.authorName || 'Anonymous')}</span>
+                                        <span class="overlay-publish-date">${timeAgo(themeDoc.createdAt || themeDoc.$createdAt)}</span>
+                                    </div>
+                                </div>
+                                <div class="overlay-stats">
+                                    <div class="overlay-stat-item" title="Likes">
+                                        <svg viewBox="0 0 24 24" fill="#ff4757"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                        <span id="like-count-${themeDoc.$id}">${themeDoc.likesCount || 0}</span>
+                                    </div>
+                                    <div class="overlay-stat-item" title="Downloads">
+                                        <svg viewBox="0 0 24 24" fill="#ffffff"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                                        <span id="dl-count-${themeDoc.$id}">${themeDoc.downloadsCount || 0}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="overlay-buttons">
+                                <button class="overlay-btn preview" data-id="${themeDoc.$id}">Preview</button>
+                                <button class="overlay-btn apply" data-id="${themeDoc.$id}">Apply</button>
+                                <button class="${likeBtnClass}" data-id="${themeDoc.$id}">
+                                    <span>❤</span> Like
+                                </button>
                             </div>
                         </div>
                     `;
-
-                    const likeBtn = card.querySelector('.like-btn');
-                    const installBtn = card.querySelector('.install-btn');
-
-                    likeBtn.onclick = async () => {
+ 
+                    const previewBtn = card.querySelector('.overlay-btn.preview');
+                    const applyBtn = card.querySelector('.overlay-btn.apply');
+                    const likeBtn = card.querySelector('.overlay-btn.like');
+ 
+                    previewBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        
+                        // Temporarily override styles
+                        if (!originalThemeSettings) {
+                            originalThemeSettings = JSON.parse(JSON.stringify(state.customTheme || SR.getThemeDefaults()));
+                        }
+                        previewedThemeData = customData;
+                        previewedThemeId = themeDoc.$id;
+                        
+                        // Override stylesheet
+                        SR.applyThemeStyles(document.documentElement, customData);
+                        
+                        // Show banner
+                        const banner = document.getElementById('theme-preview-banner');
+                        const bannerName = document.getElementById('preview-theme-name');
+                        if (banner && bannerName) {
+                            bannerName.textContent = themeDoc.name || 'Unnamed Theme';
+                            banner.style.display = 'flex';
+                        }
+                        
+                        // Cache the active preview state in chrome.storage.local
+                        chrome.storage.local.set({
+                            active_theme_preview: {
+                                name: themeDoc.name,
+                                originalThemeSettings,
+                                previewedThemeData,
+                                previewedThemeId
+                            }
+                        });
+                    };
+ 
+                    applyBtn.onclick = async (e) => {
+                        e.stopPropagation();
+                        if (confirm(`Do you want to install and apply "${themeDoc.name}"? This will overwrite your current custom theme colors.`)) {
+                            try {
+                                applyBtn.disabled = true;
+                                applyBtn.textContent = 'Applying...';
+                                
+                                // Permanently save
+                                chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: customData });
+                                state.customTheme = customData;
+                                
+                                // Increment download count
+                                await client.incrementDownloadCount(themeDoc.$id);
+                                const countSpan = document.getElementById(`dl-count-${themeDoc.$id}`);
+                                if (countSpan) {
+                                    const currentDl = parseInt(countSpan.textContent, 10) || 0;
+                                    countSpan.textContent = currentDl + 1;
+                                }
+                                
+                                // Reset preview banner if this theme was being previewed
+                                if (previewedThemeId === themeDoc.$id) {
+                                    originalThemeSettings = null;
+                                    previewedThemeData = null;
+                                    previewedThemeId = null;
+                                    chrome.storage.local.remove(['active_theme_preview']);
+                                    const banner = document.getElementById('theme-preview-banner');
+                                    if (banner) banner.style.display = 'none';
+                                }
+                            } catch (err) {
+                                console.error(err);
+                            } finally {
+                                applyBtn.disabled = false;
+                                applyBtn.textContent = 'Apply';
+                            }
+                        }
+                    };
+ 
+                    likeBtn.onclick = async (e) => {
+                        e.stopPropagation();
                         const currentUser = window.settingsSyncEngine.getCurrentUser();
                         if (!currentUser) {
                             alert('Please link your Google or Microsoft account in the Cloud Sync section to upvote themes!');
@@ -2934,6 +3260,7 @@
                             likeBtn.disabled = true;
                             const res = await client.likeTheme(themeDoc.$id, currentUser.id);
                             if (res) {
+                                likeBtn.classList.add('liked');
                                 const countSpan = document.getElementById(`like-count-${themeDoc.$id}`);
                                 if (countSpan) {
                                     const currentLikes = parseInt(countSpan.textContent, 10) || 0;
@@ -2946,72 +3273,83 @@
                             likeBtn.disabled = false;
                         }
                     };
-
-                    installBtn.onclick = async () => {
-                        if (confirm(`Do you want to install and apply "${themeDoc.name}"? This will overwrite your current custom theme colors.`)) {
-                            try {
-                                installBtn.disabled = true;
-                                installBtn.textContent = 'Applying...';
-                                
-                                chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: customData });
-                                
-                                await client.incrementDownloadCount(themeDoc.$id);
-                                const countSpan = document.getElementById(`dl-count-${themeDoc.$id}`);
-                                if (countSpan) {
-                                    const currentDl = parseInt(countSpan.textContent, 10) || 0;
-                                    countSpan.textContent = currentDl + 1;
-                                }
-                            } catch (err) {
-                                console.error(err);
-                            } finally {
-                                installBtn.disabled = false;
-                                installBtn.textContent = 'Install';
-                            }
-                        }
-                    };
-
+ 
                     grid.appendChild(card);
                 });
             } catch (err) {
                 console.error(err);
-                grid.innerHTML = `<div class="theme-store-loader error">Error: ${escapeHTML(err.message)}</div>`;
+                if (!append) {
+                    grid.innerHTML = `<div class="theme-store-loader error">Error: ${escapeHTML(err.message)}</div>`;
+                }
             }
         };
 
-        // Theme Store Controls binding
-        const tabPopular = document.getElementById('tab-store-popular');
-        const tabNewest = document.getElementById('tab-store-newest');
-        const storeSearchInput = document.getElementById('store-search-input');
-        const storeSearchBtn = document.getElementById('store-search-btn');
-
-        if (tabPopular) {
-            tabPopular.onclick = () => {
-                tabPopular.classList.add('active');
-                tabNewest.classList.remove('active');
-                currentThemeStoreFilter = 'popular';
-                window.loadThemeStoreCatalog();
+        // Load More button binding
+        const loadMoreBtn = document.getElementById('store-load-more-btn');
+        if (loadMoreBtn) {
+            loadMoreBtn.onclick = () => {
+                themeStorePage++;
+                window.loadThemeStoreCatalog(true);
             };
         }
 
-        if (tabNewest) {
-            tabNewest.onclick = () => {
-                tabNewest.classList.add('active');
-                tabPopular.classList.remove('active');
-                currentThemeStoreFilter = 'newest';
-                window.loadThemeStoreCatalog();
-            };
-        }
+        // Preview Banner Buttons binding
+        const previewApplyBtn = document.getElementById('preview-apply-btn');
+        const previewCancelBtn = document.getElementById('preview-cancel-btn');
+        const previewBanner = document.getElementById('theme-preview-banner');
 
-        if (storeSearchBtn && storeSearchInput) {
-            storeSearchBtn.onclick = () => {
-                themeStoreSearchQuery = storeSearchInput.value.trim();
-                window.loadThemeStoreCatalog();
-            };
-            storeSearchInput.onkeydown = (e) => {
-                if (e.key === 'Enter') {
-                    themeStoreSearchQuery = storeSearchInput.value.trim();
-                    window.loadThemeStoreCatalog();
+        if (previewApplyBtn) {
+            previewApplyBtn.onclick = async () => {
+                if (previewedThemeData && previewedThemeId) {
+                    try {
+                        previewApplyBtn.disabled = true;
+                        previewApplyBtn.textContent = 'Applying...';
+                        
+                        // Permanently save
+                        chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: previewedThemeData });
+                        state.customTheme = previewedThemeData;
+                        
+                        // Increment download count
+                        const client = window.appwriteService;
+                        if (client) {
+                            await client.incrementDownloadCount(previewedThemeId);
+                            const countSpan = document.getElementById(`dl-count-${previewedThemeId}`);
+                            if (countSpan) {
+                                const currentDl = parseInt(countSpan.textContent, 10) || 0;
+                                countSpan.textContent = currentDl + 1;
+                            }
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    } finally {
+                        previewApplyBtn.disabled = false;
+                        previewApplyBtn.textContent = 'Apply';
+                        
+                        // Reset preview state
+                        originalThemeSettings = null;
+                        previewedThemeData = null;
+                        previewedThemeId = null;
+                        chrome.storage.local.remove(['active_theme_preview']);
+                        if (previewBanner) previewBanner.style.display = 'none';
+                    }
                 }
+            };
+        }
+
+        if (previewCancelBtn) {
+            previewCancelBtn.onclick = () => {
+                if (originalThemeSettings) {
+                    // Restore original stylesheet
+                    SR.applyThemeStyles(document.documentElement, originalThemeSettings);
+                    state.customTheme = originalThemeSettings;
+                }
+                
+                // Reset preview state
+                originalThemeSettings = null;
+                previewedThemeData = null;
+                previewedThemeId = null;
+                chrome.storage.local.remove(['active_theme_preview']);
+                if (previewBanner) previewBanner.style.display = 'none';
             };
         }
 

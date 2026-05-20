@@ -440,19 +440,54 @@
         <p class="settings-description" style="margin-top: 0;">Browse, download, and rate unique custom themes created
           by the community, or share your own current theme creation with the world!</p>
 
-        <div class="store-controls">
-          <div class="store-search-bar">
-            <input type="text" id="store-search-input" placeholder="Search community themes..." spellcheck="false" />
-            <button id="store-search-btn"></button>
+        <!-- Live Theme Preview Banner -->
+        <div id="theme-preview-banner" class="theme-preview-banner" style="display: none;">
+          <span class="preview-text">Previewing theme: <strong id="preview-theme-name">-</strong></span>
+          <div class="preview-actions">
+            <button id="preview-apply-btn" class="preview-btn apply">Apply</button>
+            <button id="preview-cancel-btn" class="preview-btn cancel">Cancel</button>
           </div>
-          <div class="store-filter-tabs">
-            <button id="tab-store-popular" class="store-tab active">Popular</button>
-            <button id="tab-store-newest" class="store-tab">Newest</button>
+        </div>
+
+        <div class="store-controls-redesign">
+          <div class="store-header-actions">
+            <div class="store-search-wrapper">
+              <input type="text" id="store-search-input" placeholder="Search themes..." spellcheck="false" />
+              <button id="store-search-clear" style="display: none;">&times;</button>
+            </div>
+            <div class="store-filter-wrapper">
+              <button id="store-filter-btn" title="Filter Themes">
+                <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M441.31-241q-13.5 0-23.25-9.76t-9.75-23.27q0-13.51 9.75-23.24 9.75-9.73 23.25-9.73h77.61q13.5 0 23.25 9.76t9.75 23.27q0 13.51-9.75 23.24-9.75 9.73-23.25 9.73h-77.61Zm-161-206q-13.5 0-23.25-9.76t-9.75-23.27q0-13.51 9.75-23.24 9.75-9.73 23.25-9.73h397.61q13.5 0 23.25 9.76t9.75 23.27q0 13.51-9.75 23.24-9.75 9.73-23.25 9.73H280.31ZM161-653q-13.5 0-23.25-9.76T128-686.03q0-13.51 9.75-23.24Q147.5-719 161-719h638q13.5 0 23.25 9.76t9.75 23.27q0 13.51-9.75 23.24Q812.5-653 799-653H161Z"/></svg>
+              </button>
+              <div id="store-filter-dropdown" class="store-filter-dropdown">
+                <div class="dropdown-item active" data-scope="community">
+                  <span class="chk-icon">&#10003;</span> Community Themes
+                </div>
+                <div class="dropdown-item" data-scope="mine">
+                  <span class="chk-icon">&#10003;</span> My Themes
+                </div>
+                <div class="dropdown-item" data-scope="likes">
+                  <span class="chk-icon">&#10003;</span> My Likes
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="material-tabs-container">
+            <div class="material-tabs">
+              <button class="material-tab active" data-filter="popular">Popular</button>
+              <button class="material-tab" data-filter="newest">Newest</button>
+              <div class="material-tab-indicator" id="material-tab-indicator"></div>
+            </div>
           </div>
         </div>
 
         <div id="theme-store-grid" class="theme-store-grid">
           <div class="theme-store-loader">Loading community catalog...</div>
+        </div>
+
+        <div id="store-pagination-container" class="store-pagination-container">
+          <button id="store-load-more-btn" class="store-load-more-btn" style="display: none;">Load More</button>
         </div>
 
         <div id="store-publish-container" class="store-publish-box" style="display: none; margin-top: 16px;">

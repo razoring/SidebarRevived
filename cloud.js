@@ -3,6 +3,37 @@
  * Manages OAuth sessions, profiles, settings synchronization, Theme Store, and .env loading.
  */
 
+// Intercept console.error to silence/redirect Appwrite SDK Realtime disconnect logs to console.warn
+const originalConsoleError = console.error;
+console.error = function (...args) {
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('Realtime got disconnected')) {
+        console.warn(...args);
+        return;
+    }
+    originalConsoleError.apply(console, args);
+};
+
+// Recursive helper to clean base64 data URIs from payload to prevent Appwrite size-limit 500 errors
+function stripBase64FromObject(value) {
+    if (typeof value === 'string' && value.startsWith('data:') && value.includes(';base64,')) {
+        return "";
+    }
+    if (value && typeof value === 'object') {
+        if (Array.isArray(value)) {
+            return value.map(item => stripBase64FromObject(item));
+        } else {
+            const cleaned = {};
+            for (const key in value) {
+                if (Object.prototype.hasOwnProperty.call(value, key)) {
+                    cleaned[key] = stripBase64FromObject(value[key]);
+                }
+            }
+            return cleaned;
+        }
+    }
+    return value;
+}
+
 const APPWRITE_CONFIG = {
     endpoint: "",
     projectId: "",
@@ -358,10 +389,9 @@ class AppwriteService {
             settingsCopy = settingsJson;
         }
 
-        // Strip out large base64 background images to avoid Appwrite size limits/500 Server Error
-        if (settingsCopy && settingsCopy.customTheme && settingsCopy.customTheme.backgroundImage && settingsCopy.customTheme.backgroundImage.startsWith('data:')) {
-            console.log("☁️ [AppwriteService] Stripping local base64 background image from sync payload.");
-            settingsCopy.customTheme.backgroundImage = "";
+        // Recursively clean all base64 string attributes from the sync payload
+        if (settingsCopy) {
+            settingsCopy = stripBase64FromObject(settingsCopy);
         }
 
         const payload = {
@@ -393,18 +423,18 @@ class AppwriteService {
                     console.log("☁️ [AppwriteService] Cloud settings document created.");
                     return true;
                 } catch (createErr) {
-                    console.error("❌ [AppwriteService] Failed to create settings doc:", createErr, {
+                    console.error(`❌ [AppwriteService] Failed to create settings doc: ${createErr.message || createErr}`, {
                         code: createErr.code,
                         type: createErr.type,
-                        response: createErr.response
+                        response: typeof createErr.response === 'object' ? JSON.stringify(createErr.response) : createErr.response
                     });
                     return false;
                 }
             }
-            console.error("❌ [AppwriteService] Failed to push settings:", error, {
+            console.error(`❌ [AppwriteService] Failed to push settings: ${error.message || error}`, {
                 code: error.code,
                 type: error.type,
-                response: error.response
+                response: typeof error.response === 'object' ? JSON.stringify(error.response) : error.response
             });
             return false;
         }
@@ -439,67 +469,192 @@ class AppwriteService {
     // Theme Store Services
     // =========================================================================
 
-    async listThemes(filter = 'popular', searchQuery = '') {
-        try {
-            const queries = [
-                window.Appwrite.Query.equal("public", true)
-            ];
+    async listThemes(filter = 'popular', searchQuery = '', scope = 'community', page = 1, limit = 10) {
+        const cacheKey = `themes_cache_${scope}_${filter}_${page}_${limit}_${searchQuery.trim().toLowerCase()}`;
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+        // Helper to check local cache
+        const checkCache = async () => {
+            return new Promise((resolve) => {
+                chrome.storage.local.get([cacheKey], (res) => {
+                    if (res[cacheKey]) {
+                        const { data, timestamp } = res[cacheKey];
+                        resolve({ data, age: Date.now() - timestamp });
+                    } else {
+                        resolve(null);
+                    }
+                });
+            });
+        };
+
+        // Check cache first
+        const cache = await checkCache();
+        if (cache && cache.age < ONE_DAY_MS) {
+            console.log(`💾 [AppwriteService] Loaded themes from 24-hour cache for: ${cacheKey}`);
+            return cache.data;
+        }
+
+        let docs = [];
+        let fetchedFromDb = false;
+
+        try {
+            const queries = [];
+
+            // Scope-specific filtering
+            if (scope === 'community') {
+                queries.push(window.Appwrite.Query.equal("public", true));
+            } else if (scope === 'mine') {
+                if (!this.currentUser) return [];
+                queries.push(window.Appwrite.Query.equal("authorId", this.currentUser.$id));
+            } else if (scope === 'likes') {
+                if (!this.currentUser) return [];
+                // First get user's liked theme IDs
+                const likesList = await this.databases.listDocuments(
+                    APPWRITE_CONFIG.databaseId,
+                    APPWRITE_CONFIG.collections.themeLikes,
+                    [
+                        window.Appwrite.Query.equal("userId", this.currentUser.$id),
+                        window.Appwrite.Query.limit(100)
+                    ]
+                );
+                const likedThemeIds = likesList.documents.map(doc => doc.themeId);
+                if (likedThemeIds.length === 0) {
+                    return [];
+                }
+                queries.push(window.Appwrite.Query.equal("$id", likedThemeIds));
+            }
+
+            // Search query filtering
             if (searchQuery) {
                 queries.push(window.Appwrite.Query.search("name", searchQuery));
             }
 
+            // Ordering/Sorting
             if (filter === 'popular') {
                 queries.push(window.Appwrite.Query.orderDesc("likesCount"));
             } else if (filter === 'newest') {
                 queries.push(window.Appwrite.Query.orderDesc("createdAt"));
             }
 
-            queries.push(window.Appwrite.Query.limit(25));
+            // Pagination
+            queries.push(window.Appwrite.Query.limit(limit));
+            queries.push(window.Appwrite.Query.offset((page - 1) * limit));
 
-            console.log("🔍 [AppwriteService] Listing themes with queries:", queries);
-
+            console.log(`🔍 [AppwriteService] Fetching themes from Appwrite (page ${page}) with queries:`, queries);
             const list = await this.databases.listDocuments(
                 APPWRITE_CONFIG.databaseId,
                 APPWRITE_CONFIG.collections.themes,
                 queries
             );
 
-            // Cache successfully fetched default themes for offline/outage fallback
-            if (list && list.documents && filter === 'popular' && !searchQuery) {
-                chrome.storage.local.set({
-                    community_theme_catalog: list.documents,
-                    last_catalog_fetch: Date.now()
-                }, () => {
-                    console.log("💾 [AppwriteService] Cached community theme catalog locally.");
-                });
-            }
-
-            return list.documents;
+            docs = list.documents;
+            fetchedFromDb = true;
         } catch (error) {
-            console.error("❌ [AppwriteService] Failed to list themes:", error, {
-                code: error.code,
-                type: error.type,
-                response: error.response
-            });
-
-            // Try to load cached fallback catalog
+            console.warn(`⚠️ [AppwriteService] Advanced query failed (${error.message || error}). Retrying with client-side basic query fallback.`);
+            
             try {
-                const cachedDocs = await new Promise((resolve) => {
-                    chrome.storage.local.get(['community_theme_catalog'], (res) => {
-                        resolve(res.community_theme_catalog || []);
-                    });
-                });
-                if (cachedDocs.length > 0) {
-                    console.log(`ℹ️ [AppwriteService] Loaded ${cachedDocs.length} fallback community themes from local cache.`);
-                    return cachedDocs;
-                }
-            } catch (cacheErr) {
-                console.error("❌ [AppwriteService] Failed to load cached themes fallback:", cacheErr);
-            }
+                // Retrieve the raw first 100 documents to do client-side filtering/sorting
+                const list = await this.databases.listDocuments(
+                    APPWRITE_CONFIG.databaseId,
+                    APPWRITE_CONFIG.collections.themes,
+                    [window.Appwrite.Query.limit(100)]
+                );
+                let allDocs = list.documents;
+                fetchedFromDb = true;
 
-            return [];
+                // 1. Filter by public or mine
+                if (scope === 'community') {
+                    allDocs = allDocs.filter(d => d.public === true);
+                } else if (scope === 'mine') {
+                    if (this.currentUser) {
+                        allDocs = allDocs.filter(d => d.authorId === this.currentUser.$id);
+                    } else {
+                        allDocs = [];
+                    }
+                } else if (scope === 'likes') {
+                    if (this.currentUser) {
+                        const likesList = await this.databases.listDocuments(
+                            APPWRITE_CONFIG.databaseId,
+                            APPWRITE_CONFIG.collections.themeLikes,
+                            [
+                                window.Appwrite.Query.equal("userId", this.currentUser.$id),
+                                window.Appwrite.Query.limit(100)
+                            ]
+                        );
+                        const likedThemeIds = likesList.documents.map(doc => doc.themeId);
+                        allDocs = allDocs.filter(d => likedThemeIds.includes(d.$id));
+                    } else {
+                        allDocs = [];
+                    }
+                }
+
+                // 2. Filter by search query
+                if (searchQuery) {
+                    const term = searchQuery.toLowerCase();
+                    allDocs = allDocs.filter(d => 
+                        (d.name || '').toLowerCase().includes(term) || 
+                        (d.description || '').toLowerCase().includes(term)
+                    );
+                }
+
+                // 3. Sorting
+                if (filter === 'popular') {
+                    allDocs.sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
+                } else if (filter === 'newest') {
+                    allDocs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+                }
+
+                // 4. Client-side pagination
+                const offset = (page - 1) * limit;
+                docs = allDocs.slice(offset, offset + limit);
+            } catch (fallbackError) {
+                const responseStr = typeof fallbackError.response === 'object' ? JSON.stringify(fallbackError.response) : (fallbackError.response || '');
+                console.error(`❌ [AppwriteService] Basic theme list fallback query also failed: ${fallbackError.message || fallbackError}`, {
+                    code: fallbackError.code,
+                    type: fallbackError.type,
+                    response: responseStr
+                });
+                if (!cache) {
+                    throw new Error(`AppwriteException: ${fallbackError.message || 'Server Error'} ${responseStr}`);
+                }
+            }
         }
+
+        if (fetchedFromDb) {
+            // Update cache in background
+            chrome.storage.local.set({
+                [cacheKey]: {
+                    data: docs,
+                    timestamp: Date.now()
+                }
+            }, () => {
+                console.log(`💾 [AppwriteService] Cached query: ${cacheKey}`);
+            });
+            return docs;
+        }
+
+        // If fetch failed completely, look for any cache (even expired)
+        if (cache) {
+            console.log(`⚠️ [AppwriteService] Fetch failed completely. Loading EXPIRED cache for: ${cacheKey}`);
+            return cache.data;
+        }
+
+        // Ultimate fallback to generic catalog cache
+        try {
+            const cachedDocs = await new Promise((resolve) => {
+                chrome.storage.local.get(['community_theme_catalog'], (res) => {
+                    resolve(res.community_theme_catalog || []);
+                });
+            });
+            if (cachedDocs.length > 0) {
+                console.log(`ℹ️ [AppwriteService] Loaded ${cachedDocs.length} fallback community themes from community_theme_catalog.`);
+                return cachedDocs;
+            }
+        } catch (cacheErr) {
+            console.error("❌ [AppwriteService] Failed to load legacy catalog fallback cache:", cacheErr);
+        }
+
+        return [];
     }
 
     /**
@@ -575,6 +730,13 @@ class AppwriteService {
         } catch (error) {
             console.error("❌ [AppwriteService] Failed to update download count:", error);
         }
+    }
+
+    /**
+     * Compatibility wrapper for likeTheme
+     */
+    async likeTheme(themeId, userId = null) {
+        return this.toggleThemeLike(themeId);
     }
 
     /**
