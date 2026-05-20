@@ -159,6 +159,74 @@
         }, { signal: sharedSignal });
     }
 
+    // ---- Material Symbols Rounded font loader with localStorage caching ----
+    S.MATERIAL_SYMBOLS_URL = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block';
+    S.MATERIAL_SYMBOLS_CACHE_KEY = 'revived_material_symbols_css_v1';
+    S.MATERIAL_SYMBOLS_TS_KEY  = 'revived_material_symbols_ts_v1';
+    S.MATERIAL_SYMBOLS_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    S.loadMaterialSymbolsFont = function (targetDoc) {
+        const doc = targetDoc || (typeof document !== 'undefined' ? document : null);
+        if (!doc) return;
+        const markerId = 'revived-material-symbols-link';
+        if (doc.getElementById(markerId)) return; // already injected
+
+        const injectCss = (cssText) => {
+            const style = doc.createElement('style');
+            style.id = markerId;
+            style.textContent = cssText;
+            (doc.head || doc.documentElement).appendChild(style);
+        };
+
+        // Check localStorage cache
+        try {
+            const cached = localStorage.getItem(S.MATERIAL_SYMBOLS_CACHE_KEY);
+            const cachedTs = parseInt(localStorage.getItem(S.MATERIAL_SYMBOLS_TS_KEY) || '0', 10);
+            if (cached && (Date.now() - cachedTs) < S.MATERIAL_SYMBOLS_TTL) {
+                injectCss(cached);
+                return;
+            }
+        } catch (e) { /* localStorage not available in some contexts */ }
+
+        // Fallback: inject a <link> tag and also try to cache the fetched CSS
+        const link = doc.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = S.MATERIAL_SYMBOLS_URL;
+        link.id = markerId;
+        (doc.head || doc.documentElement).appendChild(link);
+
+        // Try to fetch & cache for future use
+        try {
+            fetch(S.MATERIAL_SYMBOLS_URL)
+                .then(r => r.text())
+                .then(css => {
+                    try {
+                        localStorage.setItem(S.MATERIAL_SYMBOLS_CACHE_KEY, css);
+                        localStorage.setItem(S.MATERIAL_SYMBOLS_TS_KEY, String(Date.now()));
+                    } catch (e) { }
+                })
+                .catch(() => { });
+        } catch (e) { }
+    };
+
+    // Helper: create a Material Symbol span
+    S.msIcon = function (name, extraStyle) {
+        const s = extraStyle ? ` style="${extraStyle}"` : '';
+        return `<span class="material-symbols-rounded"${s}>${name}</span>`;
+    };
+
+    // Helper: inject font into a shadow root's adoptedStyleSheets or a <style> node
+    S.ensureMaterialSymbolsInShadow = function (shadowRoot) {
+        if (!shadowRoot) return;
+        const markerId = 'revived-ms-shadow';
+        if (shadowRoot.getElementById && shadowRoot.getElementById(markerId)) return;
+        // Use a style element inside the shadow
+        const style = document.createElement('style');
+        style.id = markerId;
+        style.textContent = `@import url('${S.MATERIAL_SYMBOLS_URL}'); .material-symbols-rounded { font-family:'Material Symbols Rounded',sans-serif; font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; font-size:20px; line-height:1; display:inline-flex; align-items:center; justify-content:center; color:inherit; user-select:none; pointer-events:none; font-style:normal; letter-spacing:normal; text-transform:none; white-space:nowrap; -webkit-font-smoothing:antialiased; }`;
+        shadowRoot.appendChild(style);
+    };
+
     const fetchSvg = (path, fallback) => {
         if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getURL || S.isOrphaned()) {
             return Promise.resolve(fallback || '<svg viewBox="0 0 24 24"></svg>');
@@ -176,20 +244,22 @@
         }
     };
 
+    // Icons replaced with Material Symbols Rounded (no file fetch needed)
+    S.ADD_ICON_SVG       = S.msIcon('add');
+    S.TRASH_ICON_SVG     = S.msIcon('delete');
+    S.CLOSE_ICON_SVG     = S.msIcon('close');
+    S.EXTENSION_ICON_SVG = S.msIcon('extension');
+    S.FILTER_ICON_SVG    = S.msIcon('filter_list');
+
+    // Icons kept as asset SVG files (settings, temporary, pin header)
     S.svgReady = Promise.all([
-        fetchSvg('assets/add_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>'),
-        fetchSvg('assets/trash_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>'),
         fetchSvg('assets/settings_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 a2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'),
         fetchSvg('assets/pin_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"></path></svg>'),
         fetchSvg('assets/temporary_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'),
-        fetchSvg('assets/extension.svg', '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M346-134H188q-22.73 0-38.36-15.64Q134-165.27 134-188v-146q35-13 54.5-46t19.5-72q0-39-19.5-72T134-570v-148q0-22.72 15.64-38.36Q165.27-772 188-772h150q14-38 45-61t69-23q38 0 69 23t45 61h152q22.72 0 38.36 15.64T772-718v152q38 14 61 45t23 69q0 38-23 69t-61 45v150q0 22.73-15.64 38.36Q740.72-134 718-134H558q-8-41-38-67.5T452-228q-38 0-68 26.5T346-134Zm-158-54h117q15-32 50.5-63t96.5-31q61 0 97.5 31t51.5 63h117v-186h16q35-6 51.5-29t16.5-49q0-26-16.5-49T734-530h-16v-188H530v-16q-6-35-29-51.5T452-802q-26 0-49 16.5T374-734v16H188v114q34 31 54 70t20 82q0 44.3-20 82.65Q222-331 188-302v114Zm264-264Z"/></svg>'),
-    ]).then(([add, trash, settings, pin, temp, ext]) => {
-        S.ADD_ICON_SVG = add;
-        S.TRASH_ICON_SVG = trash;
+    ]).then(([settings, pin, temp]) => {
         S.SETTINGS_ICON_SVG = settings;
-        S.PIN_HEADER_SVG = pin;
-        S.TEMP_HEADER_SVG = temp;
-        S.EXTENSION_ICON_SVG = ext;
+        S.PIN_HEADER_SVG    = pin;
+        S.TEMP_HEADER_SVG   = temp;
     });
 
     S.detectBrowserState = function () {
@@ -1251,6 +1321,9 @@
         const port = chrome.runtime.connect({ name: 'sidepanel' });
         setInterval(() => chrome.runtime.sendMessage({ ping: true }), 25000);
 
+        // Ensure Material Symbols Rounded font is loaded (with localStorage cache)
+        SR.loadMaterialSymbolsFont(document);
+
         let state = {
             sites: [],
             tempSites: [],
@@ -1788,10 +1861,8 @@
             renderMostVisited();
             const backBtn = document.getElementById('add-page-back-btn');
             if (backBtn && !backBtn.dataset.iconLoaded) {
-                fetch(chrome.runtime.getURL('assets/close_icon.svg'))
-                    .then(r => r.text())
-                    .then(svg => { backBtn.innerHTML = svg; backBtn.dataset.iconLoaded = '1'; })
-                    .catch(() => { backBtn.innerHTML = '✕'; });
+                backBtn.innerHTML = SR.CLOSE_ICON_SVG;
+                backBtn.dataset.iconLoaded = '1';
             }
         }
 
@@ -1915,7 +1986,7 @@
                     });
                 }
                 document.body.innerHTML = `
-                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #1c1c1c; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; user-select: none;">
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #1c1c1c; color: #fff; font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; user-select: none;">
                         <div class="loader-spinner" style="width: 40px; height: 40px; border: 3px solid rgba(255, 255, 255, 0.07); border-top-color: var(--theme-accent-color, #38b3ff); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 24px;"></div>
                         <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 10px 0; letter-spacing: -0.5px;">Connecting to ${authTrigger.charAt(0).toUpperCase() + authTrigger.slice(1)}...</h1>
                         <p style="font-size: 13px; color: #888; margin: 0;">Please follow the prompts in the popup window to link your workspace.</p>
@@ -1934,7 +2005,7 @@
                 if (authStatus === 'success') {
                     console.log("✅ [OAuth] Connected successfully!");
                     document.body.innerHTML = `
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #1c1c1c; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; user-select: none;">
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #1c1c1c; color: #fff; font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; user-select: none;">
                             <div style="font-size: 48px; margin-bottom: 20px; animation: bounce 1s cubic-bezier(0.25, 1, 0.5, 1);">🎉</div>
                             <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 10px 0; color: #2ecc71; letter-spacing: -0.5px;">Connected Successfully!</h1>
                             <p style="font-size: 13px; color: #aaa; margin: 0 0 24px 0;">Your sidebar settings are now fully synchronized.</p>
@@ -1945,7 +2016,7 @@
                 } else {
                     console.log("❌ [OAuth] Connection failed.");
                     document.body.innerHTML = `
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #1c1c1c; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; user-select: none;">
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #1c1c1c; color: #fff; font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; user-select: none;">
                             <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
                             <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 10px 0; color: #e74c3c; letter-spacing: -0.5px;">Connection Failed</h1>
                             <p style="font-size: 13px; color: #aaa; margin: 0 0 24px 0;">Something went wrong during sign-in. Please try again.</p>
@@ -2155,14 +2226,11 @@
             localStorage.setItem('collapsedSections', JSON.stringify(state.collapsedSections));
         });
 
-        fetch(chrome.runtime.getURL('assets/close_icon.svg'))
-            .then(r => r.text())
-            .then(svg => {
-                const btn = document.getElementById('settings-back-btn');
-                if (btn) btn.innerHTML = svg;
-                const tsBtn = document.getElementById('theme-store-back-btn');
-                if (tsBtn) tsBtn.innerHTML = svg;
-            });
+        const _closeHtml = SR.CLOSE_ICON_SVG;
+        const _settingsBackBtn = document.getElementById('settings-back-btn');
+        if (_settingsBackBtn) _settingsBackBtn.innerHTML = _closeHtml;
+        const _tsBtn = document.getElementById('theme-store-back-btn');
+        if (_tsBtn) _tsBtn.innerHTML = _closeHtml;
 
         document.getElementById('settings-back-btn').addEventListener('click', () => {
             if (window.settingsSyncEngine) {
@@ -2921,6 +2989,7 @@
 
         // Initialize indicator position
         setTimeout(updateTabIndicator, 300);
+        window.addEventListener('resize', updateTabIndicator);
 
         // Helper to convert hex to rgba
         function hexToRgba(hex, alpha = 1) {
@@ -3061,7 +3130,7 @@
                             APPWRITE_CONFIG.databaseId,
                             APPWRITE_CONFIG.collections.themeLikes,
                             [
-                                window.Appwrite.Query.equal("userId", currentUser.id),
+                                window.Appwrite.Query.equal("userId", currentUser.$id),
                                 window.Appwrite.Query.limit(100)
                             ]
                         );
@@ -3088,11 +3157,12 @@
                     const pAcc = customData.accentColor || '#38b3ff';
                     const pMid = customData.midtoneColor || '#a4a4a4';
                     const pDiff = customData.differenceColor || '#000000';
+                    const pDiv = customData.dividerBackground || '#555555';
  
                     // Dynamic Custom Styling variables
                     card.style.setProperty('--card-accent-color', pAcc);
                     card.style.setProperty('--card-font-color', pFont);
-                    card.style.setProperty('--card-stroke-color', hexToRgba(pFont, 0.4));
+                    card.style.setProperty('--card-stroke-color', hexToRgba(pFont, 0.75));
                     card.style.setProperty('--card-inner-border-color', pFont);
                     card.style.setProperty('--card-inner-bg', hexToRgba(pFont, customData.panelOpacity !== undefined ? customData.panelOpacity : 0.5));
                     card.style.setProperty('--card-inner-radius', `${customData.panelRoundness !== undefined ? customData.panelRoundness : 4}px`);
@@ -3126,11 +3196,11 @@
                         ${bgImageHtml}
                         <div class="card-top-row">
                             <div class="card-palette-container">
-                                <div class="card-palette-bar" style="background: ${pBg}; width: 35%;" title="Sidebar BG"></div>
-                                <div class="card-palette-bar" style="background: ${pAcc}; width: 50%;" title="Accent"></div>
-                                <div class="card-palette-bar" style="background: ${pFont}; width: 65%;" title="Font Color"></div>
-                                <div class="card-palette-bar" style="background: ${pMid}; width: 80%;" title="Muted Accent"></div>
-                                <div class="card-palette-bar" style="background: ${pDiff}; width: 95%;" title="Difference Color"></div>
+                                <div class="card-palette-bar" style="background: ${pBg}; width: 100%;" title="Sidebar BG"></div>
+                                <div class="card-palette-bar" style="background: ${pDiv}; width: 90%;" title="Divider BG"></div>
+                                <div class="card-palette-bar" style="background: ${pFont}; width: 80%;" title="Font Color"></div>
+                                <div class="card-palette-bar" style="background: ${pMid}; width: 70%;" title="Muted Accent"></div>
+                                <div class="card-palette-bar" style="background: ${pDiff}; width: 60%;" title="Difference Color"></div>
                             </div>
                             <div class="card-preview-dashed-square">
                                 <div class="card-preview-inner-square"></div>
@@ -3139,7 +3209,7 @@
                         <div class="card-bottom-row">
                             <h4 class="card-theme-title">${escapeHTML(themeDoc.name || 'Unnamed Theme')}</h4>
                             <div class="card-author-row">
-                                <img class="card-author-avatar" src="${themeDoc.authorAvatar || 'assets/default-avatar.png'}" onerror="this.src='data:image/svg+xml;utf8,<svg viewBox=\\'0 0 24 24\\' xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'%23666\\'><circle cx=\\'12\\' cy=\\'8\\' r=\\'4\\'></circle><path d=\\'M12 14c-6.1 0-8 4-8 4v2h16v-2s-1.9-4-8-4z\\'></path></svg>';" />
+                                <img class="card-author-avatar" src="${themeDoc.authorAvatar || 'assets/default-avatar.png'}" />
                                 <span class="card-author-name">${escapeHTML(themeDoc.authorName || 'Anonymous')}</span>
                                 <span class="card-publish-date">${timeAgo(themeDoc.createdAt || themeDoc.$createdAt)}</span>
                             </div>
@@ -3149,7 +3219,7 @@
                         <div class="card-hover-overlay">
                             <div class="overlay-top-row">
                                 <div class="overlay-author-info">
-                                    <img class="overlay-avatar" src="${themeDoc.authorAvatar || 'assets/default-avatar.png'}" onerror="this.src='data:image/svg+xml;utf8,<svg viewBox=\\'0 0 24 24\\' xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'%23666\\'><circle cx=\\'12\\' cy=\\'8\\' r=\\'4\\'></circle><path d=\\'M12 14c-6.1 0-8 4-8 4v2h16v-2s-1.9-4-8-4z\\'></path></svg>';" />
+                                    <img class="overlay-avatar" src="${themeDoc.authorAvatar || 'assets/default-avatar.png'}" />
                                     <div class="overlay-author-text">
                                         <span class="overlay-author-name">${escapeHTML(themeDoc.authorName || 'Anonymous')}</span>
                                         <span class="overlay-publish-date">${timeAgo(themeDoc.createdAt || themeDoc.$createdAt)}</span>
@@ -3175,6 +3245,21 @@
                             </div>
                         </div>
                     `;
+
+                    // Dynamic error fallback for avatar images (CSP Compliant)
+                    const avatarFallback = 'data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="%23666"><circle cx="12" cy="8" r="4"></circle><path d="M12 14c-6.1 0-8 4-8 4v2h16v-2s-1.9-4-8-4z"></path></svg>';
+                    const authorAvatarImg = card.querySelector('.card-author-avatar');
+                    if (authorAvatarImg) {
+                        authorAvatarImg.addEventListener('error', () => {
+                            authorAvatarImg.src = avatarFallback;
+                        });
+                    }
+                    const overlayAvatarImg = card.querySelector('.overlay-avatar');
+                    if (overlayAvatarImg) {
+                        overlayAvatarImg.addEventListener('error', () => {
+                            overlayAvatarImg.src = avatarFallback;
+                        });
+                    }
  
                     const previewBtn = card.querySelector('.overlay-btn.preview');
                     const applyBtn = card.querySelector('.overlay-btn.apply');
@@ -3258,7 +3343,7 @@
                         }
                         try {
                             likeBtn.disabled = true;
-                            const res = await client.likeTheme(themeDoc.$id, currentUser.id);
+                            const res = await client.likeTheme(themeDoc.$id, currentUser.$id);
                             if (res) {
                                 likeBtn.classList.add('liked');
                                 const countSpan = document.getElementById(`like-count-${themeDoc.$id}`);
@@ -3651,6 +3736,11 @@
                         }
                     };
                     this.shadow.appendChild(sharedLink);
+                    // Inject Material Symbols font into this shadow root
+                    const msLink = document.createElement('link');
+                    msLink.rel = 'stylesheet';
+                    msLink.href = SR.MATERIAL_SYMBOLS_URL;
+                    this.shadow.appendChild(msLink);
                 } else {
                     if (this.host) {
                         this.host.style.visibility = 'visible';
@@ -3757,6 +3847,13 @@
             }
 
             hide() {
+                if (this.autoHide) {
+                    this.autoHide.cleanup();
+                    this.autoHideArmed = false;
+                }
+                if (window.location.hostname.includes('bing.com')) {
+                    try { document.body.style.removeProperty('padding-right'); } catch (err) { }
+                }
                 if (!this.container) return;
                 this.container.style.display = 'none';
                 this.host.style.width = '0';
@@ -3914,6 +4011,11 @@
                         }
                     };
                     this.shadow.appendChild(sharedLink);
+                    // Inject Material Symbols font into this shadow root
+                    const msLink = document.createElement('link');
+                    msLink.rel = 'stylesheet';
+                    msLink.href = SR.MATERIAL_SYMBOLS_URL;
+                    this.shadow.appendChild(msLink);
                 } else {
                     this.host.style.visibility = 'visible';
                 }
@@ -4263,6 +4365,10 @@
             }
 
             hide() {
+                if (this.autoHide) {
+                    this.autoHide.cleanup();
+                    this.autoHideArmed = false;
+                }
                 this.clearTapers();
                 if (this.host) this.host.style.display = 'none';
                 document.documentElement.classList.remove('revived-sidebar-idle-active');
@@ -4453,7 +4559,7 @@
                 const renderCallback = () => this.orchestrate();
 
                 const isBlocked = SR.isBlocklistedDomain(window.location.hostname, this.state.sidepanelBlocklist);
-                const isActiveMode = this.state.activeSiteId && this.state.activeSiteOwner === 'inpage';
+                const isActiveMode = !this.state.isSidePanelOpen && this.state.activeSiteId && this.state.activeSiteOwner === 'inpage';
                 const isIdleMode = !this.state.isSidePanelOpen && !isBlocked && !this.state.activeSiteId;
 
                 if (isActiveMode) {
