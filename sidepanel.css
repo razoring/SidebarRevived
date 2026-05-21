@@ -3,7 +3,11 @@
 
 .material-symbols-rounded {
     font-family: 'Material Symbols Rounded', sans-serif;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    --material-fill: 0;
+    --material-wght: 300;
+    --material-grad: 0;
+    --material-opsz: 24;
+    font-variation-settings: 'FILL' var(--material-fill), 'wght' var(--material-wght), 'GRAD' var(--material-grad), 'opsz' var(--material-opsz);
     font-size: 20px;
     line-height: 1;
     display: inline-flex;

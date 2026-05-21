@@ -199,7 +199,7 @@
         // Use a style element inside the shadow
         const style = document.createElement('style');
         style.id = markerId;
-        style.textContent = `@import url('${S.MATERIAL_SYMBOLS_URL}'); .material-symbols-rounded { font-family:'Material Symbols Rounded',sans-serif; font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; font-size:20px; line-height:1; display:inline-flex; align-items:center; justify-content:center; color:inherit; user-select:none; pointer-events:none; font-style:normal; letter-spacing:normal; text-transform:none; white-space:nowrap; -webkit-font-smoothing:antialiased; }`;
+        style.textContent = `@import url('${S.MATERIAL_SYMBOLS_URL}'); .material-symbols-rounded { font-family:'Material Symbols Rounded',sans-serif; --material-fill:0; --material-wght:300; --material-grad:0; --material-opsz:24; font-variation-settings:'FILL' var(--material-fill),'wght' var(--material-wght),'GRAD' var(--material-grad),'opsz' var(--material-opsz); font-size:20px; line-height:1; display:inline-flex; align-items:center; justify-content:center; color:inherit; user-select:none; pointer-events:none; font-style:normal; letter-spacing:normal; text-transform:none; white-space:nowrap; -webkit-font-smoothing:antialiased; }`;
         shadowRoot.appendChild(style);
     };
 
@@ -230,11 +230,10 @@
     // Icons kept as asset SVG files (settings, temporary, pin header)
     S.svgReady = Promise.all([
         fetchSvg('assets/settings_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 a2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'),
-        fetchSvg('assets/pin_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"></path></svg>'),
         fetchSvg('assets/temporary_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'),
-    ]).then(([settings, pin, temp]) => {
+    ]).then(([settings, temp]) => {
         S.SETTINGS_ICON_SVG = settings;
-        S.PIN_HEADER_SVG    = pin;
+        S.PIN_HEADER_SVG    = S.msIcon('push_pin');
         S.TEMP_HEADER_SVG   = temp;
     });
 
@@ -1637,6 +1636,20 @@
             const tabItem = document.getElementById('add-current-tab-item');
             if (!faviconImg || !titleSpan) return;
 
+            // Add error handler to replace with Material Symbols icon if favicon fails
+            faviconImg.onerror = () => {
+                faviconImg.style.display = 'none';
+                const iconContainer = faviconImg.parentElement;
+                if (iconContainer && !iconContainer.querySelector('.favicon-fallback-icon')) {
+                    const fallbackIcon = document.createElement('span');
+                    fallbackIcon.className = 'material-symbols-rounded favicon-fallback-icon';
+                    fallbackIcon.textContent = 'language';
+                    fallbackIcon.style.fontSize = '24px';
+                    fallbackIcon.style.color = 'var(--theme-midtone-color, #a4a4a4)';
+                    iconContainer.appendChild(fallbackIcon);
+                }
+            };
+
             chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
                 const tab = tabs[0];
                 if (tab && tab.url && tab.url.startsWith('http')) {
@@ -1646,7 +1659,7 @@
                         const u = new URL(tab.url);
                         cleanedUrl = u.origin + u.pathname;
                     } catch (e) { }
-                    faviconImg.src = tab.favIconUrl || 'assets/pin_icon.svg';
+                    faviconImg.src = tab.favIconUrl || '';
                     titleSpan.innerText = tab.title;
                     if (urlSpan) urlSpan.innerText = cleanedUrl;
                     if (tabItem) { 
@@ -1655,7 +1668,8 @@
                     }
                 } else {
                     currentTabInfo = null;
-                    faviconImg.src = 'assets/pin_icon.svg';
+                    faviconImg.src = '';
+                    faviconImg.onerror();
                     titleSpan.innerText = 'Internal Page (Cannot Add)';
                     if (urlSpan) urlSpan.innerText = '';
                     if (tabItem) { 
@@ -3203,11 +3217,11 @@
                                 </div>
                                 <div class="overlay-stats">
                                     <div class="overlay-stat-item" title="Likes">
-                                        <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 20; font-size:16px; color:#ff4757;">favorite</span>
+                                        <span class="material-symbols-rounded" style="--material-fill:1; --material-wght:500; --material-grad:0; --material-opsz:20; font-size:16px; color:#ff4757;">favorite</span>
                                         <span id="like-count-${themeDoc.$id}">${themeDoc.likesCount || 0}</span>
                                     </div>
                                     <div class="overlay-stat-item" title="Downloads">
-                                        <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 20; font-size:16px;">download</span>
+                                        <span class="material-symbols-rounded" style="--material-fill:0; --material-wght:500; --material-grad:0; --material-opsz:20; font-size:16px;">download</span>
                                         <span id="dl-count-${themeDoc.$id}">${themeDoc.downloadsCount || 0}</span>
                                     </div>
                                 </div>
@@ -3216,7 +3230,7 @@
                                 <button class="overlay-btn preview" data-id="${themeDoc.$id}">Preview</button>
                                 <button class="overlay-btn apply" data-id="${themeDoc.$id}">Apply</button>
                                 <button class="${likeBtnClass}" data-id="${themeDoc.$id}">
-                                    <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 20; font-size:16px; color:#ff4757;">favorite</span> Like
+                                    <span class="material-symbols-rounded" style="--material-fill:1; --material-wght:500; --material-grad:0; --material-opsz:20; font-size:16px; color:#ff4757;">favorite</span> Like
                                 </button>
                             </div>
                         </div>
@@ -3723,7 +3737,11 @@
                     msStyle.textContent = [
                         '.material-symbols-rounded {',
                         '  font-family: "Material Symbols Rounded", sans-serif;',
-                        '  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;',
+                        '  --material-fill: 0;',
+                        '  --material-wght: 500;',
+                        '  --material-grad: 0;',
+                        '  --material-opsz: 24;',
+                        '  font-variation-settings: "FILL" var(--material-fill), "wght" var(--material-wght), "GRAD" var(--material-grad), "opsz" var(--material-opsz);',
                         '  font-size: 20px;',
                         '  line-height: 1;',
                         '  display: inline-flex;',
@@ -4017,7 +4035,11 @@
                     msStyle.textContent = [
                         '.material-symbols-rounded {',
                         '  font-family: "Material Symbols Rounded", sans-serif;',
-                        '  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;',
+                        '  --material-fill: 0;',
+                        '  --material-wght: 500;',
+                        '  --material-grad: 0;',
+                        '  --material-opsz: 24;',
+                        '  font-variation-settings: "FILL" var(--material-fill), "wght" var(--material-wght), "GRAD" var(--material-grad), "opsz" var(--material-opsz);',
                         '  font-size: 20px;',
                         '  line-height: 1;',
                         '  display: inline-flex;',
