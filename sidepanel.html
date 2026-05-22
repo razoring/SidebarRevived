@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sideboar</title>
   <link rel="stylesheet" href="sidepanel.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block">
 </head>
 
 <body>
@@ -441,6 +440,15 @@
         <p class="settings-description" style="margin-top: 0;">Browse, download, and rate unique custom themes created
           by the community, or share your own current theme creation with the world!</p>
 
+        <!-- Theme Editor Promo Card -->
+        <div class="theme-editor-promo-card">
+          <div class="promo-content">
+            <h3>Custom Theme Editor</h3>
+            <p>Design your own premium theme by adjusting colors, opacity, blur, and placing scattered background images on an interactive canvas.</p>
+          </div>
+          <button id="open-theme-editor-btn" class="settings-accent-btn">Open Editor</button>
+        </div>
+
         <!-- Live Theme Preview Banner -->
         <div id="theme-preview-banner" class="theme-preview-banner" style="display: none;">
           <span class="preview-text">Previewing theme: <strong id="preview-theme-name">-</strong></span>
@@ -508,6 +516,82 @@
         <div id="store-publish-guest-msg" class="store-publish-guest-msg" style="margin-top: 16px; text-align: center;">
           <p class="settings-description-sub" style="font-size: 11px; margin: 0; color: #f39c12;">⚠️ Link your account
             in the Settings panel to publish custom themes or upvote community items.</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Theme Editor Panel -->
+    <div id="theme-editor-panel" style="display: none;">
+      <div id="theme-editor-header">
+        <div class="editor-header-controls">
+          <div class="editor-control-group actions-group">
+            <button id="editor-back-btn" class="editor-action-btn secondary" title="Back to Store">
+              <span class="material-symbols-rounded">arrow_back</span>
+            </button>
+            <button id="editor-save-btn" class="editor-action-btn primary" title="Save Theme">
+              <span class="material-symbols-rounded">save</span>
+            </button>
+            <button id="editor-publish-btn" class="editor-action-btn accent" title="Publish Theme">
+              <span class="material-symbols-rounded">publish</span>
+            </button>
+          </div>
+          <div class="editor-control-group color-swatches-group">
+            <div class="color-swatch-circle" id="editor-swatch-sidebar-bg" title="Sidebar Background">
+              <input type="color" id="editor-color-sidebar-bg" />
+            </div>
+            <div class="color-swatch-circle" id="editor-swatch-font-color" title="Font Color">
+              <input type="color" id="editor-color-font-color" />
+            </div>
+            <div class="color-swatch-circle" id="editor-swatch-accent-color" title="Accent Color">
+              <input type="color" id="editor-color-accent-color" />
+            </div>
+            <div class="color-swatch-circle" id="editor-swatch-divider-bg" title="Divider Background">
+              <input type="color" id="editor-color-divider-bg" />
+            </div>
+            <div class="color-swatch-circle" id="editor-swatch-midtone-color" title="Midtone Color">
+              <input type="color" id="editor-color-midtone-color" />
+            </div>
+            <div class="color-swatch-circle" id="editor-swatch-difference-color" title="Difference Color">
+              <input type="color" id="editor-color-difference-color" />
+            </div>
+          </div>
+          <div class="editor-control-group sliders-group">
+            <div class="editor-slider-wrapper" title="Panel Opacity">
+              <span class="material-symbols-rounded">opacity</span>
+              <input type="range" id="editor-slider-opacity" min="0.1" max="1" step="0.05" value="1" />
+            </div>
+            <div class="editor-slider-wrapper" title="Panel Blur">
+              <span class="material-symbols-rounded">blur_on</span>
+              <input type="range" id="editor-slider-blur" min="0" max="20" step="1" value="0" />
+            </div>
+            <div class="editor-slider-wrapper" title="Corner Radius">
+              <span class="material-symbols-rounded">rounded_corner</span>
+              <input type="range" id="editor-slider-roundness" min="0" max="20" step="1" value="0" />
+            </div>
+          </div>
+          <div class="editor-control-group image-upload-group">
+            <button id="editor-upload-img-btn" class="editor-action-btn" title="Add Image to Selected Panel">
+              <span class="material-symbols-rounded">add_photo_alternate</span>
+            </button>
+            <input type="file" id="editor-image-upload-input" accept="image/*" style="display: none;" />
+          </div>
+        </div>
+        <div id="editor-header-collapse-toggle" title="Toggle Menu">
+          <span class="material-symbols-rounded">expand_less</span>
+        </div>
+      </div>
+      
+      <div id="theme-editor-canvas-viewport">
+        <div id="theme-editor-workspace">
+          <!-- Mockup panels and scattered images injected here -->
+        </div>
+        
+        <!-- Canvas HUD -->
+        <div id="theme-editor-hud">
+          <span id="editor-hud-zoom-text">100%</span>
+          <button id="editor-hud-zoom-out" title="Zoom Out"><span class="material-symbols-rounded">remove</span></button>
+          <button id="editor-hud-zoom-in" title="Zoom In"><span class="material-symbols-rounded">add</span></button>
+          <button id="editor-hud-reset" title="Reset View"><span class="material-symbols-rounded">filter_center_focus</span></button>
         </div>
       </div>
     </div>

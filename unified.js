@@ -19,6 +19,7 @@
         IS_SETTINGS_OPEN: 'isSettingsOpen',
         IS_ADD_PAGE_OPEN: 'isAddPageOpen',
         IS_THEME_STORE_OPEN: 'isThemeStoreOpen',
+        IS_THEME_EDITOR_OPEN: 'isThemeEditorOpen',
         IS_SIDE_PANEL_OPEN: 'isSidePanelOpen',
         AUTO_HIDE_ENABLED: 'autoHideEnabled',
         SHOW_CATEGORY_ICONS: 'showCategoryIcons',
@@ -171,18 +172,40 @@
         const markerId = 'revived-material-symbols-link';
         if (doc.getElementById(markerId)) return; // already injected
 
-        // Always inject a <link> into document.head first (fast, native, works across origins)
-        const link = doc.createElement('link');
-        link.rel = 'preconnect';
-        link.href = 'https://fonts.gstatic.com';
-        link.crossOrigin = 'anonymous';
-        (doc.head || doc.documentElement).appendChild(link);
+        let fontUrl = '';
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+            try {
+                fontUrl = chrome.runtime.getURL('fonts/material-symbols/symbols-rounded-0.woff2');
+            } catch (e) {
+                // ignore
+            }
+        }
 
-        const fontLink = doc.createElement('link');
-        fontLink.rel = 'stylesheet';
-        fontLink.href = S.MATERIAL_SYMBOLS_URL;
-        fontLink.id = markerId;
-        (doc.head || doc.documentElement).appendChild(fontLink);
+        if (fontUrl) {
+            const style = doc.createElement('style');
+            style.id = markerId;
+            style.textContent = `@font-face {
+  font-family: 'Material Symbols Rounded';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url('${fontUrl}') format('woff2');
+}`;
+            (doc.head || doc.documentElement).appendChild(style);
+        } else {
+            // Always inject a <link> into document.head first (fast, native, works across origins)
+            const link = doc.createElement('link');
+            link.rel = 'preconnect';
+            link.href = 'https://fonts.gstatic.com';
+            link.crossOrigin = 'anonymous';
+            (doc.head || doc.documentElement).appendChild(link);
+
+            const fontLink = doc.createElement('link');
+            fontLink.rel = 'stylesheet';
+            fontLink.href = S.MATERIAL_SYMBOLS_URL;
+            fontLink.id = markerId;
+            (doc.head || doc.documentElement).appendChild(fontLink);
+        }
     };
 
     // Helper: create a Material Symbol span
@@ -199,7 +222,13 @@
         // Use a style element inside the shadow
         const style = document.createElement('style');
         style.id = markerId;
-        style.textContent = `@import url('${S.MATERIAL_SYMBOLS_URL}'); .material-symbols-rounded { font-family:'Material Symbols Rounded',sans-serif; --material-fill:0; --material-wght:300; --material-grad:0; --material-opsz:24; font-variation-settings:'FILL' var(--material-fill),'wght' var(--material-wght),'GRAD' var(--material-grad),'opsz' var(--material-opsz); font-size:20px; line-height:1; display:inline-flex; align-items:center; justify-content:center; color:inherit; user-select:none; pointer-events:none; font-style:normal; letter-spacing:normal; text-transform:none; white-space:nowrap; -webkit-font-smoothing:antialiased; }`;
+        style.textContent = `:host,:root{--icon-stroke-width:2.5px; --material-stroke:0.6px; --material-wght:100; --sidebar-icon-size:26px;} .material-symbols-rounded { font-family:'Material Symbols Rounded',sans-serif; --material-fill:0; --material-wght:var(--material-wght); --material-grad:0; --material-opsz:24; font-variation-settings:'FILL' var(--material-fill),'wght' var(--material-wght),'GRAD' var(--material-grad),'opsz' var(--material-opsz); font-size:var(--sidebar-icon-size); line-height:1; display:inline-flex; align-items:center; justify-content:center; color:inherit; -webkit-text-stroke:var(--material-stroke) currentColor; -webkit-text-fill-color:currentColor; user-select:none; pointer-events:none; font-style:normal; letter-spacing:normal; text-transform:none; white-space:nowrap; -webkit-font-smoothing:antialiased; }
+        /* Fill-based custom SVG icons */
+        svg:not([stroke]){fill:currentColor}
+        svg:not([stroke]) path{fill:currentColor}
+        /* Stroke-based custom SVG icons — preserve fill:none, apply unified stroke width */
+        svg[stroke]{stroke:currentColor;fill:none}
+        svg[stroke] path,svg[stroke] circle,svg[stroke] polyline,svg[stroke] line,svg[stroke] rect,svg[stroke] polygon{stroke:currentColor;fill:none;stroke-width:var(--icon-stroke-width)}`;
         shadowRoot.appendChild(style);
     };
 
@@ -232,9 +261,10 @@
         fetchSvg('assets/settings_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 a2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'),
         fetchSvg('assets/temporary_icon.svg', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'),
     ]).then(([settings, temp]) => {
-        S.SETTINGS_ICON_SVG = settings;
+        // Wrap asset SVGs so we can target them specifically in CSS without affecting favicons (images)
+        S.SETTINGS_ICON_SVG = `<span class="asset-icon">${settings}</span>`;
         S.PIN_HEADER_SVG    = S.msIcon('push_pin');
-        S.TEMP_HEADER_SVG   = temp;
+        S.TEMP_HEADER_SVG   = `<span class="asset-icon">${temp}</span>`;
     });
 
     S.detectBrowserState = function () {
@@ -416,6 +446,23 @@
                 el.style.removeProperty('--theme-bg-image-size');
                 el.style.removeProperty('--theme-bg-image-repeat');
                 el.style.removeProperty('--theme-bg-image-position');
+            }
+            
+            // Set individual panel backgrounds
+            if (theme.settingsBgImage) {
+                el.style.setProperty('--theme-settings-bg-image', `url(${JSON.stringify(theme.settingsBgImage)})`);
+            } else {
+                el.style.removeProperty('--theme-settings-bg-image');
+            }
+            if (theme.storeBgImage) {
+                el.style.setProperty('--theme-store-bg-image', `url(${JSON.stringify(theme.storeBgImage)})`);
+            } else {
+                el.style.removeProperty('--theme-store-bg-image');
+            }
+            if (theme.iconbarBgImage) {
+                el.style.setProperty('--theme-iconbar-bg-image', `url(${JSON.stringify(theme.iconbarBgImage)})`);
+            } else {
+                el.style.removeProperty('--theme-iconbar-bg-image');
             }
         } else {
             const props = [
@@ -609,6 +656,10 @@
                 this.leaveTimer = null;
             }
             this.hideIndicator();
+            if (this.indicator) {
+                this.indicator.remove();
+                this.indicator = null;
+            }
             this.triggered = false;
         }
     };
@@ -763,7 +814,7 @@
                 const opacity = typeof getIconOpacity === 'function' ? getIconOpacity(site) : null;
                 if (opacity) icon.style.opacity = opacity;
                 if (site.faviconUrl) {
-                    icon.innerHTML = `<img src="${site.faviconUrl}" style="width: 20px; height: 20px; pointer-events: none;" />`;
+                    icon.innerHTML = `<img src="${site.faviconUrl}" style="pointer-events: none;" />`;
                 } else {
                     icon.innerText = site.initial || site.title.charAt(0);
                 }
@@ -1307,6 +1358,7 @@
             customTheme: null,
             isSettingsOpen: false,
             isThemeStoreOpen: false,
+            isThemeEditorOpen: false,
             scrollBlocklist: [],
             sidepanelBlocklist: [],
             autoHideBlocklist: [],
@@ -1371,6 +1423,7 @@
             STORAGE_KEYS.IS_SETTINGS_OPEN,
             STORAGE_KEYS.IS_ADD_PAGE_OPEN,
             STORAGE_KEYS.IS_THEME_STORE_OPEN,
+            STORAGE_KEYS.IS_THEME_EDITOR_OPEN,
             STORAGE_KEYS.SCROLL_BLOCKLIST,
             STORAGE_KEYS.SIDEPANEL_BLOCKLIST,
             STORAGE_KEYS.AUTOHIDE_BLOCKLIST,
@@ -1396,6 +1449,7 @@
             if (result.isSettingsOpen !== undefined) state.isSettingsOpen = result.isSettingsOpen;
             if (result.isAddPageOpen !== undefined) state.isAddPageOpen = result.isAddPageOpen;
             if (result.isThemeStoreOpen !== undefined) state.isThemeStoreOpen = result.isThemeStoreOpen;
+            if (result.isThemeEditorOpen !== undefined) state.isThemeEditorOpen = result.isThemeEditorOpen;
             if (result.scrollBlocklist) state.scrollBlocklist = result.scrollBlocklist;
             if (result.sidepanelBlocklist) state.sidepanelBlocklist = result.sidepanelBlocklist;
             if (result.autoHideBlocklist) state.autoHideBlocklist = result.autoHideBlocklist;
@@ -1492,12 +1546,29 @@
                 return;
             }
 
+            const tep = document.getElementById('theme-editor-panel');
+            
+            if (state.isThemeEditorOpen) {
+                iconBar.style.display = 'none';
+                contentArea.style.display = 'none';
+                if (note) note.style.display = 'none';
+                if (ap) ap.style.display = 'none';
+                if (sp) sp.style.display = 'none';
+                if (tp) tp.style.display = 'none';
+                if (tep) tep.style.display = 'flex';
+                if (window.initThemeEditorCanvas) {
+                    window.initThemeEditorCanvas();
+                }
+                return;
+            }
+
             if (state.isThemeStoreOpen) {
                 iconBar.style.display = 'none';
                 contentArea.style.display = 'none';
                 if (note) note.style.display = 'none';
                 if (ap) ap.style.display = 'none';
                 if (sp) sp.style.display = 'none';
+                if (tep) tep.style.display = 'none';
                 if (tp) tp.style.display = 'flex';
                 if (window.loadThemeStoreCatalog) {
                     window.loadThemeStoreCatalog();
@@ -1512,6 +1583,7 @@
                 if (note) note.style.display = 'none';
                 if (sp) sp.style.display = 'none';
                 if (tp) tp.style.display = 'none';
+                if (tep) tep.style.display = 'none';
                 if (ap) ap.style.display = 'flex';
             } else {
                 iconBar.style.display = 'flex';
@@ -1644,7 +1716,7 @@
                     const fallbackIcon = document.createElement('span');
                     fallbackIcon.className = 'material-symbols-rounded favicon-fallback-icon';
                     fallbackIcon.textContent = 'language';
-                    fallbackIcon.style.fontSize = '24px';
+                    fallbackIcon.style.fontSize = '16px';
                     fallbackIcon.style.color = 'var(--theme-midtone-color, #a4a4a4)';
                     iconContainer.appendChild(fallbackIcon);
                 }
@@ -3484,6 +3556,497 @@
             }, 500);
         }
 
+        // ============================================================
+        // THEME EDITOR LOGIC
+        // ============================================================
+        
+        let editorCanvasInitialized = false;
+        let editorPanX = 0;
+        let editorPanY = 0;
+        let editorZoom = 1;
+        let editorActiveMockup = null;
+
+        const openEditorBtn = document.getElementById('open-theme-editor-btn');
+        if (openEditorBtn) {
+            openEditorBtn.onclick = () => {
+                state.isThemeEditorOpen = true;
+                chrome.storage.local.set({ [STORAGE_KEYS.IS_THEME_EDITOR_OPEN]: true });
+                render();
+            };
+        }
+
+        const closeEditorBtn = document.getElementById('editor-back-btn');
+        if (closeEditorBtn) {
+            closeEditorBtn.onclick = () => {
+                state.isThemeEditorOpen = false;
+                chrome.storage.local.set({ [STORAGE_KEYS.IS_THEME_EDITOR_OPEN]: false });
+                render();
+            };
+        }
+        const collapseToggle = document.getElementById('editor-header-collapse-toggle');
+        const editorHeader = document.getElementById('theme-editor-header');
+        if (collapseToggle && editorHeader) {
+            collapseToggle.onclick = () => {
+                editorHeader.classList.toggle('collapsed');
+            };
+        }
+
+        window.initThemeEditorCanvas = function() {
+            if (editorCanvasInitialized) return;
+            editorCanvasInitialized = true;
+            
+            const workspace = document.getElementById('theme-editor-workspace');
+            const viewport = document.getElementById('theme-editor-canvas-viewport');
+            
+            // 1. Clone Mockups
+            const realIconBar = document.getElementById('icon-bar');
+            const realContentArea = document.getElementById('content-area');
+            const realSettings = document.getElementById('settings-panel');
+            const realStore = document.getElementById('theme-store-panel');
+            
+            // Create hover and selection outline overlay elements
+            const hoverOutline = document.createElement('div');
+            hoverOutline.className = 'theme-editor-hover-outline';
+            hoverOutline.style.position = 'absolute';
+            hoverOutline.style.pointerEvents = 'none';
+            hoverOutline.style.display = 'none';
+            workspace.appendChild(hoverOutline);
+
+            const selectedOutline = document.createElement('div');
+            selectedOutline.className = 'theme-editor-selected-outline';
+            selectedOutline.style.position = 'absolute';
+            selectedOutline.style.pointerEvents = 'none';
+            selectedOutline.style.display = 'none';
+            workspace.appendChild(selectedOutline);
+            
+            function createMockup(realEl, id, left, top) {
+                if (!realEl) return null;
+                const clone = realEl.cloneNode(true);
+                clone.id = id;
+                clone.style.display = 'flex';
+                clone.style.width = realEl.id === 'icon-bar' ? '48px' : '350px';
+                
+                // If it is the content-area, replace the iframe with a mockup page placeholder
+                if (realEl.id === 'content-area') {
+                    const iframe = clone.querySelector('iframe');
+                    if (iframe) {
+                        const placeholder = document.createElement('div');
+                        placeholder.id = 'mock_app-frame-placeholder';
+                        placeholder.className = 'mockup-iframe-placeholder';
+                        placeholder.innerHTML = `
+                            <div class="mockup-page-header">
+                                <span class="mockup-page-favicon">🌐</span>
+                                <span class="mockup-page-title">Sidebar Active Page Mockup</span>
+                            </div>
+                            <div class="mockup-page-body">
+                                <div class="mockup-skeleton-line short"></div>
+                                <div class="mockup-skeleton-line"></div>
+                                <div class="mockup-skeleton-line"></div>
+                                <div class="mockup-skeleton-line medium"></div>
+                            </div>
+                        `;
+                        iframe.parentNode.replaceChild(placeholder, iframe);
+                    }
+                }
+                
+                // Remove interactive elements IDs to avoid conflicts
+                clone.querySelectorAll('[id]').forEach(el => { el.id = 'mock_' + el.id; });
+                
+                // Disable pointers for inner content so we can drag the wrapper easily
+                clone.style.pointerEvents = 'none';
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'theme-editor-mockup-wrapper';
+                wrapper.style.left = left + 'px';
+                wrapper.style.top = top + 'px';
+                wrapper.style.width = clone.style.width;
+                wrapper.dataset.panelType = realEl.id;
+                
+                // Hide promo card inside store clone
+                const promo = clone.querySelector('.theme-editor-promo-card');
+                if (promo) promo.style.display = 'none';
+                
+                wrapper.appendChild(clone);
+                workspace.appendChild(wrapper);
+                
+                // Dragging logic
+                let isDragging = false;
+                let startX, startY, initialLeft, initialTop;
+                let lastClickTime = 0;
+                
+                wrapper.addEventListener('mousedown', (e) => {
+                    e.stopPropagation(); // prevent canvas pan
+                    
+                    const currentTime = new Date().getTime();
+                    // Handle Double Click to Enter Mockup
+                    if (currentTime - lastClickTime < 300) {
+                        // Activate this mockup
+                        if (editorActiveMockup) {
+                            editorActiveMockup.classList.remove('active-mockup');
+                            const oldClone = editorActiveMockup.firstElementChild;
+                            if (oldClone) oldClone.style.pointerEvents = 'none';
+                        }
+                        editorActiveMockup = wrapper;
+                        wrapper.classList.add('active-mockup');
+                        workspace.classList.add('editing-mockup');
+                        
+                        // Enable pointer events inside active clone
+                        clone.style.pointerEvents = 'auto';
+                    }
+                    lastClickTime = currentTime;
+                    
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    initialLeft = parseFloat(wrapper.style.left) || 0;
+                    initialTop = parseFloat(wrapper.style.top) || 0;
+                });
+                
+                window.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    const dx = (e.clientX - startX) / editorZoom;
+                    const dy = (e.clientY - startY) / editorZoom;
+                    wrapper.style.left = (initialLeft + dx) + 'px';
+                    wrapper.style.top = (initialTop + dy) + 'px';
+                });
+                
+                window.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+                
+                // Hover and selection handlers
+                wrapper.addEventListener('mousemove', (e) => {
+                    if (editorActiveMockup !== wrapper) return;
+                    
+                    const target = e.target;
+                    // Ignore wrapper, clone, outlines, and scattered images
+                    if (target === wrapper || target === clone || target.classList.contains('theme-scattered-image') || target.closest('.theme-editor-hover-outline') || target.closest('.theme-editor-selected-outline')) {
+                        hoverOutline.style.display = 'none';
+                        return;
+                    }
+                    
+                    const targetRect = target.getBoundingClientRect();
+                    const workspaceRect = workspace.getBoundingClientRect();
+                    
+                    const left = (targetRect.left - workspaceRect.left) / editorZoom;
+                    const top = (targetRect.top - workspaceRect.top) / editorZoom;
+                    const width = targetRect.width / editorZoom;
+                    const height = targetRect.height / editorZoom;
+                    
+                    hoverOutline.style.left = left + 'px';
+                    hoverOutline.style.top = top + 'px';
+                    hoverOutline.style.width = width + 'px';
+                    hoverOutline.style.height = height + 'px';
+                    hoverOutline.style.display = 'block';
+                });
+                
+                wrapper.addEventListener('mouseleave', () => {
+                    hoverOutline.style.display = 'none';
+                });
+                
+                wrapper.addEventListener('click', (e) => {
+                    if (editorActiveMockup !== wrapper) return;
+                    
+                    const target = e.target;
+                    // Ignore wrapper, clone, and scattered images
+                    if (target === wrapper || target === clone || target.classList.contains('theme-scattered-image')) {
+                        return;
+                    }
+                    
+                    e.stopPropagation(); // prevent canvas click deselect
+                    
+                    const targetRect = target.getBoundingClientRect();
+                    const workspaceRect = workspace.getBoundingClientRect();
+                    
+                    const left = (targetRect.left - workspaceRect.left) / editorZoom;
+                    const top = (targetRect.top - workspaceRect.top) / editorZoom;
+                    const width = targetRect.width / editorZoom;
+                    const height = targetRect.height / editorZoom;
+                    
+                    selectedOutline.style.left = left + 'px';
+                    selectedOutline.style.top = top + 'px';
+                    selectedOutline.style.width = width + 'px';
+                    selectedOutline.style.height = height + 'px';
+                    selectedOutline.style.display = 'block';
+                    
+                    const header = document.getElementById('theme-editor-header');
+                    if (header) {
+                        header.classList.remove('collapsed');
+                    }
+                });
+                
+                return wrapper;
+            }
+            
+            createMockup(realIconBar, 'mock_icon-bar', 100, 100);
+            createMockup(realContentArea, 'mock_content-area', 170, 100);
+            createMockup(realSettings, 'mock_settings-panel', 560, 100);
+            createMockup(realStore, 'mock_theme-store-panel', 950, 100);
+            
+            // Canvas Pan & Zoom
+            let isPanning = false;
+            let panStartX, panStartY;
+            
+            viewport.addEventListener('mousedown', (e) => {
+                isPanning = true;
+                panStartX = e.clientX - editorPanX;
+                panStartY = e.clientY - editorPanY;
+                
+                // Deselect mockup and clear overlays
+                if (editorActiveMockup) {
+                    const activeClone = editorActiveMockup.firstElementChild;
+                    if (activeClone) activeClone.style.pointerEvents = 'none';
+                    
+                    editorActiveMockup.classList.remove('active-mockup');
+                    editorActiveMockup = null;
+                    workspace.classList.remove('editing-mockup');
+                }
+                
+                hoverOutline.style.display = 'none';
+                selectedOutline.style.display = 'none';
+            });
+            
+            window.addEventListener('mousemove', (e) => {
+                if (!isPanning) return;
+                editorPanX = e.clientX - panStartX;
+                editorPanY = e.clientY - panStartY;
+                updateCanvasTransform();
+            });
+            
+            window.addEventListener('mouseup', () => {
+                isPanning = false;
+            });
+            
+            viewport.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = 1.1;
+                const direction = e.deltaY > 0 ? -1 : 1;
+                const newZoom = direction > 0 ? editorZoom * zoomFactor : editorZoom / zoomFactor;
+                
+                if (newZoom < 0.2 || newZoom > 3.0) return;
+                
+                const rect = viewport.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                editorPanX = mouseX - (mouseX - editorPanX) * (newZoom / editorZoom);
+                editorPanY = mouseY - (mouseY - editorPanY) * (newZoom / editorZoom);
+                editorZoom = newZoom;
+                
+                updateCanvasTransform();
+            }, { passive: false });
+            
+            function updateCanvasTransform() {
+                workspace.style.transform = `translate(${editorPanX}px, ${editorPanY}px) scale(${editorZoom})`;
+                viewport.style.backgroundSize = `${20 * editorZoom}px ${20 * editorZoom}px`;
+                viewport.style.backgroundPosition = `${editorPanX}px ${editorPanY}px`;
+                
+                const zoomText = document.getElementById('editor-hud-zoom-text');
+                if (zoomText) zoomText.textContent = Math.round(editorZoom * 100) + '%';
+            }
+            
+            // HUD controls
+            document.getElementById('editor-hud-zoom-in')?.addEventListener('click', () => {
+                editorZoom = Math.min(3.0, editorZoom * 1.2);
+                updateCanvasTransform();
+            });
+            document.getElementById('editor-hud-zoom-out')?.addEventListener('click', () => {
+                editorZoom = Math.max(0.2, editorZoom / 1.2);
+                updateCanvasTransform();
+            });
+            document.getElementById('editor-hud-reset')?.addEventListener('click', () => {
+                editorZoom = 1;
+                editorPanX = 0;
+                editorPanY = 0;
+                updateCanvasTransform();
+            });
+            
+            updateCanvasTransform();
+            bindEditorThemeControls();
+        };
+
+        function bindEditorThemeControls() {
+            const colorFields = [
+                { id: 'editor-color-font-color', themeKey: 'fontColor', prop: '--theme-font-color' },
+                { id: 'editor-color-sidebar-bg', themeKey: 'sidebarBackground', prop: '--theme-sidebar-bg' },
+                { id: 'editor-color-divider-bg', themeKey: 'dividerBackground', prop: '--theme-divider-bg' },
+                { id: 'editor-color-accent-color', themeKey: 'accentColor', prop: '--theme-accent-color' },
+                { id: 'editor-color-midtone-color', themeKey: 'midtoneColor', prop: '--theme-midtone-color' },
+                { id: 'editor-color-difference-color', themeKey: 'differenceColor', prop: '--theme-difference-bg' }
+            ];
+
+            colorFields.forEach(f => {
+                const input = document.getElementById(f.id);
+                if (!input) return;
+                
+                const currentTheme = state.customTheme || SR.getThemeDefaults();
+                if (currentTheme[f.themeKey]) input.value = currentTheme[f.themeKey];
+                
+                input.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    const swatch = input.parentElement;
+                    if (swatch) swatch.style.background = val;
+                    document.documentElement.style.setProperty(f.prop, val);
+                    
+                    if (!state.customTheme) state.customTheme = SR.getThemeDefaults();
+                    state.customTheme[f.themeKey] = val;
+                });
+            });
+            
+            const sliders = [
+                { id: 'editor-slider-opacity', themeKey: 'panelOpacity', prop: '--theme-panel-opacity' },
+                { id: 'editor-slider-blur', themeKey: 'panelBlur', prop: '--theme-panel-blur', suffix: 'px' },
+                { id: 'editor-slider-roundness', themeKey: 'panelRoundness', prop: '--theme-sidebar-roundness', suffix: 'px' }
+            ];
+            
+            sliders.forEach(s => {
+                const input = document.getElementById(s.id);
+                if (!input) return;
+                
+                const currentTheme = state.customTheme || SR.getThemeDefaults();
+                if (currentTheme[s.themeKey] !== undefined) input.value = currentTheme[s.themeKey];
+                
+                input.addEventListener('input', (e) => {
+                    let val = e.target.value;
+                    document.documentElement.style.setProperty(s.prop, val + (s.suffix || ''));
+                    if (!state.customTheme) state.customTheme = SR.getThemeDefaults();
+                    state.customTheme[s.themeKey] = s.suffix ? parseInt(val) : parseFloat(val);
+                });
+            });
+
+            const uploadBtn = document.getElementById('editor-upload-img-btn');
+            const fileInput = document.getElementById('editor-image-upload-input');
+            
+            if (uploadBtn && fileInput) {
+                uploadBtn.onclick = () => {
+                    if (!editorActiveMockup) {
+                        alert("Please select a mockup panel first to add an image to it.");
+                        return;
+                    }
+                    fileInput.click();
+                };
+                
+                fileInput.onchange = (e) => {
+                    if (!e.target.files || !e.target.files[0]) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const imgData = ev.target.result;
+                        addImageToActiveMockup(imgData);
+                    };
+                    reader.readAsDataURL(e.target.files[0]);
+                    fileInput.value = '';
+                };
+            }
+            
+            const saveBtn = document.getElementById('editor-save-btn');
+            if (saveBtn) {
+                saveBtn.onclick = async () => {
+                    await saveEditorTheme();
+                };
+            }
+        }
+
+        function addImageToActiveMockup(imgData) {
+            if (!editorActiveMockup) return;
+            
+            const imgEl = document.createElement('img');
+            imgEl.src = imgData;
+            imgEl.className = 'theme-scattered-image active-scatter';
+            
+            imgEl.style.left = '10px';
+            imgEl.style.top = '10px';
+            
+            imgEl.onload = () => {
+                const panelHeight = editorActiveMockup.offsetHeight || 800;
+                imgEl.style.height = (panelHeight / 3) + 'px';
+                imgEl.style.width = 'auto';
+            };
+            
+            editorActiveMockup.appendChild(imgEl);
+            
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+            
+            imgEl.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                
+                editorActiveMockup.querySelectorAll('.theme-scattered-image').forEach(i => i.classList.remove('active-scatter'));
+                imgEl.classList.add('active-scatter');
+                
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = parseFloat(imgEl.style.left) || 0;
+                initialTop = parseFloat(imgEl.style.top) || 0;
+            });
+            
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = (e.clientX - startX) / editorZoom;
+                const dy = (e.clientY - startY) / editorZoom;
+                imgEl.style.left = (initialLeft + dx) + 'px';
+                imgEl.style.top = (initialTop + dy) + 'px';
+            });
+            
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        }
+        
+        async function saveEditorTheme() {
+            const mockups = document.querySelectorAll('.theme-editor-mockup-wrapper');
+            for (let i = 0; i < mockups.length; i++) {
+                const wrapper = mockups[i];
+                const images = wrapper.querySelectorAll('.theme-scattered-image');
+                const panelType = wrapper.dataset.panelType;
+                
+                let targetKey = null;
+                if (panelType === 'settings-panel') targetKey = 'settingsBgImage';
+                if (panelType === 'theme-store-panel') targetKey = 'storeBgImage';
+                if (panelType === 'icon-bar' || panelType === 'content-area') targetKey = 'iconbarBgImage';
+                
+                if (images.length > 0 && targetKey) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = wrapper.offsetWidth;
+                    canvas.height = wrapper.offsetHeight;
+                    const ctx = canvas.getContext('2d');
+                    
+                    for (let img of images) {
+                        const x = parseFloat(img.style.left) || 0;
+                        const y = parseFloat(img.style.top) || 0;
+                        const w = img.offsetWidth;
+                        const h = img.offsetHeight;
+                        ctx.drawImage(img, x, y, w, h);
+                    }
+                    
+                    const mergedData = canvas.toDataURL('image/webp', 0.9);
+                    
+                    if (!state.customTheme) state.customTheme = SR.getThemeDefaults();
+                    state.customTheme[targetKey] = mergedData;
+                    
+                    if (targetKey === 'settingsBgImage') document.documentElement.style.setProperty('--theme-settings-bg-image', `url(${mergedData})`);
+                    if (targetKey === 'storeBgImage') document.documentElement.style.setProperty('--theme-store-bg-image', `url(${mergedData})`);
+                    if (targetKey === 'iconbarBgImage') document.documentElement.style.setProperty('--theme-iconbar-bg-image', `url(${mergedData})`);
+                }
+            }
+            
+            chrome.storage.local.set({ [STORAGE_KEYS.CUSTOM_THEME]: state.customTheme }, () => {
+                const toast = document.createElement('div');
+                toast.textContent = 'Theme Saved!';
+                toast.style.position = 'absolute';
+                toast.style.bottom = '20px';
+                toast.style.left = '50%';
+                toast.style.transform = 'translateX(-50%)';
+                toast.style.background = '#4CAF50';
+                toast.style.color = '#fff';
+                toast.style.padding = '8px 16px';
+                toast.style.borderRadius = '4px';
+                toast.style.zIndex = '9999';
+                document.getElementById('theme-editor-panel').appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            });
+        }
+
     } else if (isContentScript) {
         // ============================================================
         // PART 5: In-Page Content Script (Active & Idle Sidebar)
@@ -3508,6 +4071,9 @@
             destroyHost(hostId, styleId) {
                 document.querySelectorAll(hostId).forEach(el => el.remove());
                 document.querySelectorAll(styleId).forEach(el => el.remove());
+                if (!document.getElementById('revived-edge-sidebar-host') && !document.getElementById('revived-idle-sidebar-host')) {
+                    document.documentElement.removeAttribute('data-revived-host');
+                }
             }
         }
 
@@ -3738,16 +4304,17 @@
                         '.material-symbols-rounded {',
                         '  font-family: "Material Symbols Rounded", sans-serif;',
                         '  --material-fill: 0;',
-                        '  --material-wght: 500;',
                         '  --material-grad: 0;',
                         '  --material-opsz: 24;',
-                        '  font-variation-settings: "FILL" var(--material-fill), "wght" var(--material-wght), "GRAD" var(--material-grad), "opsz" var(--material-opsz);',
-                        '  font-size: 20px;',
+                        '  font-variation-settings: "FILL" var(--material-fill), "wght" var(--material-wght, 100), "GRAD" var(--material-grad), "opsz" var(--material-opsz);',
+                        '  font-size: var(--sidebar-icon-size, 26px);',
                         '  line-height: 1;',
                         '  display: inline-flex;',
                         '  align-items: center;',
                         '  justify-content: center;',
                         '  color: inherit;',
+                        '  -webkit-text-stroke: var(--material-stroke, 0.6px) currentColor;',
+                        '  -webkit-text-fill-color: currentColor;',
                         '  user-select: none;',
                         '  pointer-events: none;',
                         '  font-style: normal;',
@@ -3829,38 +4396,23 @@
             }
 
             async render(state, renderCallback) {
+                const isActiveMode = !state.isSidePanelOpen && state.activeSiteId && state.activeSiteOwner === 'inpage';
+                if (!isActiveMode) {
+                    this.destroy();
+                    return;
+                }
                 if (!this.host) {
                     this.init(state, renderCallback);
                 }
 
                 const currentTheme = this.applyTheme(state.customTheme);
-                const ah = this.getAutoHide(state, renderCallback, currentTheme);
-                const isBlocked = SR.isBlocklistedDomain(window.location.hostname, state.sidepanelBlocklist);
 
-                if (isBlocked && !state.activeSiteId) {
-                    ah.cleanup();
+                if (this.autoHide) {
+                    this.autoHide.cleanup();
                     this.autoHideArmed = false;
-                    this.hide();
-                    return;
                 }
 
-                const isAutoHideForced = SR.isBlocklistedDomain(window.location.hostname, state.autoHideBlocklist);
-
-                if (state.autoHideEnabled || isAutoHideForced) {
-                    if (ah.triggered) {
-                        await this.renderInternal(state, renderCallback, currentTheme);
-                    } else {
-                        this.hide();
-                        if (!this.autoHideArmed) {
-                            ah.arm();
-                            this.autoHideArmed = true;
-                        }
-                    }
-                } else {
-                    ah.cleanup();
-                    this.autoHideArmed = false;
-                    await this.renderInternal(state, renderCallback, currentTheme);
-                }
+                await this.renderInternal(state, renderCallback, currentTheme);
             }
 
             hide() {
@@ -3905,59 +4457,52 @@
                 await this.populateIcons(state, renderCallback);
                 const totalWidth = 48 + (isFullSidebar ? state.sidebarWidth : 0);
 
-                const isAutoHideForced = SR.isBlocklistedDomain(window.location.hostname, state.autoHideBlocklist);
+                this.host.style.width = totalWidth + 'px';
 
-                if (state.autoHideEnabled || isAutoHideForced) {
-                    document.documentElement.classList.remove('revived-sidebar-active');
-                    document.documentElement.style.removeProperty('--revived-sidebar-width');
-                    this.host.style.width = totalWidth + 'px';
+                if (this.isSafeModeSite()) {
+                    try {
+                        document.documentElement.classList.add('revived-sidebar-safe-mode');
+                        document.documentElement.classList.add('revived-sidebar-active');
+                        document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
+                        if (window.location.hostname.includes('bing.com')) {
+                            try { document.body.style.setProperty('padding-right', totalWidth + 'px', 'important'); } catch (err) { }
+                        }
+                    } catch (err) { }
                 } else {
-                    this.host.style.width = totalWidth + 'px';
-                    if (this.isSafeModeSite()) {
+                    const runTrialAndApply = async () => {
                         try {
-                            document.documentElement.classList.add('revived-sidebar-safe-mode');
-                            document.documentElement.classList.add('revived-sidebar-active');
-                            document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
-                            if (window.location.hostname.includes('bing.com')) {
-                                try { document.body.style.setProperty('padding-right', totalWidth + 'px', 'important'); } catch (err) { }
+                            const prefs = await new Promise((resolve) => SR.safeStorage.get([STORAGE_KEYS.SITE_MODE_PREFS], resolve));
+                            const sitePrefs = prefs.siteModePrefs || {};
+                            const hostname = window.location.hostname;
+                            if (sitePrefs[hostname] === 'overlay') {
+                                document.documentElement.classList.remove('revived-sidebar-active');
+                                document.documentElement.style.removeProperty('--revived-sidebar-width');
+                                return;
                             }
-                        } catch (err) { }
-                    } else {
-                        const runTrialAndApply = async () => {
-                            try {
-                                const prefs = await new Promise((resolve) => SR.safeStorage.get([STORAGE_KEYS.SITE_MODE_PREFS], resolve));
-                                const sitePrefs = prefs.siteModePrefs || {};
-                                const hostname = window.location.hostname;
-                                if (sitePrefs[hostname] === 'overlay') {
-                                    document.documentElement.classList.remove('revived-sidebar-active');
-                                    document.documentElement.style.removeProperty('--revived-sidebar-width');
-                                    return;
-                                }
 
-                                const candidateCss = `
-                                    html.revived-sidebar-active { --revived-sidebar-width: ${totalWidth}px; margin-right: var(--revived-sidebar-width, 48px) !important; width: calc(100% - var(--revived-sidebar-width, 48px)) !important; overflow-x: hidden !important; overflow-y: auto !important; }
-                                    html.revived-sidebar-active body { width: 100% !important; min-width: 0 !important; }
-                                `;
-                                const reacted = await (SR && SR.runLayoutTrial ? SR.runLayoutTrial(candidateCss, 700) : Promise.resolve(false));
-                                if (reacted) {
-                                    document.documentElement.classList.remove('revived-sidebar-active');
-                                    document.documentElement.style.removeProperty('--revived-sidebar-width');
-                                } else {
-                                    document.documentElement.classList.add('revived-sidebar-active');
-                                    document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
-                                }
-                            } catch (err) {
+                            const candidateCss = `
+                                html.revived-sidebar-active { --revived-sidebar-width: ${totalWidth}px; margin-right: var(--revived-sidebar-width, 48px) !important; width: calc(100% - var(--revived-sidebar-width, 48px)) !important; overflow-x: hidden !important; overflow-y: auto !important; }
+                                html.revived-sidebar-active body { width: 100% !important; min-width: 0 !important; }
+                            `;
+                            const reacted = await (SR && SR.runLayoutTrial ? SR.runLayoutTrial(candidateCss, 700) : Promise.resolve(false));
+                            if (reacted) {
+                                document.documentElement.classList.remove('revived-sidebar-active');
+                                document.documentElement.style.removeProperty('--revived-sidebar-width');
+                            } else {
                                 document.documentElement.classList.add('revived-sidebar-active');
                                 document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
                             }
-                        };
-
-                        if (document.readyState !== 'complete') {
-                            window.addEventListener('load', runTrialAndApply, { once: true });
-                            setTimeout(runTrialAndApply, 2000);
-                        } else {
-                            await runTrialAndApply();
+                        } catch (err) {
+                            document.documentElement.classList.add('revived-sidebar-active');
+                            document.documentElement.style.setProperty('--revived-sidebar-width', totalWidth + 'px');
                         }
+                    };
+
+                    if (document.readyState !== 'complete') {
+                        window.addEventListener('load', runTrialAndApply, { once: true });
+                        setTimeout(runTrialAndApply, 2000);
+                    } else {
+                        await runTrialAndApply();
                     }
                 }
             }
@@ -3965,6 +4510,7 @@
             destroy() {
                 this.hide();
                 this.destroyHost('#revived-edge-sidebar-host', '#revived-sidebar-host-styles');
+                document.querySelectorAll('#revived-auto-hide-indicator-host').forEach(el => el.remove());
                 this.host = null;
                 this.shadow = null;
                 this.container = null;
@@ -4036,16 +4582,17 @@
                         '.material-symbols-rounded {',
                         '  font-family: "Material Symbols Rounded", sans-serif;',
                         '  --material-fill: 0;',
-                        '  --material-wght: 500;',
                         '  --material-grad: 0;',
                         '  --material-opsz: 24;',
-                        '  font-variation-settings: "FILL" var(--material-fill), "wght" var(--material-wght), "GRAD" var(--material-grad), "opsz" var(--material-opsz);',
-                        '  font-size: 20px;',
+                        '  font-variation-settings: "FILL" var(--material-fill), "wght" var(--material-wght, 100), "GRAD" var(--material-grad), "opsz" var(--material-opsz);',
+                        '  font-size: var(--sidebar-icon-size, 26px);',
                         '  line-height: 1;',
                         '  display: inline-flex;',
                         '  align-items: center;',
                         '  justify-content: center;',
                         '  color: inherit;',
+                        '  -webkit-text-stroke: var(--material-stroke, 0.6px) currentColor;',
+                        '  -webkit-text-fill-color: currentColor;',
                         '  user-select: none;',
                         '  pointer-events: none;',
                         '  font-style: normal;',
@@ -4275,6 +4822,12 @@
             }
 
             async render(state, renderCallback) {
+                const isBlocked = SR.isBlocklistedDomain(window.location.hostname, state.sidepanelBlocklist);
+                const isIdleMode = !state.isSidePanelOpen && !isBlocked && !state.activeSiteId;
+                if (!isIdleMode) {
+                    this.destroy();
+                    return;
+                }
                 if (!this.host) {
                     this.init(state, renderCallback);
                 }
@@ -4285,15 +4838,6 @@
                 }
 
                 const ah = this.getAutoHide(state, renderCallback, currentTheme);
-                const isBlocked = SR.isBlocklistedDomain(window.location.hostname, state.sidepanelBlocklist);
-
-                if (state.isSidePanelOpen || isBlocked || state.activeSiteId) {
-                    ah.cleanup();
-                    this.autoHideArmed = false;
-                    this.fixedElementManager.stop();
-                    this.hide();
-                    return;
-                }
 
                 const isAutoHideForced = SR.isBlocklistedDomain(window.location.hostname, state.autoHideBlocklist);
 
@@ -4418,6 +4962,7 @@
             destroy() {
                 this.hide();
                 this.destroyHost('#revived-idle-sidebar-host', '#revived-idle-sidebar-styles');
+                document.querySelectorAll('#revived-auto-hide-indicator-host').forEach(el => el.remove());
                 this.host = null;
                 this.shadow = null;
                 this.container = null;
@@ -4603,14 +5148,14 @@
                 const isIdleMode = !this.state.isSidePanelOpen && !isBlocked && !this.state.activeSiteId;
 
                 if (isActiveMode) {
-                    this.idleInstance.hide();
+                    this.idleInstance.destroy();
                     this.activeInstance.render(this.state, renderCallback);
                 } else if (isIdleMode) {
-                    this.activeInstance.hide();
+                    this.activeInstance.destroy();
                     this.idleInstance.render(this.state, renderCallback);
                 } else {
-                    this.activeInstance.hide();
-                    this.idleInstance.hide();
+                    this.activeInstance.destroy();
+                    this.idleInstance.destroy();
                 }
             }
 

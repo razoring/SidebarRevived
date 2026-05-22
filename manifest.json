@@ -31,6 +31,7 @@
     {
       "resources": [
         "assets/*",
+        "fonts/*",
         "sidepanel.css",
         "sidepanel.html",
         "unified.js",
